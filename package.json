@@ -2,17 +2,27 @@
   "name": "befree-app",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
+  "prisma": {
+    "seed": "node prisma/seed.cjs"
+  },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma db push --accept-data-loss --skip-generate && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "node --test tests/",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "next": "^14.2.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "recharts": "^2.12.0",
-    "lucide-react": "^0.383.0"
+    "lucide-react": "^0.383.0",
+    "@prisma/client": "^5.20.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.20.0"
   }
 }

@@ -1,0 +1,298 @@
+// BeFree データベーススキーマ(フェーズ2)
+// BeFree_技術構成設計.md のデータモデル(セクション3)に対応。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  industry  String?
+  headcount String?
+  phase     String?
+  revenue   String?
+  createdAt DateTime @default(now())
+
+  diagnosisSessions DiagnosisSession[]
+  skillMaps         CompanySkillMap[]
+  user              User?
+}
+
+model DiagnosisSession {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  status    String   @default("in_progress") // in_progress | completed
+  createdAt DateTime @default(now())
+
+  turns     DiagnosisTurn[]
+  skillMaps CompanySkillMap[]
+}
+
+model DiagnosisTurn {
+  id         String           @id @default(uuid())
+  sessionId  String
+  session    DiagnosisSession @relation(fields: [sessionId], references: [id])
+  turnIndex  Int
+  question   String
+  options    Json
+  answer     String?
+  createdAt  DateTime         @default(now())
+}
+
+// 企業の課題スキルマップ。診断のたびに新規作成し履歴を残す(0〜100点、低いほど深刻)。
+model CompanySkillMap {
+  id                 String            @id @default(uuid())
+  companyId          String
+  company            Company           @relation(fields: [companyId], references: [id])
+  diagnosisSessionId String? // このスキルマップの元になった対話セッション
+  diagnosisSession   DiagnosisSession? @relation(fields: [diagnosisSessionId], references: [id])
+  axisScores         Json // { product, sales, marketing, hr, finance_raise, finance_mgmt, cs, ops, tech, leadership }
+  axisNotes          Json? // 軸ごとの一言分析(同じキー構成、値は短い説明文)
+  summary            String?
+  createdAt          DateTime          @default(now())
+
+  matches Match[]
+}
+
+model Talent {
+  id        String   @id @default(uuid())
+  name      String
+  title     String?
+  industry  String? // 主な業種・事業ドメインの経験
+  years     String?
+  bio       String?
+  status    String   @default("pending") // pending | approved | rejected — 承認された人材のみマッチング候補に表示
+  createdAt DateTime @default(now())
+
+  skillMaps TalentSkillMap[]
+  capacity  Capacity?
+  user      User?
+}
+
+// 人材のスキルマップ。経歴入力・更新のたびに新規作成(0〜30点、高いほど強み)。
+model TalentSkillMap {
+  id          String   @id @default(uuid())
+  talentId    String
+  talent      Talent   @relation(fields: [talentId], references: [id])
+  axisScores  Json
+  phases      Json // 適性のある事業フェーズタグ
+  bottlenecks Json // 強みが活きる課題領域タグ
+  summary     String?
+  createdAt   DateTime @default(now())
+
+  matches Match[]
+}
+
+// 企業スキルマップ × 人材スキルマップの組み合わせとスコア(BeFree_マッチングロジック設計.md参照)
+model Match {
+  id                String          @id @default(uuid())
+  companySkillMapId String
+  companySkillMap   CompanySkillMap @relation(fields: [companySkillMapId], references: [id])
+  talentSkillMapId  String
+  talentSkillMap    TalentSkillMap  @relation(fields: [talentSkillMapId], references: [id])
+  matchScore        Int
+  axisFit           Json?
+  reason            String?
+  status            String          @default("proposed") // proposed | accepted | declined
+  createdAt         DateTime        @default(now())
+
+  engagement Engagement?
+  messages   Message[]
+
+  @@unique([companySkillMapId, talentSkillMapId])
+  @@index([companySkillMapId])
+  @@index([talentSkillMapId])
+}
+
+// 実際に成立した伴走契約。企業⇄BeFree、BeFree⇄人材の2本の業務委託契約として構成する
+// (支払いフローは 企業→BeFree→人材)。BeFreeはいずれの契約でも当事者となる。
+model Engagement {
+  id              String    @id @default(uuid())
+  matchId         String    @unique
+  match           Match     @relation(fields: [matchId], references: [id])
+  startDate       DateTime?
+  monthlyHours    Int?
+  contractType    String    @default("business_delegation") // 業務委託(準委任)固定
+  companyAmount   Int? // 企業がBeFreeに支払う月額(円)
+  talentAmount    Int? // BeFreeが人材に支払う月額(円)。差額(companyAmount - talentAmount)がBeFreeの取り分
+  status          String    @default("active") // active | paused | completed
+  createdAt       DateTime  @default(now())
+
+  outcomes EngagementOutcome[]
+  invoices Invoice[]
+  payouts  Payout[]
+}
+
+// 企業→BeFreeへの請求書(決済導線の土台。実際の決済処理・入金確認は未実装のスキャフォールド)。
+model Invoice {
+  id           String     @id @default(uuid())
+  engagementId String
+  engagement   Engagement @relation(fields: [engagementId], references: [id])
+  periodLabel  String // 例: "2026年8月分"
+  amount       Int // 円(企業がBeFreeに支払う額)
+  status       String     @default("draft") // draft | sent | paid
+  createdAt    DateTime   @default(now())
+}
+
+// BeFree→人材への支払い(業務委託料)。企業からの入金確認後にBeFreeが人材へ支払う想定。
+model Payout {
+  id           String     @id @default(uuid())
+  engagementId String
+  engagement   Engagement @relation(fields: [engagementId], references: [id])
+  periodLabel  String // 例: "2026年8月分"
+  amount       Int // 円(BeFreeが人材に支払う額)
+  status       String     @default("draft") // draft | scheduled | paid
+  createdAt    DateTime   @default(now())
+}
+
+// 伴走終了後の成果データ。マッチングロジックの継続改善・成長予測エンジンの学習データの源泉。
+model EngagementOutcome {
+  id           String     @id @default(uuid())
+  engagementId String
+  engagement   Engagement @relation(fields: [engagementId], references: [id])
+  outcomeScore Int
+  notes        String?
+  recordedAt   DateTime   @default(now())
+}
+
+// 人材の稼働上限管理(マッチングロジック設計書 セクション5「足切り」に対応)
+model Capacity {
+  id                       String @id @default(uuid())
+  talentId                 String @unique
+  talent                   Talent @relation(fields: [talentId], references: [id])
+  maxConcurrentEngagements Int    @default(3)
+  currentCommittedHours    Int    @default(0)
+}
+
+// 将来の成長予測エンジンのための追記専用イベントログ(BeFree_技術構成設計.md セクション3参照)
+model Event {
+  id         String   @id @default(uuid())
+  entityType String
+  entityId   String
+  eventType  String
+  payload    Json
+  occurredAt DateTime @default(now())
+
+  @@index([entityType, entityId])
+}
+
+// 軸ごとの学習係数(lib/learning.js参照)。EngagementOutcomeの蓄積から定期的に再計算し、
+// scoreMatch()の重み付けに反映する。蓄積データが増えるほど精度が上がり、
+// 同じ計算式を真似ただけの競合には再現できない差別化要素になる。
+model AxisPerformance {
+  id               String   @id @default(uuid())
+  axisKey          String   @unique
+  sampleCount      Int      @default(0)
+  avgOutcomeScore  Float?
+  weightMultiplier Float    @default(1)
+  updatedAt        DateTime @updatedAt
+}
+
+// 公開の問い合わせフォーム(/contact)からの送信内容。認証不要で送信できる。
+model Inquiry {
+  id          String   @id @default(uuid())
+  name        String
+  email       String
+  companyName String?
+  message     String
+  status      String   @default("new") // new | replied | closed
+  createdAt   DateTime @default(now())
+}
+
+// アカウント。企業ユーザー(role=company)・実務経験者(role=talent)・BeFree運営(role=admin)の3種類。
+// company/talentロールは、それぞれ自分のCompany/Talentレコードに1:1で紐づく。
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  passwordSalt String
+  role         String // "company" | "talent" | "admin"
+  companyId    String?  @unique
+  company      Company? @relation(fields: [companyId], references: [id])
+  talentId     String?  @unique
+  talent       Talent?  @relation(fields: [talentId], references: [id])
+  createdAt    DateTime @default(now())
+
+  sessions Session[]
+  messages Message[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+model Session {
+  id        String   @id @default(uuid()) // このidをそのままセッショントークン(Cookie値)として使う
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// 企業ユーザーと実務経験者の間のダイレクトメッセージ。Match単位でスレッドを持つ。
+model Message {
+  id         String   @id @default(uuid())
+  matchId    String
+  match      Match    @relation(fields: [matchId], references: [id])
+  senderId   String
+  sender     User     @relation(fields: [senderId], references: [id])
+  senderRole String // "company" | "talent"(送信者がどちら側かの表示用)
+  body       String
+  createdAt  DateTime @default(now())
+
+  @@index([matchId])
+}
+
+// パスワードリセット用のワンタイムトークン。有効期限付き、使用後は失効させる。
+model PasswordResetToken {
+  id        String   @id @default(uuid()) // このidをそのままリセットリンクのトークンとして使う
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// DBベースのレート制限カウンタ。サーバーレス環境でインスタンスをまたいでも機能するよう、
+// メモリではなくDBでウィンドウごとのカウントを管理する。
+model RateLimitEntry {
+  id          String   @id @default(uuid())
+  key         String // 例: "login:user@example.com" や "contact:203.0.113.1"
+  windowStart DateTime
+  count       Int      @default(1)
+
+  @@unique([key, windowStart])
+}
+
+// 未処理例外・API呼び出し失敗などを記録する簡易エラーログ(外部監視サービス未導入のための代替)。
+model ErrorLog {
+  id        String   @id @default(uuid())
+  source    String // 発生箇所。例: "api/diagnosis/answer"
+  message   String
+  stack     String?
+  context   Json?
+  createdAt DateTime @default(now())
+
+  @@index([source])
+}
+
+// 管理画面での操作履歴。内部統制・不正操作の追跡のために、変更を伴う操作はすべて記録する。
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String? // 操作者のUser.id(取得できる場合)
+  actorEmail String?
+  action     String // 例: "match.accept", "talent.review"
+  targetType String? // 例: "Engagement"
+  targetId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([action])
+  @@index([targetType, targetId])
+}
