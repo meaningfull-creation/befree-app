@@ -115,7 +115,7 @@ export default async function InsightsPage() {
           </tbody>
         </table>
         <p style={{ fontSize: 11.5, color: COLORS.faint, marginTop: 12, lineHeight: 1.7 }}>
-          この分布自体が、BeFree独自の診断データから初めて得られる知見です。件数が増えるほど、業種・フェーズ特化の診断精度やAIプロンプトの改善にも活かせます。
+          この分布自体が、BATTER BOX独自の診断データから初めて得られる知見です。件数が増えるほど、業種・フェーズ特化の診断精度やAIプロンプトの改善にも活かせます。
         </p>
       </div>
     </AdminShell>

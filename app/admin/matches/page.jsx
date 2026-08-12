@@ -35,7 +35,7 @@ export default async function MatchesPage() {
     <AdminShell current="matches">
       <h1 style={{ fontSize: 20, fontWeight: 600, margin: "0 0 6px" }}>マッチング</h1>
       <p style={{ color: COLORS.muted, fontSize: 13.5, margin: "0 0 24px" }}>
-        DBにある企業・人材の最新スキルマップ同士を、その場でscoreMatch()にかけた結果です(BeFree_マッチングロジック設計.md準拠)。企業ごとの上位3名を表示しています。
+        DBにある企業・人材の最新スキルマップ同士を、その場でscoreMatch()にかけた結果です(BeFree_マッチングロジック設計.md準拠 — 設計思想はBATTER BOXでも同じです)。企業ごとの上位3名を表示しています。
       </p>
 
       {rows.length === 0 && (

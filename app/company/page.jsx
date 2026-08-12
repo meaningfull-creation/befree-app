@@ -1,10 +1,11 @@
 import { COLORS, FONT_DISPLAY, GlobalStyle } from "@/lib/theme";
 
-export const metadata = { title: "会社概要 | BeFree" };
+export const metadata = { title: "会社概要 | BATTER BOX" };
 
-// https://befree-inc.com/about/ の会社概要を反映(2026年8月時点の掲載内容)。
+// 運営会社の登記情報は https://befree-inc.com/about/ の会社概要を反映(2026年8月時点の掲載内容)。
+// サービスブランド名は「BATTER BOX」(運営会社の商号「株式会社BeFree」とは別)。
 const FIELDS = [
-  { label: "サービス名", value: "BeFree" },
+  { label: "サービス名", value: "BATTER BOX" },
   { label: "運営会社名", value: "株式会社BeFree" },
   { label: "代表者", value: "代表取締役 皆川 祐輝" },
   {
@@ -15,7 +16,7 @@ const FIELDS = [
   { label: "資本金", value: "1,510万円" },
   { label: "電話番号", value: "03-6427-0871(受付時間 平日10時〜18時)" },
   { label: "従業員数", value: "正社員48名(2025年10月時点)/業務委託15名" },
-  { label: "事業内容", value: "営業支援事業「Be Sales」の運営、AI課題診断×実行伴走人材プラットフォーム「BeFree」の企画・開発・運営" },
+  { label: "事業内容", value: "営業支援事業「Be Sales」の運営、AI課題診断×実行伴走人材プラットフォーム「BATTER BOX」の企画・開発・運営" },
   { label: "有料職業紹介事業許可番号", value: "13ーユー314626" },
   { label: "適格請求書発行事業者登録番号", value: "T8010701041862" },
   { label: "お問い合わせ", value: "__CONTACT_LINK__" },
@@ -33,7 +34,7 @@ export default function CompanyPage() {
 
         <div
           style={{
-            background: "rgba(217,164,65,0.1)",
+            background: "rgba(27,58,99,0.1)",
             border: `1.5px solid ${COLORS.amber}`,
             borderRadius: 14,
             padding: "14px 18px",

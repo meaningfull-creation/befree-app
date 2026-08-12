@@ -50,7 +50,7 @@ export default function ContactPage() {
       <div style={{ position: "relative", maxWidth: 480, margin: "0 auto", padding: "56px 24px 100px" }}>
         <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 700, margin: "0 0 8px" }}>お問い合わせ</h1>
         <p style={{ color: COLORS.muted, fontSize: 13.5, margin: "0 0 28px", lineHeight: 1.8 }}>
-          BeFreeについてのご質問、導入のご相談など、お気軽にお問い合わせください。
+          BATTER BOXについてのご質問、導入のご相談など、お気軽にお問い合わせください。
         </p>
 
         <form onSubmit={submit} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 20, padding: 28 }}>

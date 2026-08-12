@@ -1,11 +1,11 @@
 import { COLORS, FONT_DISPLAY, GlobalStyle } from "@/lib/theme";
 
-export const metadata = { title: "利用規約 | BeFree" };
+export const metadata = { title: "利用規約 | BATTER BOX" };
 
 const SECTIONS = [
   {
     title: "第1条(適用)",
-    body: `本規約は、BeFree(以下「当社」といいます)が提供する「BeFree」(以下「本サービス」といいます)の利用に関する条件を、本サービスを利用する企業ユーザーおよび実務経験者ユーザー(以下あわせて「ユーザー」といいます)と当社との間で定めるものです。ユーザーは、本サービスを利用することにより、本規約に同意したものとみなされます。`,
+    body: `本規約は、株式会社BeFree(以下「当社」といいます)が提供する「BATTER BOX」(以下「本サービス」といいます)の利用に関する条件を、本サービスを利用する企業ユーザーおよび実務経験者ユーザー(以下あわせて「ユーザー」といいます)と当社との間で定めるものです。ユーザーは、本サービスを利用することにより、本規約に同意したものとみなされます。`,
   },
   {
     title: "第2条(定義)",
@@ -63,7 +63,7 @@ export default function TermsPage() {
 
         <div
           style={{
-            background: "rgba(217,164,65,0.08)",
+            background: "rgba(27,58,99,0.08)",
             border: `1px solid ${COLORS.amber}`,
             borderRadius: 10,
             padding: "14px 18px",
@@ -73,7 +73,7 @@ export default function TermsPage() {
             marginBottom: 32,
           }}
         >
-          このページは初期ドラフトです。正式に公開する前に、必ず弁護士等の専門家によるレビューを受けてください。特に第5条(業務委託契約の構造)は、企業⇄BeFree・BeFree⇄実務経験者という2本の契約構成を採用しており、有料職業紹介事業に関する法的位置づけとあわせて、事業の実態に即した確認が必要です。
+          このページは初期ドラフトです。正式に公開する前に、必ず弁護士等の専門家によるレビューを受けてください。特に第5条(業務委託契約の構造)は、企業⇄BATTER BOX・BATTER BOX⇄実務経験者という2本の契約構成を採用しており、有料職業紹介事業に関する法的位置づけとあわせて、事業の実態に即した確認が必要です。
         </div>
 
         {SECTIONS.map((s) => (

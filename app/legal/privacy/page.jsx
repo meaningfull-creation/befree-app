@@ -1,6 +1,6 @@
 import { COLORS, FONT_DISPLAY, GlobalStyle } from "@/lib/theme";
 
-export const metadata = { title: "プライバシーポリシー | BeFree" };
+export const metadata = { title: "プライバシーポリシー | BATTER BOX" };
 
 const SECTIONS = [
   {
@@ -55,7 +55,7 @@ export default function PrivacyPage() {
 
         <div
           style={{
-            background: "rgba(217,164,65,0.08)",
+            background: "rgba(27,58,99,0.08)",
             border: `1px solid ${COLORS.amber}`,
             borderRadius: 10,
             padding: "14px 18px",

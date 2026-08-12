@@ -1,6 +1,6 @@
 import { COLORS, FONT_DISPLAY, GlobalStyle } from "@/lib/theme";
 
-export const metadata = { title: "セキュリティについて | BeFree" };
+export const metadata = { title: "セキュリティについて | BATTER BOX" };
 
 const ITEMS = [
   {
@@ -32,7 +32,7 @@ export default function SecurityPage() {
       <div style={{ position: "relative", maxWidth: 680, margin: "0 auto", padding: "56px 24px 100px" }}>
         <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 600, margin: "0 0 8px" }}>セキュリティについて</h1>
         <p style={{ color: COLORS.muted, fontSize: 13.5, margin: "0 0 32px", lineHeight: 1.8 }}>
-          BeFreeは、企業の課題情報や実務経験者の職務経歴という機微な情報を取り扱うサービスです。現在講じている保護策をご紹介します。
+          BATTER BOXは、企業の課題情報や実務経験者の職務経歴という機微な情報を取り扱うサービスです。現在講じている保護策をご紹介します。
         </p>
 
         {ITEMS.map((item) => (

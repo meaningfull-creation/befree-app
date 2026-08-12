@@ -1,19 +1,16 @@
-import { Activity, ArrowRight, Building2, Users, MessageSquare, TrendingUp, Sparkles, Target, Handshake } from "lucide-react";
+import { ArrowRight, Building2, Users, MessageSquare, TrendingUp, Sparkles, Target, Handshake } from "lucide-react";
 import { AXES } from "@/lib/axes";
 import { COLORS, FONT_DISPLAY, FONT_BODY, FONT_MONO, GlobalStyle } from "@/lib/theme";
 
 export const metadata = {
-  title: "BeFree — AI課題診断×実行伴走人材プラットフォーム",
+  title: "BATTER BOX — AI課題診断×実行伴走人材プラットフォーム",
   description: "スタートアップの成長課題をAIで構造的に診断し、実務経験者が現場に入り込んで意思決定から実行までを伴走するプラットフォーム。",
 };
 
 function Nav() {
   return (
     <header style={{ display: "flex", alignItems: "center", gap: 10, maxWidth: 1040, margin: "0 auto", padding: "24px 24px 0" }}>
-      <div style={{ width: 30, height: 30, borderRadius: 7, background: `linear-gradient(135deg, ${COLORS.teal}, ${COLORS.tealDim})`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Activity size={16} color={COLORS.onAccent} />
-      </div>
-      <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 16 }}>BEFREE</span>
+      <img src="/logo.png" alt="BATTER BOX" style={{ height: 26, width: "auto" }} />
       <div style={{ marginLeft: "auto", display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
         <a className="btn-ghost" href="/contact">お問い合わせ</a>
         <a className="btn-ghost" href="/login">ログイン</a>
@@ -89,7 +86,7 @@ function StepCard({ icon, title, body }) {
   const Icon = icon;
   return (
     <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 22, flex: 1, minWidth: 220 }}>
-      <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(199,97,107,0.1)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
+      <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(244,105,25,0.1)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
         <Icon size={19} color={COLORS.teal} />
       </div>
       <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 15.5, marginBottom: 8 }}>{title}</div>
@@ -159,7 +156,7 @@ export default function LandingPage() {
           aria-hidden="true"
           style={{
             position: "absolute", top: 0, left: 0, right: 0, height: 480,
-            background: "linear-gradient(120deg, rgba(199,97,107,0.14) 0%, rgba(217,164,65,0.12) 45%, rgba(199,97,107,0.05) 100%)",
+            background: "linear-gradient(120deg, rgba(244,105,25,0.14) 0%, rgba(27,58,99,0.12) 45%, rgba(244,105,25,0.05) 100%)",
             pointerEvents: "none",
           }}
         />
@@ -167,7 +164,7 @@ export default function LandingPage() {
           aria-hidden="true"
           style={{
             position: "absolute", top: -40, right: "8%", width: 340, height: 340, borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(217,164,65,0.16), transparent 70%)", pointerEvents: "none",
+            background: "radial-gradient(circle, rgba(27,58,99,0.16), transparent 70%)", pointerEvents: "none",
           }}
         />
         <Nav />
@@ -223,7 +220,7 @@ export default function LandingPage() {
             <TalentPreviewCard
               name="小池 美咲" title="元CFO室 / 管理会計・資金調達支援" years="15年以上"
               tags={["財務・管理会計", "資金調達", "経営体制"]}
-              gradientFrom="#B4842E" gradientTo={COLORS.amber}
+              gradientFrom="#0B2647" gradientTo={COLORS.amber}
             />
             <TalentPreviewCard
               name="遠藤 慧" title="元セールスイネーブルメント責任者" years="10〜15年"
@@ -236,7 +233,7 @@ export default function LandingPage() {
         {/* For companies / For talent */}
         <section style={{ maxWidth: 1040, margin: "0 auto", padding: "20px 24px 80px", display: "flex", gap: 20, flexWrap: "wrap" }}>
           <div style={{ flex: 1, minWidth: 300, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 28 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 13, background: "rgba(199,97,107,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 44, height: 44, borderRadius: 13, background: "rgba(244,105,25,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Building2 size={21} color={COLORS.teal} />
             </div>
             <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 500, margin: "16px 0 6px" }}>企業の方へ</div>
@@ -251,11 +248,11 @@ export default function LandingPage() {
             </a>
           </div>
           <div style={{ flex: 1, minWidth: 300, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 28 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 13, background: "rgba(217,164,65,0.14)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 44, height: 44, borderRadius: 13, background: "rgba(27,58,99,0.14)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Users size={21} color={COLORS.amber} />
             </div>
             <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 500, margin: "16px 0 6px" }}>実務経験者の方へ</div>
-            <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 800, lineHeight: 1.5, margin: "0 0 12px", color: "#B4842E" }}>
+            <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 800, lineHeight: 1.5, margin: "0 0 12px", color: "#1B3A63" }}>
               スキルマップで、<br />あなたの強みを可視化する。
             </h2>
             <p style={{ fontSize: 13.5, color: COLORS.muted, lineHeight: 1.8, marginBottom: 16 }}>

@@ -36,7 +36,7 @@ export default function LoginPage() {
       <GlobalStyle />
       <div style={{ position: "relative", maxWidth: 420, margin: "0 auto", padding: "80px 24px" }}>
         <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 600, margin: "0 0 24px", textAlign: "center" }}>
-          BeFreeにログイン
+          BATTER BOXにログイン
         </h1>
         <form onSubmit={submit} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 28 }}>
           <div style={{ marginBottom: 18 }}>

@@ -16,7 +16,6 @@ import {
   ArrowRight,
   Send,
   Sparkles,
-  Activity,
   Clock,
   BadgeCheck,
   ChevronRight,
@@ -25,7 +24,7 @@ import { AXES, TALENT_SCORE_RUBRIC } from "@/lib/axes";
 import { COLORS, FONT_DISPLAY, FONT_BODY, FONT_MONO, GlobalStyle } from "@/lib/theme";
 
 // ---------------------------------------------------------------------------
-// Design tokens (BeFree_技術構成設計.md / プロトタイプと共通)
+// Design tokens (BATTER BOX_技術構成設計.md / プロトタイプと共通)
 // ---------------------------------------------------------------------------
 const MAX_DIALOG_TURNS = 4;
 const ANALYZING_STEPS = [
@@ -90,14 +89,9 @@ function Shell({ children, step, steps, headerRight }) {
       <GlobalStyle />
       <div style={{ position: "relative", maxWidth: 880, margin: "0 auto", padding: "48px 24px 80px" }}>
         <header style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 36 }}>
-          <div
-            style={{ width: 30, height: 30, borderRadius: 7, background: `linear-gradient(135deg, ${COLORS.teal}, ${COLORS.tealDim})`, display: "flex", alignItems: "center", justifyContent: "center" }}
-          >
-            <Activity size={16} color={COLORS.onAccent} />
-          </div>
-          <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 16, letterSpacing: "0.01em" }}>BEFREE DIAGNOSIS</span>
+          <img src="/logo.png" alt="BATTER BOX" style={{ height: 24, width: "auto" }} />
           <span style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: COLORS.faint, border: `1px solid ${COLORS.border}`, borderRadius: 5, padding: "2px 7px", marginLeft: 4 }}>
-            v0.2(認証・DM対応版)
+            v1.3
           </span>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>{headerRight}</div>
         </header>
@@ -126,7 +120,7 @@ function AuthGate() {
     <Shell step={0} steps={null}>
       <div className="fade-in" style={{ maxWidth: 480, margin: "60px auto 0", textAlign: "center" }}>
         <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 600, margin: "0 0 10px" }}>
-          BeFreeへようこそ
+          BATTER BOXへようこそ
         </h1>
         <p style={{ color: COLORS.muted, fontSize: 14, margin: "0 0 32px", lineHeight: 1.7 }}>
           企業として課題診断を受けるか、実務経験者としてスキルマップを作成するには、まずアカウントが必要です。
@@ -483,7 +477,7 @@ function StepTalentProposal({ companyScores, companyPhase, onRestart, onOpenThre
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                   <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 15.5 }}>{t.name}</span>
-                  <span style={{ fontSize: 11, background: "rgba(217,164,65,0.12)", color: COLORS.amber, border: "1px solid rgba(217,164,65,0.35)", borderRadius: 6, padding: "2px 8px", fontFamily: FONT_MONO }}>適合度 {t.match}%</span>
+                  <span style={{ fontSize: 11, background: "rgba(27,58,99,0.12)", color: COLORS.amber, border: "1px solid rgba(27,58,99,0.35)", borderRadius: 6, padding: "2px 8px", fontFamily: FONT_MONO }}>適合度 {t.match}%</span>
                 </div>
                 <div style={{ fontSize: 13, color: COLORS.muted, margin: "3px 0 12px" }}>{t.role}</div>
                 <div style={{ fontSize: 13.5, lineHeight: 1.7, color: COLORS.text, background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "10px 13px", marginBottom: 12 }}>{t.reason}</div>
@@ -741,7 +735,7 @@ function StepTalentSkillMap({ name, scores, fit, onNext }) {
       </p>
 
       {fit.talentStatus === "pending" && (
-        <div style={{ background: "rgba(217,164,65,0.08)", border: `1px solid ${COLORS.amber}`, borderRadius: 10, padding: "12px 16px", fontSize: 12.5, color: COLORS.text, marginBottom: 20 }}>
+        <div style={{ background: "rgba(27,58,99,0.08)", border: `1px solid ${COLORS.amber}`, borderRadius: 10, padding: "12px 16px", fontSize: 12.5, color: COLORS.text, marginBottom: 20 }}>
           現在、運営による審査中です。承認されるまでは企業への提案候補には表示されません。
         </div>
       )}
@@ -784,7 +778,7 @@ function StepTalentSkillMap({ name, scores, fit, onNext }) {
               </div>
             ))}
           </div>
-          <div style={{ background: "rgba(199,97,107,0.06)", border: `1px solid ${COLORS.tealDim}`, borderRadius: 10, padding: "16px 18px", marginBottom: 4 }}>
+          <div style={{ background: "rgba(244,105,25,0.06)", border: `1px solid ${COLORS.tealDim}`, borderRadius: 10, padding: "16px 18px", marginBottom: 4 }}>
             <div style={{ fontSize: 12, color: COLORS.teal, marginBottom: 6, letterSpacing: "0.03em" }}>適性のある企業フェーズ / 課題</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
               {[...(fit.phases || []), ...(fit.bottlenecks || [])].map((tag) => (
@@ -853,7 +847,7 @@ function StepTalentMatches({ talentScores, talentPhases, onRestart, onOpenThread
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                   <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 15.5 }}>{c.name}</span>
-                  <span style={{ fontSize: 11, background: "rgba(217,164,65,0.12)", color: COLORS.amber, border: "1px solid rgba(217,164,65,0.35)", borderRadius: 6, padding: "2px 8px", fontFamily: FONT_MONO }}>適合度 {c.match}%</span>
+                  <span style={{ fontSize: 11, background: "rgba(27,58,99,0.12)", color: COLORS.amber, border: "1px solid rgba(27,58,99,0.35)", borderRadius: 6, padding: "2px 8px", fontFamily: FONT_MONO }}>適合度 {c.match}%</span>
                 </div>
                 <div style={{ fontSize: 13, color: COLORS.muted, margin: "3px 0 12px" }}>{c.phase}</div>
                 <div style={{ fontSize: 13.5, lineHeight: 1.7, color: COLORS.text, background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "10px 13px", marginBottom: 12 }}>{c.reason}</div>
@@ -1016,6 +1010,44 @@ function Inbox({ onOpenThread, onBack }) {
 }
 
 // ---------------------------------------------------------------------------
+// マイページ — 既に診断/解析済みのアカウントが再ログインした際に表示する。
+// 以前は再ログインのたびに入力フォームへ戻ってしまっていたため新設した。
+// ---------------------------------------------------------------------------
+function MyPageCompany({ profile, onProceed, onRediagnose }) {
+  return (
+    <div className="fade-in">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
+        <span style={{ fontSize: 12, color: COLORS.muted }}>
+          前回の診断結果({new Date(profile.diagnosedAt).toLocaleDateString("ja-JP")})
+        </span>
+        <button className="btn-ghost" onClick={onRediagnose} style={{ fontSize: 12, padding: "6px 12px" }}>もう一度AI診断を受け直す</button>
+      </div>
+      <StepSkillMap scores={profile.scores} summary={profile.summary} axisNotes={profile.axisNotes} onNext={onProceed} />
+    </div>
+  );
+}
+
+function MyPageTalent({ profile, onProceed, onRediagnose }) {
+  return (
+    <div className="fade-in">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
+        <span style={{ fontSize: 12, color: COLORS.muted }}>
+          前回の解析結果({new Date(profile.diagnosedAt).toLocaleDateString("ja-JP")})
+          {profile.status === "pending" && <span style={{ color: COLORS.amber, marginLeft: 8 }}>審査中</span>}
+        </span>
+        <button className="btn-ghost" onClick={onRediagnose} style={{ fontSize: 12, padding: "6px 12px" }}>スキルマップを更新する</button>
+      </div>
+      <StepTalentSkillMap
+        name={profile.talentForm?.name}
+        scores={profile.scores}
+        fit={{ phases: profile.phases, bottlenecks: profile.bottlenecks, summary: profile.summary }}
+        onNext={onProceed}
+      />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Root
 // ---------------------------------------------------------------------------
 const COMPANY_STEPS = ["企業情報", "AI課題診断", "スキルマップ", "人材提案"];
@@ -1042,8 +1074,10 @@ export default function Home() {
   const [companyResult, setCompanyResult] = useState({ scores: null, summary: null, axisNotes: null });
   const [talent, setTalent] = useState({ name: "" });
   const [talentResult, setTalentResult] = useState({ scores: null, phases: [], bottlenecks: [], summary: null, fallback: false });
-  const [view, setView] = useState("flow"); // "flow" | "inbox" | "thread"
+  const [view, setView] = useState("flow"); // "flow" | "mypage" | "inbox" | "thread"
   const [activeThread, setActiveThread] = useState(null); // { matchId, counterpartName }
+  const [profile, setProfile] = useState({ loading: true, data: null });
+  const initializedViewRef = useRef(false);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -1052,10 +1086,52 @@ export default function Home() {
       .catch(() => setAuthState({ loading: false, user: null }));
   }, []);
 
+  useEffect(() => {
+    if (!authState.user || authState.user.role === "admin") return;
+    fetch("/api/me/profile")
+      .then((r) => r.json())
+      .then((data) => setProfile({ loading: false, data }))
+      .catch(() => setProfile({ loading: false, data: null }));
+  }, [authState.user]);
+
+  // 既存のスキルマップがあるアカウントは、初回表示時だけ自動的にマイページを開く
+  // (以降、ユーザー自身が「もう一度診断する」等で明示的に画面遷移した場合は上書きしない)
+  useEffect(() => {
+    if (initializedViewRef.current) return;
+    if (profile.loading) return;
+    if (profile.data?.hasData) {
+      setView("mypage");
+    }
+    initializedViewRef.current = true;
+  }, [profile]);
+
   const reset = () => { setStep(1); setView("flow"); };
   const openThread = (matchId, counterpartName) => { setActiveThread({ matchId, counterpartName }); setView("thread"); };
   const openInbox = () => setView("inbox");
   const backToFlow = () => setView("flow");
+
+  const goToMyPage = () => setView("mypage");
+
+  const rediagnoseCompany = () => {
+    if (profile.data?.companyForm) setCompany(profile.data.companyForm);
+    setStep(1);
+    setView("flow");
+  };
+  const proceedFromMyPageCompany = () => {
+    setCompanyResult({ scores: profile.data.scores, summary: profile.data.summary, axisNotes: profile.data.axisNotes });
+    setStep(4);
+    setView("flow");
+  };
+  const rediagnoseTalent = () => {
+    if (profile.data?.talentForm) setTalent(profile.data.talentForm);
+    setStep(1);
+    setView("flow");
+  };
+  const proceedFromMyPageTalent = () => {
+    setTalentResult({ scores: profile.data.scores, phases: profile.data.phases, bottlenecks: profile.data.bottlenecks, summary: profile.data.summary, fallback: false });
+    setStep(4);
+    setView("flow");
+  };
 
   if (authState.loading) return <LoadingScreen />;
   if (!authState.user) return <AuthGate />;
@@ -1063,10 +1139,30 @@ export default function Home() {
     if (typeof window !== "undefined") window.location.href = "/admin";
     return <LoadingScreen />;
   }
+  if (profile.loading) return <LoadingScreen />;
 
   const mode = authState.user.role; // "company" | "talent"
   const steps = mode === "company" ? COMPANY_STEPS : TALENT_STEPS;
-  const headerRight = <HeaderActions onOpenInbox={openInbox} />;
+  const headerRight = (
+    <>
+      {profile.data?.hasData && view !== "mypage" && (
+        <button className="btn-ghost" onClick={goToMyPage} style={{ padding: "6px 12px" }}>マイページ</button>
+      )}
+      <HeaderActions onOpenInbox={openInbox} />
+    </>
+  );
+
+  if (view === "mypage" && profile.data?.hasData) {
+    return (
+      <Shell step={step} steps={null} headerRight={headerRight}>
+        {mode === "company" ? (
+          <MyPageCompany profile={profile.data} onProceed={proceedFromMyPageCompany} onRediagnose={rediagnoseCompany} />
+        ) : (
+          <MyPageTalent profile={profile.data} onProceed={proceedFromMyPageTalent} onRediagnose={rediagnoseTalent} />
+        )}
+      </Shell>
+    );
+  }
 
   if (view === "inbox") {
     return (

@@ -39,7 +39,7 @@ export default async function EngagementsPage() {
     <AdminShell current="engagements">
       <h1 style={{ fontSize: 20, fontWeight: 600, margin: "0 0 6px" }}>契約(伴走)</h1>
       <p style={{ color: COLORS.muted, fontSize: 13.5, margin: "0 0 24px" }}>
-        {engagements.length}件の契約が成立しています。支払いフローは「企業 → BeFree → 人材」で、企業⇄BeFree・BeFree⇄人材の2本の業務委託契約として扱います。標準手数料率は40%(人材支払額は企業請求額の60%)で確定しています。B2B側の決済は、Stripe等の自動化ではなく請求書のやり取りによる運用を前提とします。
+        {engagements.length}件の契約が成立しています。支払いフローは「企業 → BATTER BOX → 人材」で、企業⇄BATTER BOX・BATTER BOX⇄人材の2本の業務委託契約として扱います。標準手数料率は40%(人材支払額は企業請求額の60%)で確定しています。B2B側の決済は、Stripe等の自動化ではなく請求書のやり取りによる運用を前提とします。
       </p>
 
       {engagements.length === 0 && (
@@ -59,7 +59,7 @@ export default async function EngagementsPage() {
                 <a href={`/admin/companies/${company.id}`} style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: 15 }}>
                   {company.name}
                 </a>
-                <span style={{ color: COLORS.muted, margin: "0 8px" }}>⇄ BeFree ⇄</span>
+                <span style={{ color: COLORS.muted, margin: "0 8px" }}>⇄ BATTER BOX ⇄</span>
                 <a href={`/admin/talents/${talent.id}`} style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: 15 }}>
                   {talent.name}
                 </a>
@@ -69,7 +69,7 @@ export default async function EngagementsPage() {
 
             <div style={{ display: "flex", gap: 24, fontSize: 12.5, color: COLORS.muted, marginBottom: 14, flexWrap: "wrap" }}>
               <span>月間稼働: <span style={{ color: COLORS.text, fontFamily: FONT_MONO }}>{e.monthlyHours}h</span></span>
-              <span>契約形態: <span style={{ color: COLORS.text }}>業務委託(企業⇄BeFree / BeFree⇄人材の2本)</span></span>
+              <span>契約形態: <span style={{ color: COLORS.text }}>業務委託(企業⇄BATTER BOX / BATTER BOX⇄人材の2本)</span></span>
               {e.companyAmount != null && (
                 <span>企業への請求額(月): <span style={{ color: COLORS.text, fontFamily: FONT_MONO }}>¥{e.companyAmount.toLocaleString()}</span></span>
               )}
@@ -77,7 +77,7 @@ export default async function EngagementsPage() {
                 <span>人材への支払額(月): <span style={{ color: COLORS.text, fontFamily: FONT_MONO }}>¥{e.talentAmount.toLocaleString()}</span></span>
               )}
               {margin != null && (
-                <span>BeFreeの取り分(月): <span style={{ color: COLORS.amber, fontFamily: FONT_MONO }}>¥{margin.toLocaleString()}</span></span>
+                <span>BATTER BOXの取り分(月): <span style={{ color: COLORS.amber, fontFamily: FONT_MONO }}>¥{margin.toLocaleString()}</span></span>
               )}
               <span>開始日: <span style={{ color: COLORS.text }}>{e.startDate ? new Date(e.startDate).toLocaleDateString("ja-JP") : "—"}</span></span>
             </div>
@@ -125,7 +125,7 @@ export default async function EngagementsPage() {
 
             <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 260, paddingTop: 16, borderTop: `1px solid ${COLORS.border}` }}>
-                <div style={{ fontSize: 11.5, color: COLORS.muted, marginBottom: 8 }}>① 企業 → BeFree(請求)</div>
+                <div style={{ fontSize: 11.5, color: COLORS.muted, marginBottom: 8 }}>① 企業 → BATTER BOX(請求)</div>
                 {e.invoices.length > 0 && (
                   <table style={{ marginBottom: 10 }}>
                     <thead><tr><th>対象月</th><th>金額</th><th>状況</th><th></th></tr></thead>
@@ -170,7 +170,7 @@ export default async function EngagementsPage() {
               </div>
 
               <div style={{ flex: 1, minWidth: 260, paddingTop: 16, borderTop: `1px solid ${COLORS.border}` }}>
-                <div style={{ fontSize: 11.5, color: COLORS.muted, marginBottom: 8 }}>② BeFree → 人材(支払い)</div>
+                <div style={{ fontSize: 11.5, color: COLORS.muted, marginBottom: 8 }}>② BATTER BOX → 人材(支払い)</div>
                 {e.payouts.length > 0 && (
                   <table style={{ marginBottom: 10 }}>
                     <thead><tr><th>対象月</th><th>金額</th><th>状況</th><th></th></tr></thead>

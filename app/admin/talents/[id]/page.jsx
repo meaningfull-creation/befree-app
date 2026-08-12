@@ -69,7 +69,7 @@ async function RecordedMatches({ talentId, skillMapIds }) {
                     <input type="hidden" name="redirectPath" value={`/admin/talents/${talentId}`} />
                     <input className="admin-input" type="number" name="monthlyHours" defaultValue={10} title="月の稼働時間(h)" />
                     <input className="admin-input" style={{ width: 100 }} type="number" name="companyAmount" placeholder="企業請求額" title="企業へ請求する月額(円)" />
-                    <input className="admin-input" style={{ width: 100 }} type="number" name="talentAmount" placeholder="人材支払額" title="人材へ支払う月額(円)。標準料率: 企業請求額の60%(BeFreeの取り分40%で確定)" />
+                    <input className="admin-input" style={{ width: 100 }} type="number" name="talentAmount" placeholder="人材支払額" title="人材へ支払う月額(円)。標準料率: 企業請求額の60%(BATTER BOXの取り分40%で確定)" />
                     <button type="submit" className="admin-btn">契約にする</button>
                   </form>
                   <form action={declineMatchAction}>
@@ -160,7 +160,7 @@ export default async function TalentDetailPage({ params }) {
       {latest && (
         <div className="admin-card">
           <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 12 }}>
-            マッチング候補(現時点のリアルタイム計算 上位5社)。契約時の標準料率は「人材支払額 = 企業請求額 × 60%」です(BeFreeの取り分40%で確定)。
+            マッチング候補(現時点のリアルタイム計算 上位5社)。契約時の標準料率は「人材支払額 = 企業請求額 × 60%」です(BATTER BOXの取り分40%で確定)。
           </div>
           <table>
             <thead>

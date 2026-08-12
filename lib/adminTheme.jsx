@@ -55,7 +55,7 @@ export function AdminNav({ current }) {
   ];
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 32, borderBottom: `1px solid ${COLORS.border}`, paddingBottom: 16 }}>
-      <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 15, marginRight: 20 }}>BEFREE ADMIN</span>
+      <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 15, marginRight: 20 }}>BATTER BOX ADMIN</span>
       {items.map((it) => (
         <a
           key={it.key}

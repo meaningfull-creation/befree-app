@@ -41,7 +41,7 @@ export default function SignupPage() {
       <GlobalStyle />
       <div style={{ position: "relative", maxWidth: 460, margin: "0 auto", padding: "80px 24px" }}>
         <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 600, margin: "0 0 24px", textAlign: "center" }}>
-          BeFreeに新規登録
+          BATTER BOXに新規登録
         </h1>
 
         {!role && (
