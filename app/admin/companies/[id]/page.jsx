@@ -3,7 +3,7 @@ import { AdminShell, COLORS, FONT_MONO } from "@/lib/adminTheme";
 import { AXES } from "@/lib/axes";
 import { scoreMatch } from "@/lib/matching";
 import { getAxisWeightMultipliers } from "@/lib/axisPerformance";
-import { recordMatchAction, acceptMatchAction, declineMatchAction } from "@/lib/actions";
+import { recordMatchAction, acceptMatchAction, declineMatchAction, adjustCompanyScoreAction } from "@/lib/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -118,12 +118,12 @@ export default async function CompanyDetailPage({ params }) {
       </p>
 
       <div className="admin-card">
-        <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 12 }}>最新の課題スキルマップ</div>
+        <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 12 }}>最新の課題スキルマップ(スコアは手動調整可能)</div>
         {latest ? (
           <>
             <table>
               <thead>
-                <tr><th>軸</th><th>スコア(0〜100・低いほど深刻)</th><th>分析コメント</th></tr>
+                <tr><th>軸</th><th>スコア(0〜100・低いほど深刻)</th><th>分析コメント</th><th>調整</th></tr>
               </thead>
               <tbody>
                 {AXES.map((a) => (
@@ -133,6 +133,15 @@ export default async function CompanyDetailPage({ params }) {
                       {latest.axisScores[a.key]}
                     </td>
                     <td style={{ color: COLORS.muted, fontSize: 12.5 }}>{latest.axisNotes?.[a.key] || "—"}</td>
+                    <td>
+                      <form action={adjustCompanyScoreAction} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        <input type="hidden" name="skillMapId" value={latest.id} />
+                        <input type="hidden" name="axisKey" value={a.key} />
+                        <input type="hidden" name="redirectPath" value={`/admin/companies/${companyId}`} />
+                        <input className="admin-input" style={{ width: 60 }} type="number" min="0" max="100" name="newScore" defaultValue={latest.axisScores[a.key]} />
+                        <button type="submit" className="admin-btn-muted">保存</button>
+                      </form>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -140,6 +149,9 @@ export default async function CompanyDetailPage({ params }) {
             {latest.summary && (
               <p style={{ fontSize: 13, color: COLORS.text, marginTop: 14, lineHeight: 1.7 }}>{latest.summary}</p>
             )}
+            <p style={{ fontSize: 11, color: COLORS.faint, marginTop: 10 }}>
+              AIの診断が明らかに実態とずれている場合の是正用です。変更は監査ログに記録されます。
+            </p>
           </>
         ) : (
           <p style={{ color: COLORS.muted, fontSize: 13 }}>まだ診断が完了していません。</p>

@@ -7,6 +7,15 @@ import { recordMatchAction, acceptMatchAction, declineMatchAction } from "@/lib/
 
 export const dynamic = "force-dynamic";
 
+// フェーズタグから、大まかな企業規模像を示す(⑦人材プロフィールの「最も価値を発揮する企業」欄)。
+// 実際の従業員数・年商の統計値ではなく、一般的なスタートアップのフェーズ区分に基づく目安。
+const PHASE_PROFILE = {
+  "シード": { headcount: "〜10名程度", revenue: "売上以前〜数千万円" },
+  "プレシリーズA": { headcount: "10〜30名程度", revenue: "〜1億円程度" },
+  "シリーズA": { headcount: "20〜50名程度", revenue: "1〜3億円程度" },
+  "シリーズB以降": { headcount: "50名以上", revenue: "3億円以上" },
+};
+
 async function getTalent(id) {
   return prisma.talent.findUnique({
     where: { id },
@@ -149,6 +158,32 @@ export default async function TalentDetailPage({ params }) {
           <p style={{ color: COLORS.muted, fontSize: 13 }}>まだ解析が完了していません。</p>
         )}
       </div>
+
+      {latest && (Array.isArray(latest.phases) && latest.phases.length > 0 || Array.isArray(latest.bottlenecks) && latest.bottlenecks.length > 0) && (
+        <div className="admin-card">
+          <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 12 }}>あなたが最も価値を発揮する企業</div>
+          {Array.isArray(latest.phases) && latest.phases.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 6 }}>対応フェーズ・企業規模の目安</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {latest.phases.map((p) => (
+                  <span key={p} className="admin-badge">
+                    {p}{PHASE_PROFILE[p] ? `(従業員 ${PHASE_PROFILE[p].headcount} / 売上 ${PHASE_PROFILE[p].revenue})` : ""}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {Array.isArray(latest.bottlenecks) && latest.bottlenecks.length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 6 }}>解決できる課題</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {latest.bottlenecks.map((b) => <span key={b} className="admin-badge" style={{ color: COLORS.teal }}>{b}</span>)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {latest && (
         <div className="admin-card">

@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { rankCandidates, scoreMatch } from "@/lib/matching";
+import { computeMatchBreakdown } from "@/lib/matchBreakdown";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { getActiveEngagementCountByTalent, isTalentAvailable } from "@/lib/capacity";
 import { getAxisWeightMultipliers } from "@/lib/axisPerformance";
 
 // POST /api/match/company
-// 認証必須(role=company)。body: { companyScores, companyPhase }
-// returns: { candidates: [{ id, name, role, axis, reason, match }] }  match降順、稼働上限に達した人材は除外
+// 認証必須(role=company)。body: { companyScores, companyPhase, companyIndustry }
+// returns: { candidates: [{ id, name, role, axis, bottleneckTags, reason, match, breakdown }] }  match降順、稼働上限に達した人材は除外
 export async function POST(req) {
   try {
     const user = await requireRole("company");
@@ -15,7 +16,7 @@ export async function POST(req) {
       return NextResponse.json({ error: "企業アカウントでのログインが必要です" }, { status: 401 });
     }
 
-    const { companyScores, companyPhase } = await req.json();
+    const { companyScores, companyPhase, companyIndustry } = await req.json();
     if (!companyScores) {
       return NextResponse.json({ error: "companyScores is required" }, { status: 400 });
     }
@@ -38,7 +39,9 @@ export async function POST(req) {
           id: t.id,
           name: t.name,
           role: t.title,
+          industry: t.industry,
           axis: (sm.bottlenecks && sm.bottlenecks[0]) || "",
+          bottleneckTags: sm.bottlenecks || [],
           reason: t.bio,
           axisScores: sm.axisScores,
           phaseTags: sm.phases || [],
@@ -48,7 +51,18 @@ export async function POST(req) {
 
     const candidates = rankCandidates(pool, (t) =>
       scoreMatch(companyScores, t.axisScores, companyPhase, t.phaseTags, 6, axisWeightMultipliers)
-    );
+    ).map((c) => ({
+      ...c,
+      breakdown: computeMatchBreakdown({
+        companyScores,
+        talentScores: c.axisScores,
+        companyPhase,
+        companyIndustry,
+        talentPhaseTags: c.phaseTags,
+        talentIndustry: c.industry,
+        isAvailable: true, // ここに到達している時点で足切りは通過済み
+      }).breakdown,
+    }));
 
     return NextResponse.json({ candidates });
   } catch (e) {

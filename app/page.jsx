@@ -1,20 +1,40 @@
 import { ArrowRight, Building2, Users, MessageSquare, TrendingUp, Sparkles, Target, Handshake } from "lucide-react";
 import { AXES } from "@/lib/axes";
 import { COLORS, FONT_DISPLAY, FONT_BODY, FONT_MONO, GlobalStyle } from "@/lib/theme";
+import { getCurrentUser } from "@/lib/auth";
 
 export const metadata = {
-  title: "BATTER BOX — AI課題診断×実行伴走人材プラットフォーム",
-  description: "スタートアップの成長課題をAIで構造的に診断し、実務経験者が現場に入り込んで意思決定から実行までを伴走するプラットフォーム。",
+  title: "BATTER BOX — 会社に足りない経験を、必要な分だけ。",
+  description: "事業フェーズ・組織状況をAIで診断し、会社の成長を止めている課題と今必要な経験を可視化。その経験を持つ実務経験者が月10時間からチームに参加します。",
 };
 
-function Nav() {
+// ログイン状態に応じてナビの内容を出し分ける(未ログイン/企業/実務経験者/運営者)。
+// クライアント側フェッチではなくサーバー側でセッションを見るため、表示のちらつきが起きない。
+async function Nav() {
+  const user = await getCurrentUser();
+
   return (
     <header style={{ display: "flex", alignItems: "center", gap: 10, maxWidth: 1040, margin: "0 auto", padding: "24px 24px 0" }}>
       <img src="/logo.png" alt="BATTER BOX" style={{ height: 26, width: "auto" }} />
       <div style={{ marginLeft: "auto", display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
-        <a className="btn-ghost" href="/contact">お問い合わせ</a>
-        <a className="btn-ghost" href="/login">ログイン</a>
-        <a className="btn-primary" href="/signup">無料で始める</a>
+        {!user && (
+          <>
+            <a className="btn-ghost" href="/contact">お問い合わせ</a>
+            <a className="btn-ghost" href="/login">ログイン</a>
+            <a className="btn-primary" href="/signup">無料で始める</a>
+          </>
+        )}
+        {user && user.role === "admin" && (
+          <a className="btn-primary" href="/admin">管理画面へ</a>
+        )}
+        {user && (user.role === "company" || user.role === "talent") && (
+          <>
+            <span style={{ fontSize: 12.5, color: COLORS.muted, alignSelf: "center" }}>
+              {user.role === "company" ? user.companyName : user.talentName}さん、おかえりなさい
+            </span>
+            <a className="btn-primary" href="/app">ダッシュボードへ</a>
+          </>
+        )}
       </div>
     </header>
   );
@@ -43,6 +63,7 @@ function HeroRadarPreview() {
 
   return (
     <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 20, padding: "18px 16px 16px", boxShadow: "0 16px 32px rgba(164,78,86,0.14)" }}>
+      <div style={{ fontSize: 10.5, color: COLORS.faint, fontFamily: FONT_MONO, marginBottom: 8 }}>BATTER BOX GROWTH MAP</div>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
         <svg viewBox="0 0 64 64" width="52" height="52" role="img" aria-label={`最優先の課題「${worst.label}」のスコア`}>
           <circle cx="32" cy="32" r={gaugeR} fill="none" stroke={COLORS.border} strokeWidth="6" />
@@ -173,18 +194,21 @@ export default function LandingPage() {
         <section style={{ maxWidth: 1040, margin: "0 auto", padding: "64px 24px 60px", position: "relative" }}>
           <div style={{ display: "flex", gap: 40, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 320 }}>
-              <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: "clamp(26px, 5vw, 34px)", fontWeight: 700, lineHeight: 1.45, margin: "0 0 18px" }}>
-                課題をAIで診断し、<br />実務経験者が現場に入り込んで伴走する。
+              <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: "clamp(26px, 5vw, 34px)", fontWeight: 700, lineHeight: 1.45, margin: "0 0 14px" }}>
+                会社に足りない経験を、<br />必要な分だけ。
               </h1>
-              <p style={{ fontSize: 15, color: COLORS.muted, lineHeight: 1.8, maxWidth: 480, margin: "0 0 32px" }}>
-                スタートアップの成長課題を10軸で構造的に可視化し、根拠に基づいた実務経験者を提案。人材紹介ではなく、企業の実行力そのものを拡張する仕組みです。
+              <p style={{ fontSize: 15, color: COLORS.muted, lineHeight: 1.8, maxWidth: 480, margin: "0 0 10px" }}>
+                BATTER BOXは、事業フェーズ・組織状況をAIで診断し、会社の成長を止めている課題と、今必要な経験を可視化します。必要な経験を持つ実務経験者が、月10時間からチームに参加します。
+              </p>
+              <p style={{ fontSize: 13, color: COLORS.faint, lineHeight: 1.8, maxWidth: 480, margin: "0 0 32px", fontStyle: "italic" }}>
+                必要なのは、もう1人の社員ではない。月10時間の経験かもしれない。
               </p>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 <a className="btn-primary" href="/signup" style={{ fontSize: 15, padding: "13px 26px" }}>
-                  企業として無料で診断を受ける <ArrowRight size={15} />
+                  無料で会社を診断する <ArrowRight size={15} />
                 </a>
                 <a className="btn-ghost" href="/signup" style={{ fontSize: 15, padding: "13px 26px" }}>
-                  実務経験者として登録する
+                  人材として登録する
                 </a>
               </div>
             </div>
@@ -205,29 +229,38 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Talent preview */}
+        {/* 月10時間の価値 */}
         <section style={{ maxWidth: 1040, margin: "0 auto", padding: "0 24px 70px" }}>
-          <div style={{ marginBottom: 18 }}>
-            <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 18 }}>こんな実務経験者と出会えます</div>
-            <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 4 }}>プラットフォーム上のプロフィールの一例です</div>
+          <div style={{ textAlign: "center", marginBottom: 24 }}>
+            <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: "clamp(20px, 3.5vw, 26px)", lineHeight: 1.5 }}>
+              必要なのは、もう1人の社員ではない。<br />月10時間の経験かもしれない。
+            </div>
           </div>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-            <TalentPreviewCard
-              name="宮崎 大輔" title="元人事責任者 / シリーズA〜B 3社経験" years="15年以上"
-              tags={["採用・組織", "経営体制", "オペレーション"]}
-              gradientFrom={COLORS.tealDim} gradientTo={COLORS.teal}
-            />
-            <TalentPreviewCard
-              name="小池 美咲" title="元CFO室 / 管理会計・資金調達支援" years="15年以上"
-              tags={["財務・管理会計", "資金調達", "経営体制"]}
-              gradientFrom="#0B2647" gradientTo={COLORS.amber}
-            />
-            <TalentPreviewCard
-              name="遠藤 慧" title="元セールスイネーブルメント責任者" years="10〜15年"
-              tags={["セールス基盤", "マーケティング", "カスタマーサクセス"]}
-              gradientFrom={COLORS.tealDim} gradientTo={COLORS.teal}
-            />
+            <div style={{ flex: 1, minWidth: 260, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 26 }}>
+              <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 500, marginBottom: 10 }}>正社員採用の場合</div>
+              <ul style={{ margin: 0, padding: 0, listStyle: "none", fontSize: 13.5, color: COLORS.text, lineHeight: 2.1 }}>
+                <li>月60〜100万円ほどの人件費(目安)</li>
+                <li>週40時間の稼働が前提</li>
+                <li>長期の雇用契約</li>
+                <li>採用まで2〜6ヶ月程度</li>
+                <li>ミスマッチ時のリスクが大きい</li>
+              </ul>
+            </div>
+            <div style={{ flex: 1, minWidth: 260, background: COLORS.text, border: `1px solid ${COLORS.text}`, borderRadius: 16, padding: 26 }}>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: 500, marginBottom: 10 }}>BATTER BOXの場合</div>
+              <ul style={{ margin: 0, padding: 0, listStyle: "none", fontSize: 13.5, color: COLORS.onAccent, lineHeight: 2.1 }}>
+                <li>月10時間〜、必要な分だけ</li>
+                <li>今必要な経験だけをピンポイントで</li>
+                <li>業務委託、3ヶ月単位でも利用可能</li>
+                <li>診断からスピーディに提案</li>
+                <li>正社員採用の前段階としても</li>
+              </ul>
+            </div>
           </div>
+          <p style={{ fontSize: 11, color: COLORS.faint, marginTop: 12 }}>
+            ※ 上記の金額・期間は目安の一例です。実際の条件は個別の契約により異なります。
+          </p>
         </section>
 
         {/* For companies / For talent */}
@@ -264,11 +297,74 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Talent preview(必要な経験を持つ人材の例) */}
+        <section style={{ maxWidth: 1040, margin: "0 auto", padding: "0 24px 70px" }}>
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 18 }}>こんな経験を持つ人材が登録しています</div>
+            <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 4 }}>プラットフォーム上のプロフィールの一例です</div>
+          </div>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+            <TalentPreviewCard
+              name="宮崎 大輔" title="元人事責任者 / シリーズA〜B 3社経験" years="15年以上"
+              tags={["採用・組織", "経営体制", "オペレーション"]}
+              gradientFrom={COLORS.tealDim} gradientTo={COLORS.teal}
+            />
+            <TalentPreviewCard
+              name="小池 美咲" title="元CFO室 / 管理会計・資金調達支援" years="15年以上"
+              tags={["財務・管理会計", "資金調達", "経営体制"]}
+              gradientFrom="#0B2647" gradientTo={COLORS.amber}
+            />
+            <TalentPreviewCard
+              name="遠藤 慧" title="元セールスイネーブルメント責任者" years="10〜15年"
+              tags={["セールス基盤", "マーケティング", "カスタマーサクセス"]}
+              gradientFrom={COLORS.tealDim} gradientTo={COLORS.teal}
+            />
+          </div>
+        </section>
+
         {/* Differentiation */}
-        <section style={{ maxWidth: 780, margin: "0 auto", padding: "0 24px 90px", textAlign: "center" }}>
+        <section style={{ maxWidth: 780, margin: "0 auto", padding: "0 24px 70px", textAlign: "center" }}>
           <div style={{ display: "flex", gap: 20, justifyContent: "center", flexWrap: "wrap", fontSize: 13, color: COLORS.muted }}>
             <span style={{ display: "flex", alignItems: "center", gap: 6 }}><TrendingUp size={14} color={COLORS.teal} /> 知見の共有ではなく、実行力の提供</span>
             <span style={{ display: "flex", alignItems: "center", gap: 6 }}><MessageSquare size={14} color={COLORS.teal} /> マッチング後はそのままメッセージで連絡可能</span>
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section style={{ maxWidth: 760, margin: "0 auto", padding: "0 24px 80px" }}>
+          <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 700, textAlign: "center", margin: "0 0 28px" }}>よくある質問</h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {[
+              { q: "診断だけ受けて、そのまま利用しなくても大丈夫ですか?", a: "はい。AI企業診断・Growth Mapの作成まではすべて無料で、そこで終えていただいても構いません。提案された人材と話してみるかどうかは、診断結果を見てから判断できます。" },
+              { q: "料金はどのくらいかかりますか?", a: "月10時間からの業務委託が基本単価です。稼働時間・期間は案件ごとに個別見積もりになります(β版のため、金額の目安は今後公開予定です)。" },
+              { q: "採用ではなく業務委託なのはなぜですか?", a: "正社員採用は、採用コスト・給与・社会保険・採用期間・ミスマッチリスクが伴います。BATTER BOXは「今必要な経験だけ」を、月10時間という小さな単位から始められる業務委託の形にしています。" },
+              { q: "どんな人が登録しているのですか?", a: "事業責任者・CFO・CMO・人事責任者など、特定領域で実務の意思決定を担ってきた実務経験者です。登録時にAIがスキルマップを生成し、審査を経てから企業への提案対象になります。" },
+              { q: "診断結果はどのくらい正確ですか?", a: "AIとの対話内容と、業種・フェーズ等の情報をもとにスコアリングしています。対話で直接触れた領域は具体的な根拠を、触れていない領域は推定である旨を明記して表示しています。" },
+              { q: "支援が始まった後の進捗はどう管理しますか?", a: "マッチング後はプロジェクト画面でタスク・KPI・稼働ログを共有できます。3ヶ月ごとの再診断で、スコアがどう変化したかも確認できます。" },
+            ].map((item) => (
+              <div key={item.q} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "16px 20px" }}>
+                <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14, marginBottom: 6 }}>{item.q}</div>
+                <div style={{ fontSize: 13, color: COLORS.muted, lineHeight: 1.8 }}>{item.a}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* 最終CTA */}
+        <section style={{ background: COLORS.text, padding: "60px 24px", textAlign: "center" }}>
+          <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 800, color: COLORS.onAccent, margin: "0 0 12px" }}>
+            会社に足りない経験を、必要な分だけ。
+          </h2>
+          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.65)", margin: "0 0 28px" }}>
+            まずは無料のAI企業診断から。5分ほどで、御社のGrowth Mapが見えてきます。
+          </p>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <a className="btn-primary" href="/signup" style={{ fontSize: 15, padding: "13px 26px" }}>
+              無料で会社を診断する <ArrowRight size={15} />
+            </a>
+            <a className="btn-ghost" href="/signup" style={{ fontSize: 15, padding: "13px 26px", background: "transparent", color: COLORS.onAccent, borderColor: "rgba(255,255,255,0.3)" }}>
+              人材として登録する
+            </a>
           </div>
         </section>
 

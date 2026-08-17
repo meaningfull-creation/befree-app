@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { callClaudeJSON } from "@/lib/claude";
-import { clampAxisScores, sanitizeAxisNotes } from "@/lib/axes";
+import { clampAxisScores, sanitizeAxisNotes, sanitizeTopIssueDetails } from "@/lib/axes";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { logError } from "@/lib/errorLog";
@@ -73,6 +73,7 @@ export async function POST(req) {
     const result = await callClaudeJSON(buildDialogSystemPrompt(), buildDialogScorePrompt(companyForm, history));
     const scores = clampAxisScores(result.scores, 100);
     const axisNotes = sanitizeAxisNotes(result.axisNotes);
+    const topIssueDetails = sanitizeTopIssueDetails(result.topIssueDetails);
 
     // 診断結果を永続化する(companyIdは /api/diagnosis/start で作成済みのCompanyを指す)。
     // 対話ログ(DiagnosisSession/DiagnosisTurn)は既にここまでの各ターンで保存済みなので、
@@ -86,6 +87,7 @@ export async function POST(req) {
             diagnosisSessionId: sessionId || null,
             axisScores: scores,
             axisNotes,
+            topIssueDetails,
             summary: result.summary || null,
           },
         });
@@ -99,7 +101,7 @@ export async function POST(req) {
       }
     }
 
-    return NextResponse.json({ done: true, scores, axisNotes, summary: result.summary || null, companySkillMapId });
+    return NextResponse.json({ done: true, scores, axisNotes, topIssueDetails, summary: result.summary || null, companySkillMapId });
   } catch (e) {
     await logError("api/diagnosis/answer", e);
     return NextResponse.json({ error: e.message }, { status: 500 });

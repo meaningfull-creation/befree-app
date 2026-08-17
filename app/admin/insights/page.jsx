@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AdminShell, COLORS, FONT_MONO } from "@/lib/adminTheme";
 import { AXES } from "@/lib/axes";
-import { recomputeAxisPerformanceAction } from "@/lib/actions";
+import { recomputeAxisPerformanceAction, overrideAxisWeightAction } from "@/lib/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +70,7 @@ export default async function InsightsPage() {
         </div>
         <table>
           <thead>
-            <tr><th>軸</th><th>サンプル数</th><th>平均成果スコア</th><th>学習係数</th></tr>
+            <tr><th>軸</th><th>サンプル数</th><th>平均成果スコア</th><th>学習係数</th><th>手動調整(人材推薦設定)</th></tr>
           </thead>
           <tbody>
             {axisPerf.map((a) => (
@@ -81,10 +81,31 @@ export default async function InsightsPage() {
                 <td style={{ fontFamily: FONT_MONO, color: a.perf && a.perf.weightMultiplier !== 1 ? COLORS.teal : COLORS.text }}>
                   {(a.perf?.weightMultiplier ?? 1).toFixed(2)}×
                 </td>
+                <td>
+                  <form action={overrideAxisWeightAction} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <input type="hidden" name="axisKey" value={a.key} />
+                    <input type="hidden" name="redirectPath" value="/admin/insights" />
+                    <input
+                      className="admin-input"
+                      style={{ width: 70 }}
+                      type="number"
+                      step="0.05"
+                      min="0.5"
+                      max="1.5"
+                      name="weightMultiplier"
+                      defaultValue={(a.perf?.weightMultiplier ?? 1).toFixed(2)}
+                      title="0.5〜1.5の範囲で手動設定できます"
+                    />
+                    <button type="submit" className="admin-btn-muted">設定</button>
+                  </form>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+        <p style={{ fontSize: 11, color: COLORS.faint, marginTop: 10 }}>
+          手動設定した値は、「学習係数を再計算する」を押すと成果データに基づく自動計算値で上書きされます。
+        </p>
       </div>
 
       <div className="admin-card">

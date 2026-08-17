@@ -31,6 +31,7 @@ export async function GET() {
       },
       scores: latest.axisScores,
       axisNotes: latest.axisNotes,
+      topIssueDetails: latest.topIssueDetails,
       summary: latest.summary,
       diagnosedAt: latest.createdAt,
     });

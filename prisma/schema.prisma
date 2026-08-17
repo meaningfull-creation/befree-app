@@ -55,6 +55,8 @@ model CompanySkillMap {
   diagnosisSession   DiagnosisSession? @relation(fields: [diagnosisSessionId], references: [id])
   axisScores         Json // { product, sales, marketing, hr, finance_raise, finance_mgmt, cs, ops, tech, leadership }
   axisNotes          Json? // 軸ごとの一言分析(同じキー構成、値は短い説明文)
+  topIssueDetails    Json? // 最重要課題3件の詳細分析(BATTER BOX Growth Map)。
+                            // [{ axisKey, currentState, risk, priority, recommendedTiming }]
   summary            String?
   createdAt          DateTime          @default(now())
 
@@ -128,6 +130,70 @@ model Engagement {
   outcomes EngagementOutcome[]
   invoices Invoice[]
   payouts  Payout[]
+  project  Project?
+}
+
+// 契約成立(Engagement)ごとに1つ作られる、伴走の進行管理単位。
+// 契約が成立した時点で自動的に作成される(企業⇄人材で共有する作業スペース)。
+model Project {
+  id               String    @id @default(uuid())
+  engagementId     String    @unique
+  engagement       Engagement @relation(fields: [engagementId], references: [id])
+  name             String
+  targetAxis       String? // 対象課題の軸キー(企業スキルマップの最重要課題から引き継ぐ)
+  currentMonthGoal String?
+  status           String    @default("active") // active | completed | paused
+  createdAt        DateTime  @default(now())
+
+  tasks    ProjectTask[]
+  kpis     ProjectKPI[]
+  workLogs WorkLog[]
+  rating   TalentRating?
+  comments ProjectComment[]
+}
+
+model ProjectTask {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  title     String
+  status    String   @default("todo") // todo | in_progress | done
+  createdAt DateTime @default(now())
+}
+
+model ProjectKPI {
+  id           String   @id @default(uuid())
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id])
+  name         String
+  targetValue  Float?
+  currentValue Float?
+  unit         String?
+  createdAt    DateTime @default(now())
+}
+
+// BATTER BOX人材が記録する稼働ログ(何にどれだけ時間を使ったか)
+model WorkLog {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  description String
+  hours       Float
+  loggedAt    DateTime @default(now())
+
+  @@index([projectId])
+}
+
+// プロジェクト内の進捗コメント・議事メモ(DMのMessageとは別。企業⇄人材が共有する作業ログ的なやり取り)
+model ProjectComment {
+  id         String   @id @default(uuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id])
+  authorRole String // "company" | "talent"
+  body       String
+  createdAt  DateTime @default(now())
+
+  @@index([projectId])
 }
 
 // 企業→BeFreeへの請求書(決済導線の土台。実際の決済処理・入金確認は未実装のスキャフォールド)。
@@ -150,6 +216,17 @@ model Payout {
   amount       Int // 円(BeFreeが人材に支払う額)
   status       String     @default("draft") // draft | scheduled | paid
   createdAt    DateTime   @default(now())
+}
+
+// 企業→人材への評価(項目22「企業からの評価」)。プロジェクト単位で1件、企業側のみが記録・更新できる。
+model TalentRating {
+  id        String   @id @default(uuid())
+  projectId String   @unique
+  project   Project  @relation(fields: [projectId], references: [id])
+  rating    Int // 1〜5
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // 伴走終了後の成果データ。マッチングロジックの継続改善・成長予測エンジンの学習データの源泉。
