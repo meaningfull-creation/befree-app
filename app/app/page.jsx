@@ -19,6 +19,7 @@ import {
   Clock,
   BadgeCheck,
   ChevronRight,
+  Settings,
 } from "lucide-react";
 import { AXES, TALENT_SCORE_RUBRIC } from "@/lib/axes";
 import { COLORS, FONT_DISPLAY, FONT_BODY, FONT_MONO, GlobalStyle } from "@/lib/theme";
@@ -446,7 +447,7 @@ function StepTalentProposal({ companyScores, companyPhase, onRestart, onOpenThre
     setConnectingId(t.id);
     try {
       const result = await postJSON("/api/matches/connect", { talentSkillMapId: t.talentSkillMapId });
-      onOpenThread(result.matchId, result.counterpartName);
+      onOpenThread(result.matchId, result.counterpartName, result.draftMessage);
     } catch (e) {
       setErrorMsg("メッセージの開始に失敗しました。");
     } finally {
@@ -821,7 +822,7 @@ function StepTalentMatches({ talentScores, talentPhases, onRestart, onOpenThread
     setConnectingId(c.id);
     try {
       const result = await postJSON("/api/matches/connect", { companySkillMapId: c.companySkillMapId });
-      onOpenThread(result.matchId, result.counterpartName);
+      onOpenThread(result.matchId, result.counterpartName, result.draftMessage);
     } catch (e) {
       setErrorMsg("メッセージの開始に失敗しました。");
     } finally {
@@ -875,10 +876,11 @@ function StepTalentMatches({ talentScores, talentPhases, onRestart, onOpenThread
 // ---------------------------------------------------------------------------
 // Messaging — DM between company users and talent users, scoped to a Match
 // ---------------------------------------------------------------------------
-function MessageThread({ matchId, counterpartName: initialName, onBack }) {
+function MessageThread({ matchId, counterpartName: initialName, initialDraft, onBack }) {
   const [messages, setMessages] = useState(null);
   const [counterpartName, setCounterpartName] = useState(initialName || "");
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initialDraft || "");
+  const [isDraft, setIsDraft] = useState(!!initialDraft);
   const [errorMsg, setErrorMsg] = useState(null);
   const [sending, setSending] = useState(false);
   const scrollRef = useRef(null);
@@ -915,6 +917,7 @@ function MessageThread({ matchId, counterpartName: initialName, onBack }) {
     try {
       await postJSON("/api/messages", { matchId, body: text.trim() });
       setText("");
+      setIsDraft(false);
       await load(true);
     } catch (e) {
       setErrorMsg("送信に失敗しました。");
@@ -933,7 +936,7 @@ function MessageThread({ matchId, counterpartName: initialName, onBack }) {
         style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 20, height: 420, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}
       >
         {messages === null && <div style={{ color: COLORS.muted, fontSize: 13 }}>読み込み中…</div>}
-        {messages && messages.length === 0 && <div style={{ color: COLORS.muted, fontSize: 13 }}>まだメッセージはありません。最初のメッセージを送ってみましょう。</div>}
+        {messages && messages.length === 0 && !isDraft && <div style={{ color: COLORS.muted, fontSize: 13 }}>まだメッセージはありません。最初のメッセージを送ってみましょう。</div>}
         {messages && messages.map((m) => (
           <div key={m.id} style={{ display: "flex", justifyContent: m.mine ? "flex-end" : "flex-start" }}>
             <div style={{ maxWidth: "75%", background: m.mine ? COLORS.teal : COLORS.surfaceRaised, color: m.mine ? COLORS.onAccent : COLORS.text, border: m.mine ? "none" : `1px solid ${COLORS.border}`, borderRadius: m.mine ? "14px 4px 14px 14px" : "4px 14px 14px 14px", padding: "10px 14px", fontSize: 13.5, lineHeight: 1.6 }}>
@@ -948,12 +951,18 @@ function MessageThread({ matchId, counterpartName: initialName, onBack }) {
 
       <ErrorNote message={errorMsg} onRetry={() => load(false)} />
 
-      <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+      {isDraft && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12, fontSize: 12, color: COLORS.tealDim }}>
+          <Sparkles size={13} />
+          AIが企業の課題内容をもとに下書きしました。内容を確認・編集してから送信してください。
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 10, marginTop: isDraft ? 8 : 14 }}>
         <input
           className="field-input"
           placeholder="メッセージを入力…"
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => { setText(e.target.value); setIsDraft(false); }}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
         />
         <button className="btn-primary" disabled={sending || !text.trim()} onClick={send}>
@@ -1053,9 +1062,13 @@ function MyPageTalent({ profile, onProceed, onRediagnose }) {
 const COMPANY_STEPS = ["企業情報", "AI課題診断", "スキルマップ", "人材提案"];
 const TALENT_STEPS = ["経歴入力", "AI解析", "スキルマップ", "企業マッチング"];
 
-function HeaderActions({ onOpenInbox }) {
+function HeaderActions({ onOpenInbox, onOpenSettings }) {
   return (
     <>
+      <button className="btn-ghost" onClick={onOpenSettings} style={{ padding: "6px 12px" }}>
+        <Settings size={13} style={{ verticalAlign: -2, marginRight: 5 }} />
+        設定
+      </button>
       <button className="btn-ghost" onClick={onOpenInbox} style={{ padding: "6px 12px" }}>
         <Send size={13} style={{ verticalAlign: -2, marginRight: 5 }} />
         メッセージ
@@ -1067,6 +1080,215 @@ function HeaderActions({ onOpenInbox }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// 設定画面 — AI診断/解析を経由せず、基本情報・パスワードを直接更新する
+// ---------------------------------------------------------------------------
+function ProfileFieldsCompany({ initial, onSaved }) {
+  const [form, setForm] = useState(initial || { name: "", industry: "", headcount: "", phase: "", revenue: "" });
+  const [status, setStatus] = useState("idle");
+  const [errorMsg, setErrorMsg] = useState(null);
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setStatus("saving");
+    setErrorMsg(null);
+    try {
+      await fetch("/api/company/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) })
+        .then(async (res) => { const d = await res.json(); if (!res.ok) throw new Error(d.error); });
+      setStatus("saved");
+      onSaved?.(form);
+      setTimeout(() => setStatus("idle"), 2000);
+    } catch (err) {
+      setErrorMsg(err.message);
+      setStatus("idle");
+    }
+  };
+
+  return (
+    <form onSubmit={submit} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 22, marginBottom: 20 }}>
+      <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 15, marginBottom: 16 }}>企業情報</div>
+      <div style={{ marginBottom: 16 }}>
+        <label className="field-label">会社名</label>
+        <input className="field-input" required value={form.name || ""} onChange={set("name")} />
+      </div>
+      <div className="two-col" style={{ display: "grid", gap: 14, marginBottom: 16 }}>
+        <div>
+          <label className="field-label">事業ドメイン</label>
+          <select className="field-select" value={form.industry || ""} onChange={set("industry")}>
+            <option>SaaS / 業務効率化</option><option>フィンテック</option><option>ヘルスケア</option><option>D2C / EC</option><option>人材 / HRテック</option>
+          </select>
+        </div>
+        <div>
+          <label className="field-label">従業員数</label>
+          <select className="field-select" value={form.headcount || ""} onChange={set("headcount")}>
+            <option>〜10名</option><option>11〜30名</option><option>31〜50名</option><option>51〜100名</option><option>101名〜</option>
+          </select>
+        </div>
+      </div>
+      <div className="two-col" style={{ display: "grid", gap: 14 }}>
+        <div>
+          <label className="field-label">事業フェーズ</label>
+          <select className="field-select" value={form.phase || ""} onChange={set("phase")}>
+            <option>シード</option><option>プレシリーズA</option><option>シリーズA</option><option>シリーズB以降</option>
+          </select>
+        </div>
+        <div>
+          <label className="field-label">直近ARR / 売上規模</label>
+          <select className="field-select" value={form.revenue || ""} onChange={set("revenue")}>
+            <option>〜1億円</option><option>1〜3億円</option><option>3〜10億円</option><option>10億円〜</option>
+          </select>
+        </div>
+      </div>
+      {errorMsg && <p style={{ color: COLORS.tealDim, fontSize: 13, margin: "12px 0 0" }}>{errorMsg}</p>}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
+        <button className="btn-primary" type="submit" disabled={status === "saving"}>
+          {status === "saving" ? "保存中…" : status === "saved" ? "保存しました ✓" : "保存する"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function ProfileFieldsTalent({ initial, onSaved }) {
+  const [form, setForm] = useState(initial || { name: "", title: "", industry: "", years: "", bio: "" });
+  const [status, setStatus] = useState("idle");
+  const [errorMsg, setErrorMsg] = useState(null);
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setStatus("saving");
+    setErrorMsg(null);
+    try {
+      await fetch("/api/talent/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) })
+        .then(async (res) => { const d = await res.json(); if (!res.ok) throw new Error(d.error); });
+      setStatus("saved");
+      onSaved?.(form);
+      setTimeout(() => setStatus("idle"), 2000);
+    } catch (err) {
+      setErrorMsg(err.message);
+      setStatus("idle");
+    }
+  };
+
+  return (
+    <form onSubmit={submit} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 22, marginBottom: 20 }}>
+      <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 15, marginBottom: 16 }}>プロフィール</div>
+      <div style={{ marginBottom: 16 }}>
+        <label className="field-label">お名前</label>
+        <input className="field-input" required value={form.name || ""} onChange={set("name")} />
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <label className="field-label">直近の役職</label>
+        <input className="field-input" value={form.title || ""} onChange={set("title")} />
+      </div>
+      <div className="two-col" style={{ display: "grid", gap: 14, marginBottom: 16 }}>
+        <div>
+          <label className="field-label">主な業種経験</label>
+          <input className="field-input" value={form.industry || ""} onChange={set("industry")} />
+        </div>
+        <div>
+          <label className="field-label">実務経験年数</label>
+          <select className="field-select" value={form.years || ""} onChange={set("years")}>
+            <option>5年未満</option><option>5〜10年</option><option>10〜15年</option><option>15年以上</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label className="field-label">自己紹介・実績</label>
+        <textarea className="field-input" rows={4} style={{ resize: "vertical", fontFamily: "inherit", lineHeight: 1.6 }} value={form.bio || ""} onChange={set("bio")} />
+      </div>
+      {errorMsg && <p style={{ color: COLORS.tealDim, fontSize: 13, margin: "12px 0 0" }}>{errorMsg}</p>}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
+        <button className="btn-primary" type="submit" disabled={status === "saving"}>
+          {status === "saving" ? "保存中…" : status === "saved" ? "保存しました ✓" : "保存する"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function AccountSettings({ currentEmail }) {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [email, setEmail] = useState(currentEmail || "");
+  const [newPassword, setNewPassword] = useState("");
+  const [status, setStatus] = useState("idle");
+  const [errorMsg, setErrorMsg] = useState(null);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setStatus("saving");
+    setErrorMsg(null);
+    try {
+      const res = await fetch("/api/auth/account", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, email: email !== currentEmail ? email : undefined, newPassword: newPassword || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      if (data.requiresRelogin) {
+        window.location.href = "/login";
+        return;
+      }
+      setStatus("saved");
+      setCurrentPassword("");
+      setNewPassword("");
+      setTimeout(() => setStatus("idle"), 2000);
+    } catch (err) {
+      setErrorMsg(err.message);
+      setStatus("idle");
+    }
+  };
+
+  return (
+    <form onSubmit={submit} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 22 }}>
+      <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 15, marginBottom: 4 }}>アカウント</div>
+      <p style={{ fontSize: 12, color: COLORS.muted, margin: "0 0 16px" }}>メールアドレス・パスワードを変更する場合は、現在のパスワードの入力が必要です。</p>
+      <div style={{ marginBottom: 16 }}>
+        <label className="field-label">メールアドレス</label>
+        <input className="field-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <label className="field-label">新しいパスワード(変更する場合のみ・8文字以上)</label>
+        <input className="field-input" type="password" minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="変更しない場合は空欄のまま" />
+      </div>
+      <div>
+        <label className="field-label">現在のパスワード(確認のため必須)</label>
+        <input className="field-input" type="password" required value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+      </div>
+      {errorMsg && <p style={{ color: COLORS.tealDim, fontSize: 13, margin: "12px 0 0" }}>{errorMsg}</p>}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
+        <button className="btn-primary" type="submit" disabled={status === "saving"}>
+          {status === "saving" ? "保存中…" : status === "saved" ? "保存しました ✓" : "変更する"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function SettingsView({ mode, user, profile, onBack, onProfileSaved }) {
+  return (
+    <div className="fade-in">
+      <button className="btn-ghost" onClick={onBack} style={{ marginBottom: 16 }}>← 戻る</button>
+      <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 700, margin: "0 0 20px" }}>設定</h1>
+      {user.companyId || user.talentId ? (
+        mode === "company" ? (
+          <ProfileFieldsCompany initial={profile.data?.companyForm} onSaved={onProfileSaved} />
+        ) : (
+          <ProfileFieldsTalent initial={profile.data?.talentForm} onSaved={onProfileSaved} />
+        )
+      ) : (
+        <div style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 20, marginBottom: 20, fontSize: 13, color: COLORS.muted }}>
+          {mode === "company" ? "AI課題診断を一度完了すると、企業情報をここで編集できるようになります。" : "スキルマップ作成を一度完了すると、プロフィールをここで編集できるようになります。"}
+        </div>
+      )}
+      <AccountSettings currentEmail={user.email} />
+    </div>
+  );
+}
+
 export default function Home() {
   const [authState, setAuthState] = useState({ loading: true, user: null });
   const [step, setStep] = useState(1);
@@ -1074,8 +1296,8 @@ export default function Home() {
   const [companyResult, setCompanyResult] = useState({ scores: null, summary: null, axisNotes: null });
   const [talent, setTalent] = useState({ name: "" });
   const [talentResult, setTalentResult] = useState({ scores: null, phases: [], bottlenecks: [], summary: null, fallback: false });
-  const [view, setView] = useState("flow"); // "flow" | "mypage" | "inbox" | "thread"
-  const [activeThread, setActiveThread] = useState(null); // { matchId, counterpartName }
+  const [view, setView] = useState("flow"); // "flow" | "mypage" | "inbox" | "thread" | "settings"
+  const [activeThread, setActiveThread] = useState(null); // { matchId, counterpartName, draftMessage }
   const [profile, setProfile] = useState({ loading: true, data: null });
   const initializedViewRef = useRef(false);
 
@@ -1106,11 +1328,22 @@ export default function Home() {
   }, [profile]);
 
   const reset = () => { setStep(1); setView("flow"); };
-  const openThread = (matchId, counterpartName) => { setActiveThread({ matchId, counterpartName }); setView("thread"); };
+  const openThread = (matchId, counterpartName, draftMessage) => { setActiveThread({ matchId, counterpartName, draftMessage }); setView("thread"); };
   const openInbox = () => setView("inbox");
   const backToFlow = () => setView("flow");
 
   const goToMyPage = () => setView("mypage");
+  const openSettings = () => setView("settings");
+  const handleProfileSaved = (form) => {
+    setProfile((p) => ({
+      ...p,
+      data: {
+        ...p.data,
+        hasData: true,
+        ...(authState.user?.role === "company" ? { companyForm: form } : { talentForm: form }),
+      },
+    }));
+  };
 
   const rediagnoseCompany = () => {
     if (profile.data?.companyForm) setCompany(profile.data.companyForm);
@@ -1148,7 +1381,7 @@ export default function Home() {
       {profile.data?.hasData && view !== "mypage" && (
         <button className="btn-ghost" onClick={goToMyPage} style={{ padding: "6px 12px" }}>マイページ</button>
       )}
-      <HeaderActions onOpenInbox={openInbox} />
+      <HeaderActions onOpenInbox={openInbox} onOpenSettings={openSettings} />
     </>
   );
 
@@ -1164,6 +1397,14 @@ export default function Home() {
     );
   }
 
+  if (view === "settings") {
+    return (
+      <Shell step={step} steps={null} headerRight={headerRight}>
+        <SettingsView mode={mode} user={authState.user} profile={profile} onBack={backToFlow} onProfileSaved={handleProfileSaved} />
+      </Shell>
+    );
+  }
+
   if (view === "inbox") {
     return (
       <Shell step={step} steps={steps} headerRight={headerRight}>
@@ -1174,7 +1415,7 @@ export default function Home() {
   if (view === "thread" && activeThread) {
     return (
       <Shell step={step} steps={steps} headerRight={headerRight}>
-        <MessageThread matchId={activeThread.matchId} counterpartName={activeThread.counterpartName} onBack={backToFlow} />
+        <MessageThread matchId={activeThread.matchId} counterpartName={activeThread.counterpartName} initialDraft={activeThread.draftMessage} onBack={backToFlow} />
       </Shell>
     );
   }
