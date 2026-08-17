@@ -1,7 +1,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { scoreMatch, topMatchingAxes, rankCandidates } from "../lib/matching.js";
-import { AXIS_KEYS, clampAxisScores, sanitizeAxisNotes } from "../lib/axes.js";
+import { AXIS_KEYS, clampAxisScores, sanitizeAxisNotes, sanitizeTopIssueDetails } from "../lib/axes.js";
 
 const ZERO_COMPANY = Object.fromEntries(AXIS_KEYS.map((k) => [k, 100])); // 課題なし(深刻度0)
 const CRISIS_COMPANY = Object.fromEntries(AXIS_KEYS.map((k) => [k, 0])); // 全軸が最も深刻
@@ -87,6 +87,52 @@ describe("rankCandidates", () => {
     const list = [{ id: "a" }, { id: "b" }];
     const ranked = rankCandidates(list, () => 5, 30);
     assert.deepEqual(ranked, []);
+  });
+});
+
+describe("sanitizeTopIssueDetails", () => {
+  test("正常な入力はそのまま通す", () => {
+    const input = [
+      { axisKey: "hr", currentState: "現状説明", risk: "リスク説明", priority: "非常に高い", recommendedTiming: "1ヶ月以内" },
+    ];
+    const out = sanitizeTopIssueDetails(input);
+    assert.equal(out.length, 1);
+    assert.equal(out[0].axisKey, "hr");
+    assert.equal(out[0].priority, "非常に高い");
+  });
+
+  test("配列でない入力は空配列を返す", () => {
+    assert.deepEqual(sanitizeTopIssueDetails(null), []);
+    assert.deepEqual(sanitizeTopIssueDetails("not an array"), []);
+  });
+
+  test("不正な軸キーは除外する", () => {
+    const out = sanitizeTopIssueDetails([{ axisKey: "invalid_axis", currentState: "x", risk: "x", priority: "高い", recommendedTiming: "1ヶ月以内" }]);
+    assert.deepEqual(out, []);
+  });
+
+  test("重複した軸キーは1件だけ残す", () => {
+    const out = sanitizeTopIssueDetails([
+      { axisKey: "hr", currentState: "1つ目", risk: "x", priority: "高い", recommendedTiming: "1ヶ月以内" },
+      { axisKey: "hr", currentState: "2つ目", risk: "x", priority: "高い", recommendedTiming: "1ヶ月以内" },
+    ]);
+    assert.equal(out.length, 1);
+    assert.equal(out[0].currentState, "1つ目");
+  });
+
+  test("不正なpriority/recommendedTimingはデフォルト値に置き換える", () => {
+    const out = sanitizeTopIssueDetails([
+      { axisKey: "hr", currentState: "x", risk: "x", priority: "不正な値", recommendedTiming: "不正な値" },
+    ]);
+    assert.equal(out[0].priority, "中程度");
+    assert.equal(out[0].recommendedTiming, "3ヶ月以内");
+  });
+
+  test("4件以上入力されても3件までに切り詰める", () => {
+    const out = sanitizeTopIssueDetails(
+      AXIS_KEYS.map((k) => ({ axisKey: k, currentState: "x", risk: "x", priority: "高い", recommendedTiming: "1ヶ月以内" }))
+    );
+    assert.equal(out.length, 3);
   });
 });
 
