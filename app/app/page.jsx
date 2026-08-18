@@ -103,7 +103,7 @@ function Shell({ children, step, steps, headerRight }) {
       <GlobalStyle />
       <div style={{ position: "relative", maxWidth: 880, margin: "0 auto", padding: "48px 24px 80px" }}>
         <header style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 36 }}>
-          <img src="/logo.png" alt="BATTER BOX" style={{ height: 24, width: "auto" }} />
+          <img src="/logo.png" alt="BATTER BOX" style={{ height: 34, width: "auto" }} />
           <span style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: COLORS.faint, border: `1px solid ${COLORS.border}`, borderRadius: 5, padding: "2px 7px", marginLeft: 4 }}>
             v1.3
           </span>

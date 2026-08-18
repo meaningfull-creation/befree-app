@@ -5,11 +5,13 @@ import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import { logError } from "@/lib/errorLog";
 
 // POST /api/auth/login
-// body: { email, password }
+// body: { email, password, expectedRole? }
+//   expectedRole … "company" | "talent" を渡すと、そのロールのアカウントでなければ
+//   エラーにする(企業用ログイン画面で人材アカウントを誤って使う、といった取り違えを防ぐ)。
 // returns: { user: { id, email, role, companyId, talentId } }
 export async function POST(req) {
   try {
-    const { email, password } = await req.json();
+    const { email, password, expectedRole } = await req.json();
     if (!email || !password) {
       return NextResponse.json({ error: "email, password は必須です" }, { status: 400 });
     }
@@ -27,6 +29,14 @@ export async function POST(req) {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user || !verifyPassword(password, user.passwordHash, user.passwordSalt)) {
       return NextResponse.json({ error: "メールアドレスまたはパスワードが正しくありません" }, { status: 401 });
+    }
+
+    if (expectedRole && user.role !== expectedRole) {
+      const roleLabel = { company: "企業", talent: "実務経験者" };
+      return NextResponse.json(
+        { error: `このメールアドレスは${roleLabel[user.role] || user.role}アカウントとして登録されています。${roleLabel[expectedRole] || expectedRole}用のログイン画面ではログインできません。` },
+        { status: 403 }
+      );
     }
 
     const session = await createSessionToken(user.id);

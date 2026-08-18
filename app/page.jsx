@@ -15,7 +15,7 @@ async function Nav() {
 
   return (
     <header style={{ display: "flex", alignItems: "center", gap: 10, maxWidth: 1040, margin: "0 auto", padding: "24px 24px 0" }}>
-      <img src="/logo.png" alt="BATTER BOX" style={{ height: 26, width: "auto" }} />
+      <img src="/logo.png" alt="BATTER BOX" style={{ height: 38, width: "auto" }} />
       <div style={{ marginLeft: "auto", display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
         {!user && (
           <>
@@ -173,27 +173,29 @@ export default function LandingPage() {
     <div className="app-root">
       <GlobalStyle />
       <div style={{ position: "relative" }}>
-        <div
-          aria-hidden="true"
-          style={{
-            position: "absolute", top: 0, left: 0, right: 0, height: 480,
-            background: "linear-gradient(120deg, rgba(244,105,25,0.14) 0%, rgba(27,58,99,0.12) 45%, rgba(244,105,25,0.05) 100%)",
-            pointerEvents: "none",
-          }}
-        />
-        <div
-          aria-hidden="true"
-          style={{
-            position: "absolute", top: -40, right: "8%", width: 340, height: 340, borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(27,58,99,0.16), transparent 70%)", pointerEvents: "none",
-          }}
-        />
         <Nav />
 
-        {/* Hero */}
-        <section style={{ maxWidth: 1040, margin: "0 auto", padding: "64px 24px 60px", position: "relative" }}>
-          <div style={{ display: "flex", gap: 40, alignItems: "center", flexWrap: "wrap" }}>
-            <div style={{ flex: 1, minWidth: 320 }}>
+        {/* Hero(アップロードされたイラストを背景に使用。見出しが読めるよう白いグラデーションを重ねている) */}
+        <section style={{ position: "relative", overflow: "hidden" }}>
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute", inset: 0,
+              backgroundImage: "url(/hero-illustration.jpg)",
+              backgroundSize: "cover", backgroundPosition: "center 30%", backgroundRepeat: "no-repeat",
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute", inset: 0,
+              background: `linear-gradient(100deg, ${COLORS.bg} 0%, rgba(247,249,252,0.94) 42%, rgba(247,249,252,0.55) 64%, rgba(247,249,252,0.1) 84%)`,
+              pointerEvents: "none",
+            }}
+          />
+          <div style={{ position: "relative", maxWidth: 1040, margin: "0 auto", padding: "64px 24px 220px" }}>
+            <div style={{ maxWidth: 480 }}>
               <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: "clamp(26px, 5vw, 34px)", fontWeight: 700, lineHeight: 1.45, margin: "0 0 14px" }}>
                 会社に足りない経験を、<br />必要な分だけ。
               </h1>
@@ -212,9 +214,13 @@ export default function LandingPage() {
                 </a>
               </div>
             </div>
-            <div style={{ width: 280, flexShrink: 0, margin: "0 auto" }}>
-              <HeroRadarPreview />
-            </div>
+          </div>
+        </section>
+
+        {/* 実際の診断結果プレビュー(背景イラストと役割が重複しないよう、Heroの下に独立したセクションとして配置) */}
+        <section style={{ maxWidth: 1040, margin: "-160px auto 20px", padding: "0 24px", position: "relative" }}>
+          <div style={{ width: 280, marginLeft: "auto" }}>
+            <HeroRadarPreview />
           </div>
         </section>
 

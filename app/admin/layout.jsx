@@ -5,7 +5,7 @@ import { logoutAction } from "@/lib/actions";
 export default async function AdminLayout({ children }) {
   const user = await getCurrentUser();
   if (!user || user.role !== "admin") {
-    redirect("/login");
+    redirect("/login/admin");
   }
   return (
     <div>
