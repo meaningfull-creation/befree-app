@@ -206,10 +206,10 @@ export default function LandingPage() {
                 必要なのは、もう1人の社員ではない。月10時間の経験かもしれない。
               </p>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                <a className="btn-primary" href="/signup" style={{ fontSize: 15, padding: "13px 26px" }}>
+                <a className="btn-primary" href="/diagnose" style={{ fontSize: 15, padding: "13px 26px" }}>
                   無料で会社を診断する <ArrowRight size={15} />
                 </a>
-                <a className="btn-ghost" href="/signup" style={{ fontSize: 15, padding: "13px 26px" }}>
+                <a className="btn-ghost" href="/join" style={{ fontSize: 15, padding: "13px 26px" }}>
                   人材として登録する
                 </a>
               </div>
@@ -282,7 +282,7 @@ export default function LandingPage() {
             <p style={{ fontSize: 13.5, color: COLORS.muted, lineHeight: 1.8, marginBottom: 16 }}>
               「あと少しの実行経験があれば前に進むのに」——資金やプロダクトが揃っていても、実務を巻き取れる人材の不在で成長が止まっていませんか。AI課題診断は無料で、診断だけで終えることもできます。
             </p>
-            <a href="/signup" style={{ color: COLORS.teal, fontSize: 13.5, display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 500 }}>
+            <a href="/diagnose" style={{ color: COLORS.teal, fontSize: 13.5, display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 500 }}>
               無料でAI課題診断を受ける <ArrowRight size={13} />
             </a>
           </div>
@@ -297,7 +297,7 @@ export default function LandingPage() {
             <p style={{ fontSize: 13.5, color: COLORS.muted, lineHeight: 1.8, marginBottom: 16 }}>
               豊富な経験を持ちながら、活躍の場が限られていませんか。職務経歴を入力するだけで、AIがあなた専用のスキルマップを無料で生成。副業ではなく、経験を価値として再定義する場です。
             </p>
-            <a href="/signup" style={{ color: COLORS.amber, fontSize: 13.5, display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 500 }}>
+            <a href="/join" style={{ color: COLORS.amber, fontSize: 13.5, display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 500 }}>
               無料でスキルマップを作る <ArrowRight size={13} />
             </a>
           </div>
@@ -365,10 +365,10 @@ export default function LandingPage() {
             まずは無料のAI企業診断から。5分ほどで、御社のGrowth Mapが見えてきます。
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <a className="btn-primary" href="/signup" style={{ fontSize: 15, padding: "13px 26px" }}>
+            <a className="btn-primary" href="/diagnose" style={{ fontSize: 15, padding: "13px 26px" }}>
               無料で会社を診断する <ArrowRight size={15} />
             </a>
-            <a className="btn-ghost" href="/signup" style={{ fontSize: 15, padding: "13px 26px", background: "transparent", color: COLORS.onAccent, borderColor: "rgba(255,255,255,0.3)" }}>
+            <a className="btn-ghost" href="/join" style={{ fontSize: 15, padding: "13px 26px", background: "transparent", color: COLORS.onAccent, borderColor: "rgba(255,255,255,0.3)" }}>
               人材として登録する
             </a>
           </div>

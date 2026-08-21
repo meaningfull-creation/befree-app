@@ -2,19 +2,20 @@ import { NextResponse } from "next/server";
 import { callClaudeJSON } from "@/lib/claude";
 import { clampAxisScores } from "@/lib/axes";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { logError } from "@/lib/errorLog";
 import { buildTalentSystemPrompt, buildTalentAnalysisPrompt } from "@/lib/talentPrompts";
 
 // POST /api/talent/analyze
-// 認証必須(role=talent)。body: { talentForm: { name, title, industry, years, summary } }
+// 認証は必須ではない(未ログインでもスキル解析を進められる。アカウント作成は
+// 結果が出た後にまとめて行う設計 — /api/talent/claim 参照)。
+// 実務経験者アカウントでログイン済みの場合のみ、その場でDB保存する。
+// body: { talentForm: { name, title, industry, years, summary } }
 // returns: { scores, phases, bottlenecks, summary, talentId, talentSkillMapId }
 export async function POST(req) {
   try {
-    const user = await requireRole("talent");
-    if (!user) {
-      return NextResponse.json({ error: "実務経験者アカウントでのログインが必要です" }, { status: 401 });
-    }
+    const user = await getCurrentUser();
+    const isTalentUser = !!(user && user.role === "talent");
 
     const { talentForm } = await req.json();
     if (!talentForm?.name) {
@@ -28,9 +29,10 @@ export async function POST(req) {
 
     // 同一アカウントでの再解析は、新しいTalentを作らず既存プロフィールを更新し、
     // スキルマップだけ新規追加する(履歴として残す)。
-    let talentId = user.talentId;
+    let talentId = isTalentUser ? user.talentId : null;
     let talentSkillMapId = null;
     let talentStatus = "pending";
+    if (isTalentUser) {
     try {
       if (talentId) {
         const skillMap = await prisma.talentSkillMap.create({
@@ -70,6 +72,7 @@ export async function POST(req) {
     } catch (persistErr) {
       // DB未接続でもAI解析自体は継続できるよう、永続化の失敗は握りつぶしてログのみ残す
       console.error("failed to persist talent skill map:", persistErr.message);
+    }
     }
 
     return NextResponse.json({

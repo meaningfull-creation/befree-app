@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { callClaudeJSON } from "@/lib/claude";
 import { clampAxisScores, sanitizeAxisNotes, sanitizeTopIssueDetails } from "@/lib/axes";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { logError } from "@/lib/errorLog";
 import {
   buildDialogSystemPrompt,
@@ -12,16 +12,15 @@ import {
 } from "@/lib/dialoguePrompts";
 
 // POST /api/diagnosis/answer
-// 認証必須(role=company)。
+// 認証は必須ではない(/api/diagnosis/start と同様、未ログインでも診断を進められる)。
+// 企業アカウントでログイン済みの場合のみ、その場でDB保存する。
 // body: { companyForm, history: [{q, a, axis}], companyId, sessionId, turnId }
 //   turnId … 直前の質問(今回の回答が紐づくDiagnosisTurn)のid
 // returns: { question, options, axis, turnId } または { done: true, scores, axisNotes, summary, companySkillMapId }
 export async function POST(req) {
   try {
-    const user = await requireRole("company");
-    if (!user) {
-      return NextResponse.json({ error: "企業アカウントでのログインが必要です" }, { status: 401 });
-    }
+    const user = await getCurrentUser();
+    const isCompanyUser = !!(user && user.role === "company");
 
     const { companyForm, history, sessionId, turnId } = await req.json();
     if (!companyForm?.name || !Array.isArray(history)) {
@@ -79,7 +78,7 @@ export async function POST(req) {
     // 対話ログ(DiagnosisSession/DiagnosisTurn)は既にここまでの各ターンで保存済みなので、
     // ここではセッションを完了状態にし、スキルマップをセッションに紐づけるだけでよい。
     let companySkillMapId = null;
-    if (user.companyId) {
+    if (isCompanyUser && user.companyId) {
       try {
         const skillMap = await prisma.companySkillMap.create({
           data: {

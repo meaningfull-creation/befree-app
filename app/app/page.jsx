@@ -41,7 +41,7 @@ const ANALYZING_STEPS = [
 // API client — 全てローカルのAPI Routes(/app/api/**)経由。
 // ブラウザからAnthropic APIへ直接アクセスすることはない。
 // ---------------------------------------------------------------------------
-async function postJSON(url, body) {
+export async function postJSON(url, body) {
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -63,7 +63,7 @@ async function postPatch(url, body) {
   return data;
 }
 
-function ProgressRail({ step, steps }) {
+export function ProgressRail({ step, steps }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 40, flexWrap: "wrap" }}>
       {steps.map((label, i) => {
@@ -97,7 +97,7 @@ function ProgressRail({ step, steps }) {
   );
 }
 
-function Shell({ children, step, steps, headerRight }) {
+export function Shell({ children, step, steps, headerRight }) {
   return (
     <div className="app-root">
       <GlobalStyle />
@@ -116,7 +116,7 @@ function Shell({ children, step, steps, headerRight }) {
   );
 }
 
-function ErrorNote({ message, onRetry }) {
+export function ErrorNote({ message, onRetry }) {
   if (!message) return null;
   return (
     <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 12 }}>
@@ -161,7 +161,7 @@ function LoadingScreen() {
 // ---------------------------------------------------------------------------
 // Company flow — Step 1: company info
 // ---------------------------------------------------------------------------
-function StepCompany({ onNext }) {
+export function StepCompany({ onNext }) {
   const [form, setForm] = useState({ name: "", industry: "SaaS / 業務効率化", headcount: "11〜30名", phase: "シリーズA", revenue: "1〜3億円" });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const valid = form.name.trim().length > 0;
@@ -228,7 +228,7 @@ function TypingBubble() {
 // ---------------------------------------------------------------------------
 // Company flow — Step 2: AI dialogue (real API calls to /api/diagnosis/*)
 // ---------------------------------------------------------------------------
-function StepDialog({ companyForm, onNext }) {
+export function StepDialog({ companyForm, onNext }) {
   const [messages, setMessages] = useState([]);
   const [history, setHistory] = useState([]); // [{q, a, axis}]
   const [currentQuestion, setCurrentQuestion] = useState(null);
@@ -264,7 +264,7 @@ function StepDialog({ companyForm, onNext }) {
       if (result.done) {
         setMessages((m) => [...m, { from: "ai", text: result.summary || "回答内容をもとに、10軸でスキルマップを生成します。" }]);
         setTyping(false);
-        setTimeout(() => onNext(result.scores, result.summary, result.axisNotes, result.topIssueDetails), 900);
+        setTimeout(() => onNext(result.scores, result.summary, result.axisNotes, result.topIssueDetails, h), 900);
         return;
       }
       setMessages((m) => [...m, { from: "ai", text: result.question }]);
@@ -340,7 +340,7 @@ function StepDialog({ companyForm, onNext }) {
 // ---------------------------------------------------------------------------
 // Company flow — Step 3: skill map result
 // ---------------------------------------------------------------------------
-function StepSkillMap({ scores, summary, axisNotes, topIssueDetails, onNext }) {
+export function StepSkillMap({ scores, summary, axisNotes, topIssueDetails, onNext }) {
   const [progress, setProgress] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -659,7 +659,7 @@ const TALENT_INDUSTRY_OPTIONS = [
   "その他(自由入力)",
 ];
 
-function StepTalentInput({ onNext }) {
+export function StepTalentInput({ onNext }) {
   const [form, setForm] = useState({
     name: "",
     title: TALENT_TITLE_GROUPS[0].options[3],
@@ -754,7 +754,7 @@ function StepTalentInput({ onNext }) {
 // ---------------------------------------------------------------------------
 // Talent flow — Step 2: analyzing (real API call to /api/talent/analyze)
 // ---------------------------------------------------------------------------
-function StepTalentAnalyzing({ talentForm, onNext }) {
+export function StepTalentAnalyzing({ talentForm, onNext }) {
   const [idx, setIdx] = useState(0);
   const [errorMsg, setErrorMsg] = useState(null);
   const runIdRef = useRef(0);
@@ -807,7 +807,7 @@ function StepTalentAnalyzing({ talentForm, onNext }) {
 // ---------------------------------------------------------------------------
 // Talent flow — Step 3: skill map result
 // ---------------------------------------------------------------------------
-function StepTalentSkillMap({ name, scores, fit, onNext }) {
+export function StepTalentSkillMap({ name, scores, fit, onNext }) {
   const [progress, setProgress] = useState(0);
   const [revealed, setRevealed] = useState(false);
 
@@ -1230,8 +1230,8 @@ function MyPageTalent({ profile, onProceed, onRediagnose }) {
 // ---------------------------------------------------------------------------
 // Root
 // ---------------------------------------------------------------------------
-const COMPANY_STEPS = ["企業情報", "AI課題診断", "スキルマップ", "人材提案"];
-const TALENT_STEPS = ["経歴入力", "AI解析", "スキルマップ", "企業マッチング"];
+export const COMPANY_STEPS = ["企業情報", "AI課題診断", "スキルマップ", "人材提案"];
+export const TALENT_STEPS = ["経歴入力", "AI解析", "スキルマップ", "企業マッチング"];
 
 function HeaderActions({ onOpenInbox, onOpenSettings, onOpenProjects }) {
   return (
