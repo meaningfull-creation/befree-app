@@ -11,13 +11,14 @@ datasource db {
 }
 
 model Company {
-  id        String   @id @default(uuid())
-  name      String
-  industry  String?
-  headcount String?
-  phase     String?
-  revenue   String?
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  name        String
+  industry    String?
+  headcount   String?
+  fundingType String? // "independent"(外部資本なし・自己資金) | "vc"(VC・エンジェル投資等の外部資本あり)
+  phase       String? // fundingTypeに応じて語彙を分ける(VC: シード〜IPO準備 / 独立系: 創業年数ベースの成長段階)
+  revenue     String?
+  createdAt   DateTime @default(now())
 
   diagnosisSessions DiagnosisSession[]
   skillMaps         CompanySkillMap[]
