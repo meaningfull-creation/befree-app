@@ -99,7 +99,7 @@ export default function JoinPage() {
 
   return (
     <Shell step={step} steps={STEPS} headerRight={headerRight} onStepClick={setStep}>
-      {step === 1 && <StepTalentInput onNext={(form) => { setTalent(form); setStep(2); }} />}
+      {step === 1 && <StepTalentInput onNext={(form) => { setTalent(form); setStep(2); }} initialForm={talent} />}
       {step === 2 && (
         <StepTalentAnalyzing
           talentForm={talent}

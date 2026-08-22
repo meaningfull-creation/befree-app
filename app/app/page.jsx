@@ -29,7 +29,8 @@ import { COLORS, FONT_DISPLAY, FONT_BODY, FONT_MONO, GlobalStyle } from "@/lib/t
 // ---------------------------------------------------------------------------
 // Design tokens (BATTER BOX_技術構成設計.md / プロトタイプと共通)
 // ---------------------------------------------------------------------------
-const MAX_DIALOG_TURNS = 15;
+const MAX_DIALOG_TURNS = 10;
+const AI_PERSONA_NAME = "タクト";
 const ANALYZING_STEPS = [
   "職務経歴書を読み込み中…",
   "プロジェクト実績から成果指標を抽出中…",
@@ -224,11 +225,12 @@ const PHASE_OPTIONS_INDEPENDENT = ["創業〜3年目(基盤づくり期)", "4〜
 const REVENUE_OPTIONS = ["1000万円未満", "1000万〜1億円", "1〜3億円", "3〜10億円", "10〜30億円", "30億円以上"];
 const TALENT_YEARS_OPTIONS = ["3年未満", "3〜5年", "5〜10年", "10〜15年", "15〜20年", "20年以上"];
 
-export function StepCompany({ onNext }) {
-  const [form, setForm] = useState({
-    name: "", industry: INDUSTRY_OPTIONS[1], headcount: "11〜30名",
-    fundingType: "independent", phase: PHASE_OPTIONS_INDEPENDENT[1], revenue: "1〜3億円",
-  });
+export function StepCompany({ onNext, initialForm }) {
+  const [form, setForm] = useState(
+    initialForm?.name
+      ? initialForm
+      : { name: "", industry: INDUSTRY_OPTIONS[1], headcount: "11〜30名", fundingType: "independent", phase: PHASE_OPTIONS_INDEPENDENT[1], revenue: "1〜3億円" }
+  );
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const setFundingType = (e) => {
     const fundingType = e.target.value;
@@ -342,7 +344,7 @@ export function StepDialog({ companyForm, onNext }) {
       if (result.done) {
         setMessages((m) => [...m, { from: "ai", text: result.summary || "回答内容をもとに、10軸でスキルマップを生成します。" }]);
         setTyping(false);
-        setTimeout(() => onNext(result.scores, result.summary, result.axisNotes, result.topIssueDetails, h), 900);
+        setTimeout(() => onNext(result.scores, result.summary, result.axisNotes, result.topIssueDetails, h, result.companySkillMapId), 900);
         return;
       }
       setMessages((m) => {
@@ -351,7 +353,7 @@ export function StepDialog({ companyForm, onNext }) {
         next.push({ from: "ai", text: result.question });
         return next;
       });
-      setCurrentQuestion({ question: result.question, options: (result.options || []).slice(0, 3), axis: result.axis || null });
+      setCurrentQuestion({ question: result.question, options: (result.options || []).slice(0, 4), axis: result.axis || null });
     } catch (e) {
       setErrorMsg("AIとの通信に失敗しました。もう一度お試しください。");
     } finally {
@@ -383,7 +385,7 @@ export function StepDialog({ companyForm, onNext }) {
   return (
     <div className="fade-in">
       <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 600, margin: "0 0 6px" }}>
-        {companyForm.name || "貴社"} の課題をAIが対話形式で特定しています
+        {companyForm.name || "貴社"} の課題を{AI_PERSONA_NAME}が対話形式で特定しています
       </h1>
       <p style={{ color: COLORS.muted, fontSize: 14, margin: "0 0 24px" }}>
         質問 {Math.min(history.length + 1, MAX_DIALOG_TURNS)} / {MAX_DIALOG_TURNS}
@@ -400,10 +402,21 @@ export function StepDialog({ companyForm, onNext }) {
               style={
                 m.reflection
                   ? { maxWidth: "78%", background: "transparent", color: COLORS.muted, padding: "4px 15px 0", fontSize: 13, lineHeight: 1.6, fontStyle: "italic" }
-                  : { maxWidth: "78%", background: m.from === "ai" ? COLORS.surfaceRaised : COLORS.teal, color: m.from === "ai" ? COLORS.text : COLORS.onAccent, border: m.from === "ai" ? `1px solid ${COLORS.border}` : "none", borderRadius: m.from === "ai" ? "4px 14px 14px 14px" : "14px 4px 14px 14px", padding: "11px 15px", fontSize: 14, lineHeight: 1.6 }
+                  : { maxWidth: "78%" }
               }
             >
-              {m.text}
+              {m.from === "ai" && !m.reflection && (
+                <div style={{ fontSize: 10.5, color: COLORS.faint, marginBottom: 3, fontFamily: FONT_MONO }}>{AI_PERSONA_NAME}</div>
+              )}
+              <div
+                style={
+                  m.reflection
+                    ? {}
+                    : { background: m.from === "ai" ? COLORS.surfaceRaised : COLORS.teal, color: m.from === "ai" ? COLORS.text : COLORS.onAccent, border: m.from === "ai" ? `1px solid ${COLORS.border}` : "none", borderRadius: m.from === "ai" ? "4px 14px 14px 14px" : "14px 4px 14px 14px", padding: "11px 15px", fontSize: 14, lineHeight: 1.6 }
+                }
+              >
+                {m.text}
+              </div>
             </div>
           </div>
         ))}
@@ -429,11 +442,95 @@ export function StepDialog({ companyForm, onNext }) {
 // ---------------------------------------------------------------------------
 // Company flow — Step 3: skill map result
 // ---------------------------------------------------------------------------
-export function StepSkillMap({ scores, summary, axisNotes, topIssueDetails, onNext }) {
+// 診断結果画面から、特定の1軸だけをさらに深掘りするミニ対話。
+// 3問までの短いラリーの後、その軸のスコア・分析コメントを更新してonCompleteを呼ぶ。
+function AxisDeepDive({ companyForm, axisKey, axisLabel, currentScore, currentNote, companySkillMapId, onComplete, onCancel }) {
+  const [messages, setMessages] = useState([]);
+  const [history, setHistory] = useState([]); // [{q, a}]
+  const [currentQuestion, setCurrentQuestion] = useState(null);
+  const [typing, setTyping] = useState(true);
+  const [errorMsg, setErrorMsg] = useState(null);
+  const startedRef = useRef(false);
+
+  const fetchNext = async (h) => {
+    setTyping(true);
+    setErrorMsg(null);
+    try {
+      const result = await postJSON("/api/diagnosis/axis-deep-dive", {
+        companyForm, axisKey, currentScore, currentNote, history: h, companySkillMapId,
+      });
+      if (result.done) {
+        onComplete(axisKey, result.score, result.note);
+        return;
+      }
+      setMessages((m) => {
+        const next = [...m];
+        if (result.reflection) next.push({ from: "ai", text: result.reflection, reflection: true });
+        next.push({ from: "ai", text: result.question });
+        return next;
+      });
+      setCurrentQuestion({ question: result.question, options: (result.options || []).slice(0, 4) });
+    } catch (e) {
+      setErrorMsg("AIとの通信に失敗しました。もう一度お試しください。");
+    } finally {
+      setTyping(false);
+    }
+  };
+
+  useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    fetchNext([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const answer = (opt) => {
+    setMessages((m) => [...m, { from: "user", text: opt }]);
+    const newHistory = [...history, { q: currentQuestion.question, a: opt }];
+    setHistory(newHistory);
+    setCurrentQuestion(null);
+    fetchNext(newHistory);
+  };
+
+  return (
+    <div className="fade-in" style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16, marginTop: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <span style={{ fontSize: 12, color: COLORS.muted }}>{axisLabel}を深掘り中({Math.min(history.length + 1, 3)}/3)</span>
+        <button className="btn-ghost" onClick={onCancel} style={{ fontSize: 11, padding: "3px 10px" }}>閉じる</button>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
+        {messages.map((m, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: m.from === "ai" ? "flex-start" : "flex-end" }}>
+            <div style={m.reflection
+              ? { maxWidth: "85%", color: COLORS.muted, fontSize: 12, fontStyle: "italic" }
+              : { maxWidth: "85%", background: m.from === "ai" ? COLORS.surface : COLORS.teal, color: m.from === "ai" ? COLORS.text : COLORS.onAccent, border: m.from === "ai" ? `1px solid ${COLORS.border}` : "none", borderRadius: m.from === "ai" ? "4px 12px 12px 12px" : "12px 4px 12px 12px", padding: "9px 13px", fontSize: 12.5 }}
+            >
+              {m.text}
+            </div>
+          </div>
+        ))}
+        {typing && <div style={{ fontSize: 12, color: COLORS.faint }}>{AI_PERSONA_NAME}が考えています…</div>}
+      </div>
+      {errorMsg && <ErrorNote message={errorMsg} onRetry={() => fetchNext(history)} />}
+      {!typing && currentQuestion && !errorMsg && (
+        <div style={{ display: "grid", gap: 6 }}>
+          {currentQuestion.options.map((opt) => (
+            <button key={opt} className="btn-ghost" onClick={() => answer(opt)} style={{ textAlign: "left", fontSize: 12.5, padding: "8px 12px" }}>{opt}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function StepSkillMap({ scores, summary, axisNotes, topIssueDetails, companyForm, companySkillMapId, onNext }) {
   const [progress, setProgress] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [chartView, setChartView] = useState("radar"); // "radar" | "bar"
+  const [localScores, setLocalScores] = useState(scores);
+  const [localAxisNotes, setLocalAxisNotes] = useState(axisNotes || {});
+  const [deepDiveAxis, setDeepDiveAxis] = useState(null);
 
   useEffect(() => {
     let raf;
@@ -449,11 +546,17 @@ export function StepSkillMap({ scores, summary, axisNotes, topIssueDetails, onNe
     return () => cancelAnimationFrame(raf);
   }, []);
 
+  const handleDeepDiveComplete = (axisKey, newScore, newNote) => {
+    setLocalScores((s) => ({ ...s, [axisKey]: newScore }));
+    setLocalAxisNotes((n) => ({ ...n, [axisKey]: newNote }));
+    setDeepDiveAxis(null);
+  };
+
   const IDEAL_SCORE = 75; // 「大きな課題ではない」目安ラインとしての参考値
-  const data = AXES.map((a) => ({ axis: a.label, score: Math.round(scores[a.key] * progress), ideal: IDEAL_SCORE * progress }));
-  const allAxes = AXES.map((a) => ({ ...a, score: scores[a.key], note: axisNotes?.[a.key] || "" })).sort((a, b) => a.score - b.score);
+  const data = AXES.map((a) => ({ axis: a.label, score: Math.round(localScores[a.key] * progress), ideal: IDEAL_SCORE * progress }));
+  const allAxes = AXES.map((a) => ({ ...a, score: localScores[a.key], note: localAxisNotes?.[a.key] || "" })).sort((a, b) => a.score - b.score);
   const bottlenecks = allAxes.slice(0, 3);
-  const totalScore = Math.round(AXES.reduce((s, a) => s + scores[a.key], 0) / AXES.length);
+  const totalScore = Math.round(AXES.reduce((s, a) => s + localScores[a.key], 0) / AXES.length);
   const issueByAxis = Object.fromEntries((topIssueDetails || []).map((d) => [d.axisKey, d]));
   const priorityColor = { "非常に高い": COLORS.tealDim, "高い": COLORS.teal, "中程度": COLORS.muted };
 
@@ -561,12 +664,35 @@ export function StepSkillMap({ scores, summary, axisNotes, topIssueDetails, onNe
           {showAll && (
             <div className="fade-in" style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
               {allAxes.map((a) => (
-                <div key={a.key} style={{ display: "flex", gap: 14, alignItems: "flex-start", background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "12px 16px" }}>
-                  <div style={{ fontFamily: FONT_MONO, fontSize: 16, color: a.score < 40 ? COLORS.amber : COLORS.text, minWidth: 42 }}>{a.score}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 3 }}>{a.label}</div>
-                    <div style={{ fontSize: 12, color: COLORS.muted, lineHeight: 1.6 }}>{a.note || "(分析コメントなし)"}</div>
+                <div key={a.key} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "12px 16px" }}>
+                  <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                    <div style={{ fontFamily: FONT_MONO, fontSize: 16, color: a.score < 40 ? COLORS.amber : COLORS.text, minWidth: 42 }}>{a.score}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 3 }}>{a.label}</div>
+                      <div style={{ fontSize: 12, color: COLORS.muted, lineHeight: 1.6 }}>{a.note || "(分析コメントなし)"}</div>
+                    </div>
+                    {companyForm && deepDiveAxis !== a.key && (
+                      <button
+                        className="btn-ghost"
+                        onClick={() => setDeepDiveAxis(a.key)}
+                        style={{ fontSize: 11, padding: "5px 10px", flexShrink: 0 }}
+                      >
+                        この項目を深掘り
+                      </button>
+                    )}
                   </div>
+                  {deepDiveAxis === a.key && (
+                    <AxisDeepDive
+                      companyForm={companyForm}
+                      axisKey={a.key}
+                      axisLabel={a.label}
+                      currentScore={a.score}
+                      currentNote={a.note}
+                      companySkillMapId={companySkillMapId}
+                      onComplete={handleDeepDiveComplete}
+                      onCancel={() => setDeepDiveAxis(null)}
+                    />
+                  )}
                 </div>
               ))}
             </div>
@@ -795,16 +921,20 @@ const TALENT_TITLE_GROUPS = [
 ];
 const TALENT_INDUSTRY_OPTIONS = INDUSTRY_OPTIONS;
 
-export function StepTalentInput({ onNext }) {
-  const [form, setForm] = useState({
-    name: "",
-    title: TALENT_TITLE_GROUPS[0].options[0],
-    titleOther: "",
-    industry: TALENT_INDUSTRY_OPTIONS[0],
-    industryOther: "",
-    years: "15〜20年",
-    summary: "",
-  });
+export function StepTalentInput({ onNext, initialForm }) {
+  const [form, setForm] = useState(
+    initialForm?.name
+      ? { titleOther: "", industryOther: "", summary: "", ...initialForm }
+      : {
+          name: "",
+          title: TALENT_TITLE_GROUPS[0].options[0],
+          titleOther: "",
+          industry: TALENT_INDUSTRY_OPTIONS[0],
+          industryOther: "",
+          years: "15〜20年",
+          summary: "",
+        }
+  );
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const valid = form.name.trim().length > 0;
 
@@ -1121,6 +1251,8 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
   const [reviewMode, setReviewMode] = useState(initialDraft ? "draft" : null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [sending, setSending] = useState(false);
+  const [context, setContext] = useState(null);
+  const [showContext, setShowContext] = useState(true);
   const scrollRef = useRef(null);
   const pollRef = useRef(null);
 
@@ -1139,6 +1271,7 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
 
   useEffect(() => {
     load(false);
+    fetch(`/api/matches/${matchId}/context`).then((r) => r.json()).then((d) => { if (!d.error) setContext(d); }).catch(() => {});
     pollRef.current = setInterval(() => load(true), 5000);
     return () => clearInterval(pollRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1168,7 +1301,63 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
   return (
     <div className="fade-in">
       <button className="btn-ghost" onClick={onBack} style={{ marginBottom: 16 }}>← 戻る</button>
-      <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 600, margin: "0 0 20px" }}>{counterpartName}とのメッセージ</h1>
+      <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 600, margin: "0 0 16px" }}>{counterpartName}とのメッセージ</h1>
+
+      {context && (
+        <div style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "14px 18px", marginBottom: 16 }}>
+          <button
+            onClick={() => setShowContext((v) => !v)}
+            style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", fontSize: 12.5, color: COLORS.muted, fontWeight: 500 }}
+          >
+            {context.role === "company" ? "相手企業の詳細(業種・課題)" : "相手人材の詳細(経歴・強み)"}
+            <ChevronRight size={14} style={{ transform: showContext ? "rotate(90deg)" : "none", transition: "transform 0.15s ease" }} />
+          </button>
+          {showContext && (
+            <div className="fade-in" style={{ marginTop: 12 }}>
+              {context.role === "company" ? (
+                <>
+                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12.5, color: COLORS.muted, marginBottom: 10 }}>
+                    <span>業種: <span style={{ color: COLORS.text }}>{context.industry || "—"}</span></span>
+                    <span>従業員数: <span style={{ color: COLORS.text }}>{context.headcount || "—"}</span></span>
+                    <span>成長段階: <span style={{ color: COLORS.text }}>{context.phase || "—"}</span></span>
+                    <span>年商: <span style={{ color: COLORS.text }}>{context.revenue || "—"}</span></span>
+                  </div>
+                  {context.summary && <p style={{ fontSize: 12.5, color: COLORS.text, lineHeight: 1.7, margin: "0 0 10px" }}>{context.summary}</p>}
+                  {context.topIssues && context.topIssues.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 6 }}>成長を止めている課題TOP3</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {context.topIssues.map((issue) => (
+                          <div key={issue.axisKey} style={{ fontSize: 12, color: COLORS.text }}>
+                            <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 600 }}>{issue.axisLabel}</span>
+                            {issue.currentState && <span style={{ color: COLORS.muted }}> — {issue.currentState}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12.5, color: COLORS.muted, marginBottom: 10 }}>
+                    <span>直近の役職: <span style={{ color: COLORS.text }}>{context.title || "—"}</span></span>
+                    <span>主な業種経験: <span style={{ color: COLORS.text }}>{context.industry || "—"}</span></span>
+                    <span>実務経験年数: <span style={{ color: COLORS.text }}>{context.years || "—"}</span></span>
+                  </div>
+                  {context.bio && <p style={{ fontSize: 12.5, color: COLORS.text, lineHeight: 1.7, margin: "0 0 10px" }}>{context.bio}</p>}
+                  {context.bottlenecks && context.bottlenecks.length > 0 && (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {context.bottlenecks.map((tag) => (
+                        <span key={tag} style={{ fontSize: 11, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "2px 8px", color: COLORS.muted }}>{tag}</span>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <div
         ref={scrollRef}
@@ -1288,7 +1477,7 @@ function MyPageCompany({ profile, onProceed, onRediagnose, onCompare }) {
           <button className="btn-ghost" onClick={onRediagnose} style={{ fontSize: 12, padding: "6px 12px" }}>もう一度AI診断を受け直す</button>
         </div>
       </div>
-      <StepSkillMap scores={profile.scores} summary={profile.summary} axisNotes={profile.axisNotes} topIssueDetails={profile.topIssueDetails} onNext={onProceed} />
+      <StepSkillMap scores={profile.scores} summary={profile.summary} axisNotes={profile.axisNotes} topIssueDetails={profile.topIssueDetails} companyForm={profile.companyForm} companySkillMapId={profile.companySkillMapId} onNext={onProceed} />
     </div>
   );
 }
@@ -2260,7 +2449,7 @@ export default function Home() {
     setView("flow");
   };
   const proceedFromMyPageCompany = () => {
-    setCompanyResult({ scores: profile.data.scores, summary: profile.data.summary, axisNotes: profile.data.axisNotes, topIssueDetails: profile.data.topIssueDetails });
+    setCompanyResult({ scores: profile.data.scores, summary: profile.data.summary, axisNotes: profile.data.axisNotes, topIssueDetails: profile.data.topIssueDetails, companySkillMapId: profile.data.companySkillMapId });
     setStep(4);
     setView("flow");
   };
@@ -2371,14 +2560,14 @@ export default function Home() {
   if (mode === "company") {
     return (
       <Shell step={step} steps={COMPANY_STEPS} headerRight={headerRight} onStepClick={goToStep}>
-        {step === 1 && <StepCompany onNext={(form) => { setCompany(form); setStep(2); }} />}
+        {step === 1 && <StepCompany onNext={(form) => { setCompany(form); setStep(2); }} initialForm={company} />}
         {step === 2 && (
           <StepDialog
             companyForm={company}
-            onNext={(scores, summary, axisNotes, topIssueDetails) => { setCompanyResult({ scores, summary, axisNotes, topIssueDetails }); setStep(3); }}
+            onNext={(scores, summary, axisNotes, topIssueDetails, history, companySkillMapId) => { setCompanyResult({ scores, summary, axisNotes, topIssueDetails, companySkillMapId }); setStep(3); }}
           />
         )}
-        {step === 3 && <StepSkillMap scores={companyResult.scores} summary={companyResult.summary} axisNotes={companyResult.axisNotes} topIssueDetails={companyResult.topIssueDetails} onNext={() => setStep(4)} />}
+        {step === 3 && <StepSkillMap scores={companyResult.scores} summary={companyResult.summary} axisNotes={companyResult.axisNotes} topIssueDetails={companyResult.topIssueDetails} companyForm={company} companySkillMapId={companyResult.companySkillMapId} onNext={() => setStep(4)} />}
         {step === 4 && (
           <StepTalentProposal companyScores={companyResult.scores} companyPhase={company.phase} companyIndustry={company.industry} onRestart={reset} onOpenThread={openThread} />
         )}
@@ -2388,7 +2577,7 @@ export default function Home() {
 
   return (
     <Shell step={step} steps={TALENT_STEPS} headerRight={headerRight} onStepClick={goToStep}>
-      {step === 1 && <StepTalentInput onNext={(form) => { setTalent(form); setStep(2); }} />}
+      {step === 1 && <StepTalentInput onNext={(form) => { setTalent(form); setStep(2); }} initialForm={talent} />}
       {step === 2 && (
         <StepTalentAnalyzing
           talentForm={talent}

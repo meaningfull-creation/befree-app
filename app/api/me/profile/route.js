@@ -35,6 +35,7 @@ export async function GET() {
       topIssueDetails: latest.topIssueDetails,
       summary: latest.summary,
       diagnosedAt: latest.createdAt,
+      companySkillMapId: latest.id,
     });
   }
 

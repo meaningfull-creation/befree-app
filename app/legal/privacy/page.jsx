@@ -51,22 +51,7 @@ export default function PrivacyPage() {
       <GlobalStyle />
       <div style={{ position: "relative", maxWidth: 720, margin: "0 auto", padding: "56px 24px 100px" }}>
         <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 600, margin: "0 0 8px" }}>プライバシーポリシー</h1>
-        <p style={{ color: COLORS.muted, fontSize: 12.5, margin: "0 0 24px" }}>制定日: ドラフト版</p>
-
-        <div
-          style={{
-            background: "rgba(27,58,99,0.08)",
-            border: `1px solid ${COLORS.amber}`,
-            borderRadius: 10,
-            padding: "14px 18px",
-            fontSize: 12.5,
-            color: COLORS.text,
-            lineHeight: 1.7,
-            marginBottom: 32,
-          }}
-        >
-          このページは初期ドラフトです。正式に公開する前に、個人情報保護法等の関連法令に照らして専門家によるレビューを受けてください。特に「3. 第三者提供・外部送信について」は、実際のAI連携構成(どのデータをどの範囲で送信しているか)と齟齬がないか確認が必要です。
-        </div>
+        <p style={{ color: COLORS.muted, fontSize: 12.5, margin: "0 0 32px" }}>制定日: 2026年8月</p>
 
         {SECTIONS.map((s) => (
           <section key={s.title} style={{ marginBottom: 26 }}>

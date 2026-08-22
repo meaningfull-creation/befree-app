@@ -95,7 +95,7 @@ export default function DiagnosePage() {
 
   return (
     <Shell step={step} steps={STEPS} headerRight={headerRight} onStepClick={setStep}>
-      {step === 1 && <StepCompany onNext={(form) => { setCompany(form); setStep(2); }} />}
+      {step === 1 && <StepCompany onNext={(form) => { setCompany(form); setStep(2); }} initialForm={company} />}
       {step === 2 && (
         <StepDialog
           companyForm={company}
@@ -111,6 +111,7 @@ export default function DiagnosePage() {
           summary={result.summary}
           axisNotes={result.axisNotes}
           topIssueDetails={result.topIssueDetails}
+          companyForm={company}
           onNext={() => setStep(4)}
         />
       )}

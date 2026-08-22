@@ -40,7 +40,8 @@ export async function POST(req) {
     if (history.length < MAX_DIALOG_TURNS) {
       const result = await callClaudeJSON(
         buildDialogSystemPrompt(),
-        buildDialogNextQuestionPrompt(companyForm, history)
+        buildDialogNextQuestionPrompt(companyForm, history),
+        700 // 質問1問分の小さな応答。体感速度を上げるため小さめに絞る
       );
 
       let nextTurnId = null;
@@ -63,14 +64,16 @@ export async function POST(req) {
       return NextResponse.json({
         done: false,
         question: result.question,
-        options: (result.options || []).slice(0, 3),
+        options: (result.options || []).slice(0, 4),
         axis: result.axis || null,
         reflection: result.reflection || null,
         turnId: nextTurnId,
       });
     }
 
-    const result = await callClaudeJSON(buildDialogSystemPrompt(), buildDialogScorePrompt(companyForm, history));
+    // 最終スコアリングは10軸のscores・axisNotes・topIssueDetails・summaryを一度に出力させるため、
+    // 応答が大きくなる。対話ターン数が増えるほど入力(対話ログ)も長くなるため、余裕を持たせている。
+    const result = await callClaudeJSON(buildDialogSystemPrompt(), buildDialogScorePrompt(companyForm, history), 3500);
     const scores = clampAxisScores(result.scores, 100);
     const axisNotes = sanitizeAxisNotes(result.axisNotes);
     const topIssueDetails = sanitizeTopIssueDetails(result.topIssueDetails);

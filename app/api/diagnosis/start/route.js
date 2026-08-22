@@ -23,7 +23,8 @@ export async function POST(req) {
 
     const result = await callClaudeJSON(
       buildDialogSystemPrompt(),
-      buildDialogNextQuestionPrompt(companyForm, [])
+      buildDialogNextQuestionPrompt(companyForm, []),
+      700 // 質問1問分の小さな応答。体感速度を上げるため小さめに絞る
     );
 
     // 診断開始時点でCompanyレコードを作成/更新し、対話セッション(DiagnosisSession)と
@@ -85,7 +86,7 @@ export async function POST(req) {
 
     return NextResponse.json({
       question: result.question,
-      options: (result.options || []).slice(0, 3),
+      options: (result.options || []).slice(0, 4),
       axis: result.axis || null,
       reflection: result.reflection || null,
       companyId,
