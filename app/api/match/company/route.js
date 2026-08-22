@@ -40,6 +40,7 @@ export async function POST(req) {
           name: t.name,
           role: t.title,
           industry: t.industry,
+          years: t.years,
           axis: (sm.bottlenecks && sm.bottlenecks[0]) || "",
           bottleneckTags: sm.bottlenecks || [],
           reason: t.bio,

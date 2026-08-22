@@ -87,6 +87,7 @@ export async function POST(req) {
       question: result.question,
       options: (result.options || []).slice(0, 3),
       axis: result.axis || null,
+      reflection: result.reflection || null,
       companyId,
       sessionId,
       turnId,

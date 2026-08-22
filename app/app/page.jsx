@@ -29,7 +29,7 @@ import { COLORS, FONT_DISPLAY, FONT_BODY, FONT_MONO, GlobalStyle } from "@/lib/t
 // ---------------------------------------------------------------------------
 // Design tokens (BATTER BOX_技術構成設計.md / プロトタイプと共通)
 // ---------------------------------------------------------------------------
-const MAX_DIALOG_TURNS = 4;
+const MAX_DIALOG_TURNS = 15;
 const ANALYZING_STEPS = [
   "職務経歴書を読み込み中…",
   "プロジェクト実績から成果指標を抽出中…",
@@ -63,32 +63,44 @@ async function postPatch(url, body) {
   return data;
 }
 
-export function ProgressRail({ step, steps }) {
+export function ProgressRail({ step, steps, onStepClick }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 40, flexWrap: "wrap" }}>
       {steps.map((label, i) => {
         const idx = i + 1;
         const active = idx === step;
         const done = idx < step;
+        const clickable = done && !!onStepClick;
+        const content = (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, opacity: active ? 1 : done ? 0.75 : 0.4 }}>
+            <div
+              style={{
+                width: 22, height: 22, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 11, fontFamily: FONT_MONO,
+                background: done ? COLORS.teal : "transparent",
+                border: `1.5px solid ${done || active ? COLORS.teal : COLORS.border}`,
+                color: done ? COLORS.onAccent : active ? COLORS.teal : COLORS.faint,
+                flexShrink: 0,
+              }}
+            >
+              {idx}
+            </div>
+            <span style={{ fontSize: 12.5, fontFamily: FONT_DISPLAY, fontWeight: 600, letterSpacing: "0.02em", color: active ? COLORS.text : COLORS.muted, whiteSpace: "nowrap" }}>
+              {label}
+            </span>
+          </div>
+        );
         return (
           <div key={label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, opacity: active ? 1 : done ? 0.75 : 0.4 }}>
-              <div
-                style={{
-                  width: 22, height: 22, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 11, fontFamily: FONT_MONO,
-                  background: done ? COLORS.teal : "transparent",
-                  border: `1.5px solid ${done || active ? COLORS.teal : COLORS.border}`,
-                  color: done ? COLORS.onAccent : active ? COLORS.teal : COLORS.faint,
-                  flexShrink: 0,
-                }}
+            {clickable ? (
+              <button
+                onClick={() => onStepClick(idx)}
+                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", margin: 0 }}
+                aria-label={`${label}に戻る`}
               >
-                {idx}
-              </div>
-              <span style={{ fontSize: 12.5, fontFamily: FONT_DISPLAY, fontWeight: 600, letterSpacing: "0.02em", color: active ? COLORS.text : COLORS.muted, whiteSpace: "nowrap" }}>
-                {label}
-              </span>
-            </div>
+                {content}
+              </button>
+            ) : content}
             {idx !== steps.length && <div style={{ width: 24, height: 1, background: COLORS.border }} />}
           </div>
         );
@@ -97,7 +109,7 @@ export function ProgressRail({ step, steps }) {
   );
 }
 
-export function Shell({ children, step, steps, headerRight }) {
+export function Shell({ children, step, steps, headerRight, onStepClick }) {
   return (
     <div className="app-root">
       <GlobalStyle />
@@ -109,7 +121,7 @@ export function Shell({ children, step, steps, headerRight }) {
           </span>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>{headerRight}</div>
         </header>
-        {steps && <ProgressRail step={step} steps={steps} />}
+        {steps && <ProgressRail step={step} steps={steps} onStepClick={onStepClick} />}
         {children}
       </div>
     </div>
@@ -333,7 +345,12 @@ export function StepDialog({ companyForm, onNext }) {
         setTimeout(() => onNext(result.scores, result.summary, result.axisNotes, result.topIssueDetails, h), 900);
         return;
       }
-      setMessages((m) => [...m, { from: "ai", text: result.question }]);
+      setMessages((m) => {
+        const next = [...m];
+        if (result.reflection) next.push({ from: "ai", text: result.reflection, reflection: true });
+        next.push({ from: "ai", text: result.question });
+        return next;
+      });
       setCurrentQuestion({ question: result.question, options: (result.options || []).slice(0, 3), axis: result.axis || null });
     } catch (e) {
       setErrorMsg("AIとの通信に失敗しました。もう一度お試しください。");
@@ -379,7 +396,13 @@ export function StepDialog({ companyForm, onNext }) {
                 <Sparkles size={12} color={COLORS.teal} />
               </div>
             )}
-            <div style={{ maxWidth: "78%", background: m.from === "ai" ? COLORS.surfaceRaised : COLORS.teal, color: m.from === "ai" ? COLORS.text : COLORS.onAccent, border: m.from === "ai" ? `1px solid ${COLORS.border}` : "none", borderRadius: m.from === "ai" ? "4px 14px 14px 14px" : "14px 4px 14px 14px", padding: "11px 15px", fontSize: 14, lineHeight: 1.6 }}>
+            <div
+              style={
+                m.reflection
+                  ? { maxWidth: "78%", background: "transparent", color: COLORS.muted, padding: "4px 15px 0", fontSize: 13, lineHeight: 1.6, fontStyle: "italic" }
+                  : { maxWidth: "78%", background: m.from === "ai" ? COLORS.surfaceRaised : COLORS.teal, color: m.from === "ai" ? COLORS.text : COLORS.onAccent, border: m.from === "ai" ? `1px solid ${COLORS.border}` : "none", borderRadius: m.from === "ai" ? "4px 14px 14px 14px" : "14px 4px 14px 14px", padding: "11px 15px", fontSize: 14, lineHeight: 1.6 }
+              }
+            >
               {m.text}
             </div>
           </div>
@@ -565,7 +588,7 @@ function StepTalentProposal({ companyScores, companyPhase, companyIndustry, onRe
   const [candidates, setCandidates] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [connectingId, setConnectingId] = useState(null);
-  const [expandedId, setExpandedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
 
   const load = async () => {
     setErrorMsg(null);
@@ -592,6 +615,80 @@ function StepTalentProposal({ companyScores, companyPhase, companyIndustry, onRe
     }
   };
 
+  const selected = candidates?.find((c) => c.id === selectedId) || null;
+
+  if (selected) {
+    return (
+      <div className="fade-in">
+        <button className="btn-ghost" onClick={() => setSelectedId(null)} style={{ marginBottom: 20 }}>← 候補一覧に戻る</button>
+
+        <div style={{ display: "flex", gap: 18, alignItems: "center", marginBottom: 24 }}>
+          <div style={{ width: 56, height: 56, borderRadius: "50%", background: `linear-gradient(135deg, ${COLORS.tealDim}, ${COLORS.surfaceRaised})`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 19, flexShrink: 0, border: `1px solid ${COLORS.border}` }}>
+            {selected.name[0]}
+          </div>
+          <div>
+            <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 19 }}>{selected.name}</div>
+            <div style={{ fontSize: 13.5, color: COLORS.muted, marginTop: 2 }}>{selected.role}</div>
+          </div>
+          <span style={{ marginLeft: "auto", fontSize: 13, background: "rgba(27,58,99,0.12)", color: COLORS.amber, border: "1px solid rgba(27,58,99,0.35)", borderRadius: 6, padding: "4px 10px", fontFamily: FONT_MONO }}>
+            MATCH {selected.match}%
+          </span>
+        </div>
+
+        <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 22, marginBottom: 16 }}>
+          <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14, marginBottom: 12 }}>経歴</div>
+          <div style={{ display: "flex", gap: 20, flexWrap: "wrap", fontSize: 13, color: COLORS.muted, marginBottom: 12 }}>
+            <span>直近の役職: <span style={{ color: COLORS.text }}>{selected.role || "—"}</span></span>
+            <span>主な業種経験: <span style={{ color: COLORS.text }}>{selected.industry || "—"}</span></span>
+            <span>実務経験年数: <span style={{ color: COLORS.text }}>{selected.years || "—"}</span></span>
+          </div>
+          {selected.reason && (
+            <p style={{ fontSize: 13.5, lineHeight: 1.8, color: COLORS.text, margin: 0 }}>{selected.reason}</p>
+          )}
+        </div>
+
+        <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 22, marginBottom: 16 }}>
+          <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14, marginBottom: 4 }}>なぜおすすめされているか</div>
+          <p style={{ fontSize: 12.5, color: COLORS.muted, margin: "0 0 14px" }}>貴社の診断結果と、この方のスキルマップを照合した根拠です。</p>
+          {selected.bottleneckTags && selected.bottleneckTags.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 6 }}>解決できる可能性が高い課題</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {selected.bottleneckTags.map((tag) => (
+                  <span key={tag} style={{ fontSize: 11.5, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "3px 9px", color: COLORS.muted }}>{tag}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {selected.breakdown && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {selected.breakdown.map((b) => (
+                <div key={b.key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                  <div style={{ width: 90, color: COLORS.muted, flexShrink: 0 }}>{b.label}</div>
+                  <div style={{ flex: 1, height: 6, background: COLORS.border, borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{ width: `${(b.score / b.max) * 100}%`, height: "100%", background: COLORS.teal, borderRadius: 3 }} />
+                  </div>
+                  <div style={{ width: 48, textAlign: "right", fontFamily: FONT_MONO, color: COLORS.text }}>{b.score}/{b.max}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 24 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.muted }}><BadgeCheck size={13} color={COLORS.teal} /> 対応領域: {selected.axis}</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.muted }}><Clock size={13} color={COLORS.teal} /> 月10時間〜</span>
+        </div>
+
+        {errorMsg && <ErrorNote message={errorMsg} />}
+        <button className="btn-primary" disabled={connectingId === selected.id} onClick={() => connect(selected)}>
+          <Send size={14} style={{ verticalAlign: -2, marginRight: 6 }} />
+          {connectingId === selected.id ? "準備中…" : "この人材にメッセージを送る"}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="fade-in">
       <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 600, margin: "0 0 6px" }}>今、御社に必要な経験</h1>
@@ -608,58 +705,34 @@ function StepTalentProposal({ companyScores, companyPhase, companyIndustry, onRe
       {candidates && candidates.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {candidates.map((t) => (
-            <div key={t.id} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 22, display: "flex", gap: 18, alignItems: "flex-start" }}>
+            <button
+              key={t.id}
+              onClick={() => setSelectedId(t.id)}
+              style={{ textAlign: "left", background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 22, display: "flex", gap: 18, alignItems: "center", cursor: "pointer", width: "100%" }}
+            >
               <div style={{ width: 46, height: 46, borderRadius: "50%", background: `linear-gradient(135deg, ${COLORS.tealDim}, ${COLORS.surfaceRaised})`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 15, flexShrink: 0, border: `1px solid ${COLORS.border}` }}>
                 {t.name[0]}
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                  <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 15.5 }}>{t.name}</span>
-                  <button
-                    onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
-                    style={{ fontSize: 11, background: "rgba(27,58,99,0.12)", color: COLORS.amber, border: "1px solid rgba(27,58,99,0.35)", borderRadius: 6, padding: "2px 8px", fontFamily: FONT_MONO, cursor: "pointer" }}
-                  >
-                    MATCH {t.match}% {expandedId === t.id ? "▲" : "▼"}
-                  </button>
+                  <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 15.5, color: COLORS.text }}>{t.name}</span>
+                  <span style={{ fontSize: 11, background: "rgba(27,58,99,0.12)", color: COLORS.amber, border: "1px solid rgba(27,58,99,0.35)", borderRadius: 6, padding: "2px 8px", fontFamily: FONT_MONO }}>
+                    MATCH {t.match}%
+                  </span>
                 </div>
-                <div style={{ fontSize: 13, color: COLORS.muted, margin: "3px 0 12px" }}>{t.role}</div>
-
-                {expandedId === t.id && t.breakdown && (
-                  <div className="fade-in" style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "10px 13px", marginBottom: 12, display: "flex", flexDirection: "column", gap: 5 }}>
-                    {t.breakdown.map((b) => (
-                      <div key={b.key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11.5 }}>
-                        <div style={{ width: 84, color: COLORS.muted, flexShrink: 0 }}>{b.label}</div>
-                        <div style={{ flex: 1, height: 6, background: COLORS.border, borderRadius: 3, overflow: "hidden" }}>
-                          <div style={{ width: `${(b.score / b.max) * 100}%`, height: "100%", background: COLORS.teal, borderRadius: 3 }} />
-                        </div>
-                        <div style={{ width: 44, textAlign: "right", fontFamily: FONT_MONO, color: COLORS.text }}>{b.score}/{b.max}</div>
-                      </div>
+                <div style={{ fontSize: 13, color: COLORS.muted, margin: "3px 0 10px" }}>{t.role}{t.years ? ` ・ 実務経験${t.years}` : ""}</div>
+                {t.bottleneckTags && t.bottleneckTags.length > 0 && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {t.bottleneckTags.slice(0, 3).map((tag) => (
+                      <span key={tag} style={{ fontSize: 11, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "2px 8px", color: COLORS.muted }}>{tag}</span>
                     ))}
                   </div>
                 )}
-
-                <div style={{ fontSize: 13.5, lineHeight: 1.7, color: COLORS.text, background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "10px 13px", marginBottom: 12 }}>{t.reason}</div>
-                {t.bottleneckTags && t.bottleneckTags.length > 0 && (
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 6 }}>解決できる課題</div>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {t.bottleneckTags.map((tag) => (
-                        <span key={tag} style={{ fontSize: 11, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "2px 8px", color: COLORS.muted }}>{tag}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 12 }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: COLORS.muted }}><BadgeCheck size={13} color={COLORS.teal} /> 対応領域: {t.axis}</span>
-                  <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: COLORS.muted }}><Clock size={13} color={COLORS.teal} /> 月10時間〜</span>
-                </div>
-                <button className="btn-ghost" disabled={connectingId === t.id} onClick={() => connect(t)}>
-                  <Send size={13} style={{ verticalAlign: -2, marginRight: 5 }} />
-                  {connectingId === t.id ? "接続中…" : "メッセージを送る"}
-                </button>
               </div>
-              <ChevronRight size={18} color={COLORS.faint} style={{ marginTop: 6, flexShrink: 0 }} />
-            </div>
+              <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12.5, color: COLORS.teal, fontWeight: 500, flexShrink: 0 }}>
+                詳しく見る <ChevronRight size={16} />
+              </span>
+            </button>
           ))}
         </div>
       )}
@@ -1044,7 +1117,8 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
   const [messages, setMessages] = useState(null);
   const [counterpartName, setCounterpartName] = useState(initialName || "");
   const [text, setText] = useState(initialDraft || "");
-  const [isDraft, setIsDraft] = useState(!!initialDraft);
+  // "draft" … AIの下書きを確認中(送信か編集かをまず選ばせる) / "editing" … 自由入力中 / null … 通常
+  const [reviewMode, setReviewMode] = useState(initialDraft ? "draft" : null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [sending, setSending] = useState(false);
   const scrollRef = useRef(null);
@@ -1074,14 +1148,15 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
-  const send = async () => {
-    if (!text.trim()) return;
+  const send = async (body) => {
+    const toSend = (body ?? text).trim();
+    if (!toSend) return;
     setSending(true);
     setErrorMsg(null);
     try {
-      await postJSON("/api/messages", { matchId, body: text.trim() });
+      await postJSON("/api/messages", { matchId, body: toSend });
       setText("");
-      setIsDraft(false);
+      setReviewMode(null);
       await load(true);
     } catch (e) {
       setErrorMsg("送信に失敗しました。");
@@ -1100,7 +1175,7 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
         style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 20, height: 420, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}
       >
         {messages === null && <div style={{ color: COLORS.muted, fontSize: 13 }}>読み込み中…</div>}
-        {messages && messages.length === 0 && !isDraft && <div style={{ color: COLORS.muted, fontSize: 13 }}>まだメッセージはありません。最初のメッセージを送ってみましょう。</div>}
+        {messages && messages.length === 0 && reviewMode !== "draft" && <div style={{ color: COLORS.muted, fontSize: 13 }}>まだメッセージはありません。最初のメッセージを送ってみましょう。</div>}
         {messages && messages.map((m) => (
           <div key={m.id} style={{ display: "flex", justifyContent: m.mine ? "flex-end" : "flex-start" }}>
             <div style={{ maxWidth: "75%", background: m.mine ? COLORS.teal : COLORS.surfaceRaised, color: m.mine ? COLORS.onAccent : COLORS.text, border: m.mine ? "none" : `1px solid ${COLORS.border}`, borderRadius: m.mine ? "14px 4px 14px 14px" : "4px 14px 14px 14px", padding: "10px 14px", fontSize: 13.5, lineHeight: 1.6 }}>
@@ -1115,24 +1190,39 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
 
       <ErrorNote message={errorMsg} onRetry={() => load(false)} />
 
-      {isDraft && (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12, fontSize: 12, color: COLORS.tealDim }}>
-          <Sparkles size={13} />
-          AIが企業の課題内容をもとに下書きしました。内容を確認・編集してから送信してください。
+      {reviewMode === "draft" ? (
+        <div className="fade-in" style={{ marginTop: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, fontSize: 12, color: COLORS.tealDim }}>
+            <Sparkles size={13} />
+            AIが企業の課題内容をもとに下書きしました。内容を確認してください。
+          </div>
+          <div style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "14px 16px", fontSize: 13.5, lineHeight: 1.7, color: COLORS.text, marginBottom: 12, whiteSpace: "pre-wrap" }}>
+            {text}
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button className="btn-primary" disabled={sending} onClick={() => send(text)}>
+              {sending ? "送信中…" : "この内容で送信"}
+            </button>
+            <button className="btn-ghost" disabled={sending} onClick={() => setReviewMode("editing")}>
+              編集してから送信する
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+          <input
+            className="field-input"
+            placeholder="メッセージを入力…"
+            value={text}
+            autoFocus={reviewMode === "editing"}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+          />
+          <button className="btn-primary" disabled={sending || !text.trim()} onClick={() => send()}>
+            <Send size={14} />
+          </button>
         </div>
       )}
-      <div style={{ display: "flex", gap: 10, marginTop: isDraft ? 8 : 14 }}>
-        <input
-          className="field-input"
-          placeholder="メッセージを入力…"
-          value={text}
-          onChange={(e) => { setText(e.target.value); setIsDraft(false); }}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-        />
-        <button className="btn-primary" disabled={sending || !text.trim()} onClick={send}>
-          <Send size={14} />
-        </button>
-      </div>
     </div>
   );
 }
@@ -1293,7 +1383,7 @@ function MyPageTalent({ profile, onProceed, onRediagnose }) {
 // ---------------------------------------------------------------------------
 // Root
 // ---------------------------------------------------------------------------
-export const COMPANY_STEPS = ["企業情報", "AI課題診断", "スキルマップ", "人材提案"];
+export const COMPANY_STEPS = ["企業情報", "AI課題診断", "Growth Map", "人材提案"];
 export const TALENT_STEPS = ["経歴入力", "AI解析", "スキルマップ", "企業マッチング"];
 
 function HeaderActions({ onOpenInbox, onOpenSettings, onOpenProjects }) {
@@ -2143,6 +2233,9 @@ export default function Home() {
   const openThread = (matchId, counterpartName, draftMessage) => { setActiveThread({ matchId, counterpartName, draftMessage }); setView("thread"); };
   const openInbox = () => setView("inbox");
   const backToFlow = () => setView("flow");
+  // 上部のステップ表示(企業情報/AI課題診断/Growth Map/人材提案)をクリックして、
+  // 完了済みのステップに戻れるようにする。データは各stepでstateに保持済みのため再取得は不要。
+  const goToStep = (idx) => { setStep(idx); setView("flow"); };
 
   const goToMyPage = () => setView("mypage");
   const openDashboard = () => setView("dashboard");
@@ -2262,14 +2355,14 @@ export default function Home() {
 
   if (view === "inbox") {
     return (
-      <Shell step={step} steps={steps} headerRight={headerRight}>
+      <Shell step={step} steps={steps} headerRight={headerRight} onStepClick={goToStep}>
         <Inbox onOpenThread={openThread} onBack={backToFlow} />
       </Shell>
     );
   }
   if (view === "thread" && activeThread) {
     return (
-      <Shell step={step} steps={steps} headerRight={headerRight}>
+      <Shell step={step} steps={steps} headerRight={headerRight} onStepClick={goToStep}>
         <MessageThread matchId={activeThread.matchId} counterpartName={activeThread.counterpartName} initialDraft={activeThread.draftMessage} onBack={backToFlow} />
       </Shell>
     );
@@ -2277,7 +2370,7 @@ export default function Home() {
 
   if (mode === "company") {
     return (
-      <Shell step={step} steps={COMPANY_STEPS} headerRight={headerRight}>
+      <Shell step={step} steps={COMPANY_STEPS} headerRight={headerRight} onStepClick={goToStep}>
         {step === 1 && <StepCompany onNext={(form) => { setCompany(form); setStep(2); }} />}
         {step === 2 && (
           <StepDialog
@@ -2294,7 +2387,7 @@ export default function Home() {
   }
 
   return (
-    <Shell step={step} steps={TALENT_STEPS} headerRight={headerRight}>
+    <Shell step={step} steps={TALENT_STEPS} headerRight={headerRight} onStepClick={goToStep}>
       {step === 1 && <StepTalentInput onNext={(form) => { setTalent(form); setStep(2); }} />}
       {step === 2 && (
         <StepTalentAnalyzing

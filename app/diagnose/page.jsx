@@ -94,7 +94,7 @@ export default function DiagnosePage() {
   const headerRight = <a className="btn-ghost" href="/login/company" style={{ padding: "6px 12px" }}>ログイン</a>;
 
   return (
-    <Shell step={step} steps={STEPS} headerRight={headerRight}>
+    <Shell step={step} steps={STEPS} headerRight={headerRight} onStepClick={setStep}>
       {step === 1 && <StepCompany onNext={(form) => { setCompany(form); setStep(2); }} />}
       {step === 2 && (
         <StepDialog
