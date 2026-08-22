@@ -65,14 +65,18 @@ model CompanySkillMap {
 }
 
 model Talent {
-  id        String   @id @default(uuid())
-  name      String
-  title     String?
-  industry  String? // 主な業種・事業ドメインの経験
-  years     String?
-  bio       String?
-  status    String   @default("pending") // pending | approved | rejected — 承認された人材のみマッチング候補に表示
-  createdAt DateTime @default(now())
+  id                   String   @id @default(uuid())
+  name                 String
+  title                String?
+  industry             String? // 主な業種・事業ドメインの経験
+  years                String?
+  bio                  String?
+  experiencedFunctions Json? // 経験してきた機能領域(複数選択、AXESのkeyの配列)。スキル分析の精度向上に使う
+  workStyleTags        Json? // 得意な働き方(複数選択タグ)
+  valueTags            Json? // 大切にしている価値観(複数選択タグ)
+  values               String? // 仕事において大切にしていること・価値観(自由記述の補足)
+  status               String   @default("pending") // pending | approved | rejected — 承認された人材のみマッチング候補に表示
+  createdAt            DateTime @default(now())
 
   skillMaps TalentSkillMap[]
   capacity  Capacity?
@@ -87,6 +91,7 @@ model TalentSkillMap {
   axisScores  Json
   phases      Json // 適性のある事業フェーズタグ
   bottlenecks Json // 強みが活きる課題領域タグ
+  growthAreas Json? // これから伸ばしていきたい領域(相対的にスコアが低い軸の建設的な分析、配列)
   summary     String?
   createdAt   DateTime @default(now())
 
