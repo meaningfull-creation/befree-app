@@ -26,6 +26,7 @@ export async function GET() {
         name: company.name,
         industry: company.industry,
         headcount: company.headcount,
+        fundingType: company.fundingType,
         phase: company.phase,
         revenue: company.revenue,
       },

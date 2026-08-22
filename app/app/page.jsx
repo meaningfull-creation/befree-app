@@ -164,36 +164,67 @@ function LoadingScreen() {
 // 企業・人材フォーム共通の選択肢(共有の単一ソース)。「よくある形」に合わせて広めに用意している。
 const INDUSTRY_OPTIONS = [
   "IT・インターネット・通信",
-  "ソフトウェア・SaaS",
+  "ソフトウェア・SaaS・システム受託開発",
   "フィンテック・金融",
+  "保険・保険代理店",
   "ヘルスケア・医療",
+  "介護・福祉",
   "バイオ・製薬",
-  "D2C・EC・小売",
+  "D2C・EC・通販",
+  "小売・店舗運営",
+  "卸売・商社",
   "製造業・メーカー",
-  "建設・不動産",
-  "運輸・物流",
+  "化学・素材",
+  "自動車・輸送機器",
+  "電機・電子部品",
+  "建設・工務店",
+  "不動産",
+  "設備工事・電気工事",
+  "運輸・物流・倉庫",
   "エネルギー・インフラ",
-  "農業・食品",
+  "農林水産・食品",
+  "人材紹介・人材派遣",
   "人材・HRテック",
-  "教育・EdTech",
-  "メディア・エンタメ・広告",
+  "教育・EdTech・スクール運営",
+  "メディア・出版・印刷",
+  "広告代理店・PR",
+  "エンタメ・イベント",
   "コンサルティング・専門サービス",
+  "士業(会計・税務・法律等)",
   "官公庁・自治体・公共",
-  "非営利・NPO",
-  "旅行・宿泊・飲食",
-  "美容・ファッション",
+  "非営利・NPO・社団法人",
+  "旅行・宿泊",
+  "飲食店経営",
+  "美容・理容・エステ",
+  "冠婚葬祭",
   "スポーツ・フィットネス",
   "その他(自由入力)",
 ];
 const HEADCOUNT_OPTIONS = ["1〜5名", "6〜10名", "11〜30名", "31〜50名", "51〜100名", "101〜300名", "301〜1000名", "1001名以上"];
-const PHASE_OPTIONS = ["構想・プレシード", "シード", "プレシリーズA", "シリーズA", "シリーズB", "シリーズC以降", "IPO準備・上場後", "自己資金・ブートストラップ"];
+// 外部資本(VC・エンジェル投資等)の有無で、成長段階の語彙を分けている。
+// 創業者100%・自己資金の企業にとって「シリーズA」等のVC用語はイメージしづらいため。
+const FUNDING_TYPE_OPTIONS = [
+  { value: "independent", label: "外部資本は入れていない(自己資金・創業者主体)" },
+  { value: "vc", label: "外部資本を入れている(VC・エンジェル投資等)" },
+];
+const PHASE_OPTIONS_VC = ["シード", "プレシリーズA", "シリーズA", "シリーズB", "シリーズC以降", "IPO準備・上場後"];
+const PHASE_OPTIONS_INDEPENDENT = ["創業〜3年目(基盤づくり期)", "4〜10年目(拡大・多店舗化期)", "11〜20年目(安定・第二創業期)", "21年目以上(成熟・事業承継期)"];
 const REVENUE_OPTIONS = ["1000万円未満", "1000万〜1億円", "1〜3億円", "3〜10億円", "10〜30億円", "30億円以上"];
 const TALENT_YEARS_OPTIONS = ["3年未満", "3〜5年", "5〜10年", "10〜15年", "15〜20年", "20年以上"];
 
 export function StepCompany({ onNext }) {
-  const [form, setForm] = useState({ name: "", industry: INDUSTRY_OPTIONS[1], headcount: "11〜30名", phase: "シリーズA", revenue: "1〜3億円" });
+  const [form, setForm] = useState({
+    name: "", industry: INDUSTRY_OPTIONS[1], headcount: "11〜30名",
+    fundingType: "independent", phase: PHASE_OPTIONS_INDEPENDENT[1], revenue: "1〜3億円",
+  });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  const setFundingType = (e) => {
+    const fundingType = e.target.value;
+    const phase = fundingType === "vc" ? PHASE_OPTIONS_VC[2] : PHASE_OPTIONS_INDEPENDENT[1];
+    setForm({ ...form, fundingType, phase });
+  };
   const valid = form.name.trim().length > 0;
+  const phaseOptions = form.fundingType === "vc" ? PHASE_OPTIONS_VC : PHASE_OPTIONS_INDEPENDENT;
 
   return (
     <div className="fade-in">
@@ -208,7 +239,7 @@ export function StepCompany({ onNext }) {
         </div>
         <div className="two-col" style={{ display: "grid", gap: 18, marginBottom: 20 }}>
           <div>
-            <label className="field-label">事業ドメイン</label>
+            <label className="field-label">業種・業界</label>
             <select className="field-select" value={form.industry} onChange={set("industry")}>
               {INDUSTRY_OPTIONS.map((o) => <option key={o}>{o}</option>)}
             </select>
@@ -220,15 +251,21 @@ export function StepCompany({ onNext }) {
             </select>
           </div>
         </div>
+        <div style={{ marginBottom: 20 }}>
+          <label className="field-label">外部資本の有無</label>
+          <select className="field-select" value={form.fundingType} onChange={setFundingType}>
+            {FUNDING_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
         <div className="two-col" style={{ display: "grid", gap: 18 }}>
           <div>
-            <label className="field-label"><TrendingUp size={12} style={{ verticalAlign: -2, marginRight: 5 }} />事業フェーズ</label>
+            <label className="field-label"><TrendingUp size={12} style={{ verticalAlign: -2, marginRight: 5 }} />{form.fundingType === "vc" ? "資金調達フェーズ" : "会社の成長段階"}</label>
             <select className="field-select" value={form.phase} onChange={set("phase")}>
-              {PHASE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+              {phaseOptions.map((o) => <option key={o}>{o}</option>)}
             </select>
           </div>
           <div>
-            <label className="field-label">直近ARR / 売上規模</label>
+            <label className="field-label">年商</label>
             <select className="field-select" value={form.revenue} onChange={set("revenue")}>
               {REVENUE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
             </select>
@@ -1285,10 +1322,17 @@ function HeaderActions({ onOpenInbox, onOpenSettings, onOpenProjects }) {
 // 設定画面 — AI診断/解析を経由せず、基本情報・パスワードを直接更新する
 // ---------------------------------------------------------------------------
 function ProfileFieldsCompany({ initial, onSaved }) {
-  const [form, setForm] = useState(initial || { name: "", industry: "", headcount: "", phase: "", revenue: "" });
+  const [form, setForm] = useState(initial || { name: "", industry: "", headcount: "", fundingType: "independent", phase: "", revenue: "" });
   const [status, setStatus] = useState("idle");
   const [errorMsg, setErrorMsg] = useState(null);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  const setFundingType = (e) => {
+    const fundingType = e.target.value;
+    const phaseOptions = fundingType === "vc" ? PHASE_OPTIONS_VC : PHASE_OPTIONS_INDEPENDENT;
+    const phase = phaseOptions.includes(form.phase) ? form.phase : phaseOptions[0];
+    setForm({ ...form, fundingType, phase });
+  };
+  const phaseOptions = form.fundingType === "vc" ? PHASE_OPTIONS_VC : PHASE_OPTIONS_INDEPENDENT;
 
   const submit = async (e) => {
     e.preventDefault();
@@ -1315,7 +1359,7 @@ function ProfileFieldsCompany({ initial, onSaved }) {
       </div>
       <div className="two-col" style={{ display: "grid", gap: 14, marginBottom: 16 }}>
         <div>
-          <label className="field-label">事業ドメイン</label>
+          <label className="field-label">業種・業界</label>
           <select className="field-select" value={form.industry || ""} onChange={set("industry")}>
             {INDUSTRY_OPTIONS.map((o) => <option key={o}>{o}</option>)}
           </select>
@@ -1327,15 +1371,21 @@ function ProfileFieldsCompany({ initial, onSaved }) {
           </select>
         </div>
       </div>
+      <div style={{ marginBottom: 16 }}>
+        <label className="field-label">外部資本の有無</label>
+        <select className="field-select" value={form.fundingType || "independent"} onChange={setFundingType}>
+          {FUNDING_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </div>
       <div className="two-col" style={{ display: "grid", gap: 14 }}>
         <div>
-          <label className="field-label">事業フェーズ</label>
+          <label className="field-label">{form.fundingType === "vc" ? "資金調達フェーズ" : "会社の成長段階"}</label>
           <select className="field-select" value={form.phase || ""} onChange={set("phase")}>
-            {PHASE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+            {phaseOptions.map((o) => <option key={o}>{o}</option>)}
           </select>
         </div>
         <div>
-          <label className="field-label">直近ARR / 売上規模</label>
+          <label className="field-label">年商</label>
           <select className="field-select" value={form.revenue || ""} onChange={set("revenue")}>
             {REVENUE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
           </select>

@@ -5,7 +5,7 @@ import { logError } from "@/lib/errorLog";
 
 // PATCH /api/company/profile
 // 認証必須(role=company)。AI課題診断を経由せず、企業の基本情報だけを直接更新する。
-// body: { name, industry, headcount, phase, revenue }
+// body: { name, industry, headcount, fundingType, phase, revenue }
 export async function PATCH(req) {
   try {
     const user = await requireRole("company");
@@ -16,14 +16,14 @@ export async function PATCH(req) {
       return NextResponse.json({ error: "先に企業プロフィールを作成してください" }, { status: 400 });
     }
 
-    const { name, industry, headcount, phase, revenue } = await req.json();
+    const { name, industry, headcount, fundingType, phase, revenue } = await req.json();
     if (!name?.trim()) {
       return NextResponse.json({ error: "会社名は必須です" }, { status: 400 });
     }
 
     const company = await prisma.company.update({
       where: { id: user.companyId },
-      data: { name: name.trim(), industry, headcount, phase, revenue },
+      data: { name: name.trim(), industry, headcount, fundingType, phase, revenue },
     });
 
     return NextResponse.json({ ok: true, company });
