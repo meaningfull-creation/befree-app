@@ -4,25 +4,47 @@ import { clampAxisScores, sanitizeGrowthAreas } from "@/lib/axes";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { logError } from "@/lib/errorLog";
-import { buildTalentSystemPrompt, buildTalentAnalysisPrompt } from "@/lib/talentPrompts";
+import {
+  buildTalentDialogSystemPrompt,
+  buildTalentDialogNextQuestionPrompt,
+  buildTalentDialogScorePrompt,
+  MAX_TALENT_DIALOG_TURNS,
+} from "@/lib/talentDialoguePrompts";
 
-// POST /api/talent/analyze
-// 認証は必須ではない(未ログインでもスキル解析を進められる。アカウント作成は
-// 結果が出た後にまとめて行う設計 — /api/talent/claim 参照)。
-// 実務経験者アカウントでログイン済みの場合のみ、その場でDB保存する。
-// body: { talentForm: { name, title, industry, years, summary, experiencedFunctions, workStyleTags, valueTags, values } }
-// returns: { scores, phases, bottlenecks, growthAreas, summary, talentId, talentSkillMapId }
+// POST /api/talent/dialogue/answer
+// 認証は必須ではない(未ログインでも自己分析対話を進められる)。
+// 実務経験者アカウントでログイン済みの場合のみ、最終ターンでその場でDB保存する。
+// body: { talentForm, history: [{q,a,axis}] }
+// returns: { question, options, axis, reflection } または
+//          { done: true, scores, phases, bottlenecks, growthAreas, summary, talentId, talentSkillMapId }
 export async function POST(req) {
   try {
     const user = await getCurrentUser();
     const isTalentUser = !!(user && user.role === "talent");
 
-    const { talentForm } = await req.json();
-    if (!talentForm?.name) {
-      return NextResponse.json({ error: "talentForm.name is required" }, { status: 400 });
+    const { talentForm, history } = await req.json();
+    if (!talentForm?.name || !Array.isArray(history)) {
+      return NextResponse.json({ error: "talentForm and history are required" }, { status: 400 });
     }
 
-    const result = await callClaudeJSON(buildTalentSystemPrompt(), buildTalentAnalysisPrompt(talentForm));
+    if (history.length < MAX_TALENT_DIALOG_TURNS) {
+      const result = await callClaudeJSON(
+        buildTalentDialogSystemPrompt(),
+        buildTalentDialogNextQuestionPrompt(talentForm, history),
+        700
+      );
+      return NextResponse.json({
+        done: false,
+        question: result.question,
+        options: (result.options || []).slice(0, 4),
+        axis: result.axis || null,
+        reflection: result.reflection || null,
+      });
+    }
+
+    // 最終スコアリング。10軸のscores・phases・bottlenecks・growthAreas・summaryを一度に
+    // 出力させるため応答が大きくなる。対話ターンが多いほど入力も長くなるため余裕を持たせる。
+    const result = await callClaudeJSON(buildTalentDialogSystemPrompt(), buildTalentDialogScorePrompt(talentForm, history), 3500);
     const scores = clampAxisScores(result.scores, 30);
     const phases = Array.isArray(result.phases) ? result.phases : [];
     const bottlenecks = Array.isArray(result.bottlenecks) ? result.bottlenecks : [];
@@ -31,8 +53,6 @@ export async function POST(req) {
     const workStyleTags = Array.isArray(talentForm.workStyleTags) ? talentForm.workStyleTags : [];
     const valueTags = Array.isArray(talentForm.valueTags) ? talentForm.valueTags : [];
 
-    // 同一アカウントでの再解析は、新しいTalentを作らず既存プロフィールを更新し、
-    // スキルマップだけ新規追加する(履歴として残す)。
     let talentId = isTalentUser ? user.talentId : null;
     let talentSkillMapId = null;
     let talentStatus = "pending";
@@ -69,9 +89,7 @@ export async function POST(req) {
               workStyleTags,
               valueTags,
               values: talentForm.values || null,
-              skillMaps: {
-                create: [{ axisScores: scores, phases, bottlenecks, growthAreas, summary: result.summary || null }],
-              },
+              skillMaps: { create: [{ axisScores: scores, phases, bottlenecks, growthAreas, summary: result.summary || null }] },
               capacity: { create: { maxConcurrentEngagements: 3, currentCommittedHours: 0 } },
             },
             include: { skillMaps: true },
@@ -82,12 +100,12 @@ export async function POST(req) {
           await prisma.user.update({ where: { id: user.id }, data: { talentId } });
         }
       } catch (persistErr) {
-        // DB未接続でもAI解析自体は継続できるよう、永続化の失敗は握りつぶしてログのみ残す
-        console.error("failed to persist talent skill map:", persistErr.message);
+        console.error("failed to persist talent dialogue result:", persistErr.message);
       }
     }
 
     return NextResponse.json({
+      done: true,
       scores,
       phases,
       bottlenecks,
@@ -98,7 +116,7 @@ export async function POST(req) {
       talentStatus,
     });
   } catch (e) {
-    await logError("api/talent/analyze", e);
+    await logError("api/talent/dialogue/answer", e);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }

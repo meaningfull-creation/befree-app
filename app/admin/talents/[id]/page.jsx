@@ -117,6 +117,38 @@ export default async function TalentDetailPage({ params }) {
         {[talent.title, talent.industry, talent.years].filter(Boolean).join(" / ")}
       </p>
 
+      {(Array.isArray(talent.experiencedFunctions) && talent.experiencedFunctions.length > 0 ||
+        Array.isArray(talent.workStyleTags) && talent.workStyleTags.length > 0 ||
+        talent.values) && (
+        <div className="admin-card">
+          <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 12 }}>本人申告のプロフィール</div>
+          {Array.isArray(talent.experiencedFunctions) && talent.experiencedFunctions.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 6 }}>経験してきた機能領域</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {talent.experiencedFunctions.map((k) => (
+                  <span key={k} className="admin-badge">{AXES.find((a) => a.key === k)?.label || k}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {Array.isArray(talent.workStyleTags) && talent.workStyleTags.length > 0 && (
+            <div style={{ marginBottom: talent.values ? 12 : 0 }}>
+              <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 6 }}>得意な働き方</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {talent.workStyleTags.map((t) => <span key={t} className="admin-badge">{t}</span>)}
+              </div>
+            </div>
+          )}
+          {talent.values && (
+            <div>
+              <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 6 }}>大切にしていること</div>
+              <p style={{ fontSize: 13, color: COLORS.text, margin: 0, lineHeight: 1.7 }}>{talent.values}</p>
+            </div>
+          )}
+        </div>
+      )}
+
       {talent.capacity && (
         <div className="admin-card">
           <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 8 }}>稼働状況</div>
@@ -151,6 +183,19 @@ export default async function TalentDetailPage({ params }) {
             {Array.isArray(latest.phases) && latest.phases.length > 0 && (
               <div style={{ marginTop: 12, display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {latest.phases.map((p) => <span key={p} className="admin-badge">{p}</span>)}
+              </div>
+            )}
+            {Array.isArray(latest.growthAreas) && latest.growthAreas.length > 0 && (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 6 }}>これから伸ばしていきたい領域</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {latest.growthAreas.map((g) => (
+                    <div key={g.axisKey} style={{ fontSize: 12.5, color: COLORS.text }}>
+                      <span style={{ fontWeight: 600 }}>{AXES.find((a) => a.key === g.axisKey)?.label || g.axisKey}</span>
+                      <span style={{ color: COLORS.muted }}> — {g.note}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </>

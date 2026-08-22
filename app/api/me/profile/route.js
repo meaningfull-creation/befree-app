@@ -57,13 +57,20 @@ export async function GET() {
         title: talent.title,
         industry: talent.industry,
         years: talent.years,
+        summary: talent.bio,
+        experiencedFunctions: talent.experiencedFunctions || [],
+        workStyleTags: talent.workStyleTags || [],
+        valueTags: talent.valueTags || [],
+        values: talent.values,
       },
       status: talent.status,
       scores: latest.axisScores,
       phases: latest.phases,
       bottlenecks: latest.bottlenecks,
+      growthAreas: latest.growthAreas,
       summary: latest.summary,
       diagnosedAt: latest.createdAt,
+      talentSkillMapId: latest.id,
     });
   }
 

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Shell, StepTalentInput, StepTalentAnalyzing, StepTalentSkillMap } from "@/app/app/page";
+import { Shell, StepTalentInput, StepTalentDialogue, StepTalentSkillMap } from "@/app/app/page";
 import { COLORS, FONT_DISPLAY } from "@/lib/theme";
 
-const STEPS = ["経歴入力", "AI解析", "スキルマップ", "アカウント作成"];
+const STEPS = ["経歴入力", "AI自己分析", "スキルマップ", "アカウント作成"];
 
 // アカウント作成フォーム(スキルマップが完成した最後の一歩としてのみ表示する)。
 function SignupInline({ onSubmit, loading, error }) {
@@ -58,7 +58,7 @@ function SignupInline({ onSubmit, loading, error }) {
 export default function JoinPage() {
   const [step, setStep] = useState(1);
   const [talent, setTalent] = useState(null);
-  const [result, setResult] = useState(null); // /api/talent/analyze のレスポンス全体
+  const [result, setResult] = useState(null); // /api/talent/dialogue/answer の最終ターン(done:true)のレスポンス全体
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState(null);
 
@@ -82,6 +82,7 @@ export default function JoinPage() {
           scores: result.scores,
           phases: result.phases,
           bottlenecks: result.bottlenecks,
+          growthAreas: result.growthAreas,
           summary: result.summary,
         }),
       });
@@ -101,13 +102,13 @@ export default function JoinPage() {
     <Shell step={step} steps={STEPS} headerRight={headerRight} onStepClick={setStep}>
       {step === 1 && <StepTalentInput onNext={(form) => { setTalent(form); setStep(2); }} initialForm={talent} />}
       {step === 2 && (
-        <StepTalentAnalyzing
+        <StepTalentDialogue
           talentForm={talent}
           onNext={(res) => { setResult({ ...res, fallback: false }); setStep(3); }}
         />
       )}
       {step === 3 && result && (
-        <StepTalentSkillMap name={talent?.name} scores={result.scores} fit={result} onNext={() => setStep(4)} />
+        <StepTalentSkillMap name={talent?.name} scores={result.scores} fit={result} talentForm={talent} talentSkillMapId={result.talentSkillMapId} onNext={() => setStep(4)} />
       )}
       {step === 4 && <SignupInline onSubmit={handleCreateAccount} loading={creating} error={createError} />}
     </Shell>
