@@ -161,8 +161,37 @@ function LoadingScreen() {
 // ---------------------------------------------------------------------------
 // Company flow — Step 1: company info
 // ---------------------------------------------------------------------------
+// 企業・人材フォーム共通の選択肢(共有の単一ソース)。「よくある形」に合わせて広めに用意している。
+const INDUSTRY_OPTIONS = [
+  "IT・インターネット・通信",
+  "ソフトウェア・SaaS",
+  "フィンテック・金融",
+  "ヘルスケア・医療",
+  "バイオ・製薬",
+  "D2C・EC・小売",
+  "製造業・メーカー",
+  "建設・不動産",
+  "運輸・物流",
+  "エネルギー・インフラ",
+  "農業・食品",
+  "人材・HRテック",
+  "教育・EdTech",
+  "メディア・エンタメ・広告",
+  "コンサルティング・専門サービス",
+  "官公庁・自治体・公共",
+  "非営利・NPO",
+  "旅行・宿泊・飲食",
+  "美容・ファッション",
+  "スポーツ・フィットネス",
+  "その他(自由入力)",
+];
+const HEADCOUNT_OPTIONS = ["1〜5名", "6〜10名", "11〜30名", "31〜50名", "51〜100名", "101〜300名", "301〜1000名", "1001名以上"];
+const PHASE_OPTIONS = ["構想・プレシード", "シード", "プレシリーズA", "シリーズA", "シリーズB", "シリーズC以降", "IPO準備・上場後", "自己資金・ブートストラップ"];
+const REVENUE_OPTIONS = ["1000万円未満", "1000万〜1億円", "1〜3億円", "3〜10億円", "10〜30億円", "30億円以上"];
+const TALENT_YEARS_OPTIONS = ["3年未満", "3〜5年", "5〜10年", "10〜15年", "15〜20年", "20年以上"];
+
 export function StepCompany({ onNext }) {
-  const [form, setForm] = useState({ name: "", industry: "SaaS / 業務効率化", headcount: "11〜30名", phase: "シリーズA", revenue: "1〜3億円" });
+  const [form, setForm] = useState({ name: "", industry: INDUSTRY_OPTIONS[1], headcount: "11〜30名", phase: "シリーズA", revenue: "1〜3億円" });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const valid = form.name.trim().length > 0;
 
@@ -181,13 +210,13 @@ export function StepCompany({ onNext }) {
           <div>
             <label className="field-label">事業ドメイン</label>
             <select className="field-select" value={form.industry} onChange={set("industry")}>
-              <option>SaaS / 業務効率化</option><option>フィンテック</option><option>ヘルスケア</option><option>D2C / EC</option><option>人材 / HRテック</option>
+              {INDUSTRY_OPTIONS.map((o) => <option key={o}>{o}</option>)}
             </select>
           </div>
           <div>
             <label className="field-label"><Users size={12} style={{ verticalAlign: -2, marginRight: 5 }} />従業員数</label>
             <select className="field-select" value={form.headcount} onChange={set("headcount")}>
-              <option>〜10名</option><option>11〜30名</option><option>31〜50名</option><option>51〜100名</option><option>101名〜</option>
+              {HEADCOUNT_OPTIONS.map((o) => <option key={o}>{o}</option>)}
             </select>
           </div>
         </div>
@@ -195,13 +224,13 @@ export function StepCompany({ onNext }) {
           <div>
             <label className="field-label"><TrendingUp size={12} style={{ verticalAlign: -2, marginRight: 5 }} />事業フェーズ</label>
             <select className="field-select" value={form.phase} onChange={set("phase")}>
-              <option>シード</option><option>プレシリーズA</option><option>シリーズA</option><option>シリーズB以降</option>
+              {PHASE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
             </select>
           </div>
           <div>
             <label className="field-label">直近ARR / 売上規模</label>
             <select className="field-select" value={form.revenue} onChange={set("revenue")}>
-              <option>〜1億円</option><option>1〜3億円</option><option>3〜10億円</option><option>10億円〜</option>
+              {REVENUE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
             </select>
           </div>
         </div>
@@ -622,6 +651,11 @@ const TALENT_TITLE_GROUPS = [
       "元オペレーション責任者 / COO",
       "元CTO / VPoE",
       "元事業責任者 / PL管掌",
+      "元法務責任者 / CLO",
+      "元広報・PR責任者",
+      "元データ責任者 / CDO",
+      "元購買・調達責任者",
+      "元経営者 / CEO",
     ],
   },
   {
@@ -637,6 +671,11 @@ const TALENT_TITLE_GROUPS = [
       "元テックリード / シニアエンジニア",
       "元デザインリード / UXデザイナー",
       "元インサイドセールス / SDRマネージャー",
+      "元法務・コンプライアンス担当",
+      "元広報・PRマネージャー",
+      "元データアナリスト / データサイエンティスト",
+      "元カスタマーサポートマネージャー",
+      "元購買・調達マネージャー",
     ],
   },
   {
@@ -644,29 +683,16 @@ const TALENT_TITLE_GROUPS = [
     options: ["その他(自由入力)"],
   },
 ];
-const TALENT_INDUSTRY_OPTIONS = [
-  "SaaS / 業務効率化",
-  "フィンテック",
-  "ヘルスケア",
-  "D2C / EC",
-  "人材 / HRテック",
-  "不動産 / 建設",
-  "製造 / メーカー",
-  "小売 / 流通",
-  "教育",
-  "メディア / エンタメ",
-  "コンサルティング / 専門サービス",
-  "その他(自由入力)",
-];
+const TALENT_INDUSTRY_OPTIONS = INDUSTRY_OPTIONS;
 
 export function StepTalentInput({ onNext }) {
   const [form, setForm] = useState({
     name: "",
-    title: TALENT_TITLE_GROUPS[0].options[3],
+    title: TALENT_TITLE_GROUPS[0].options[0],
     titleOther: "",
     industry: TALENT_INDUSTRY_OPTIONS[0],
     industryOther: "",
-    years: "15年以上",
+    years: "15〜20年",
     summary: "",
   });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -706,7 +732,7 @@ export function StepTalentInput({ onNext }) {
           <div>
             <label className="field-label">実務経験年数</label>
             <select className="field-select" value={form.years} onChange={set("years")}>
-              <option>5〜10年</option><option>10〜15年</option><option>15年以上</option>
+              {TALENT_YEARS_OPTIONS.map((o) => <option key={o}>{o}</option>)}
             </select>
           </div>
         </div>
@@ -1291,13 +1317,13 @@ function ProfileFieldsCompany({ initial, onSaved }) {
         <div>
           <label className="field-label">事業ドメイン</label>
           <select className="field-select" value={form.industry || ""} onChange={set("industry")}>
-            <option>SaaS / 業務効率化</option><option>フィンテック</option><option>ヘルスケア</option><option>D2C / EC</option><option>人材 / HRテック</option>
+            {INDUSTRY_OPTIONS.map((o) => <option key={o}>{o}</option>)}
           </select>
         </div>
         <div>
           <label className="field-label">従業員数</label>
           <select className="field-select" value={form.headcount || ""} onChange={set("headcount")}>
-            <option>〜10名</option><option>11〜30名</option><option>31〜50名</option><option>51〜100名</option><option>101名〜</option>
+            {HEADCOUNT_OPTIONS.map((o) => <option key={o}>{o}</option>)}
           </select>
         </div>
       </div>
@@ -1305,13 +1331,13 @@ function ProfileFieldsCompany({ initial, onSaved }) {
         <div>
           <label className="field-label">事業フェーズ</label>
           <select className="field-select" value={form.phase || ""} onChange={set("phase")}>
-            <option>シード</option><option>プレシリーズA</option><option>シリーズA</option><option>シリーズB以降</option>
+            {PHASE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
           </select>
         </div>
         <div>
           <label className="field-label">直近ARR / 売上規模</label>
           <select className="field-select" value={form.revenue || ""} onChange={set("revenue")}>
-            <option>〜1億円</option><option>1〜3億円</option><option>3〜10億円</option><option>10億円〜</option>
+            {REVENUE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
           </select>
         </div>
       </div>
@@ -1366,7 +1392,7 @@ function ProfileFieldsTalent({ initial, onSaved }) {
         <div>
           <label className="field-label">実務経験年数</label>
           <select className="field-select" value={form.years || ""} onChange={set("years")}>
-            <option>5年未満</option><option>5〜10年</option><option>10〜15年</option><option>15年以上</option>
+            {TALENT_YEARS_OPTIONS.map((o) => <option key={o}>{o}</option>)}
           </select>
         </div>
       </div>

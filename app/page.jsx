@@ -25,7 +25,7 @@ async function Nav() {
           </>
         )}
         {user && user.role === "admin" && (
-          <a className="btn-primary" href="/admin">管理画面へ</a>
+          <a className="btn-ghost" href="/login">ログイン</a>
         )}
         {user && (user.role === "company" || user.role === "talent") && (
           <>
@@ -199,11 +199,8 @@ export default function LandingPage() {
               <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: "clamp(26px, 5vw, 34px)", fontWeight: 700, lineHeight: 1.45, margin: "0 0 14px" }}>
                 会社に足りない経験を、<br />必要な分だけ。
               </h1>
-              <p style={{ fontSize: 15, color: COLORS.muted, lineHeight: 1.8, maxWidth: 480, margin: "0 0 10px" }}>
+              <p style={{ fontSize: 15, color: COLORS.muted, lineHeight: 1.8, maxWidth: 480, margin: "0 0 32px" }}>
                 BATTER BOXは、事業フェーズ・組織状況をAIで診断し、会社の成長を止めている課題と、今必要な経験を可視化します。必要な経験を持つ実務経験者が、月10時間からチームに参加します。
-              </p>
-              <p style={{ fontSize: 13, color: COLORS.faint, lineHeight: 1.8, maxWidth: 480, margin: "0 0 32px", fontStyle: "italic" }}>
-                必要なのは、もう1人の社員ではない。月10時間の経験かもしれない。
               </p>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 <a className="btn-primary" href="/diagnose" style={{ fontSize: 15, padding: "13px 26px" }}>
@@ -235,11 +232,62 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* よくある経営課題(問題提起を、解決策の前に置く) */}
+        <section style={{ maxWidth: 1040, margin: "0 auto", padding: "0 24px 70px" }}>
+          <div style={{ textAlign: "center", marginBottom: 28 }}>
+            <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: "clamp(20px, 3.5vw, 26px)" }}>
+              こんな課題に、心当たりはありませんか。
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+            {[
+              "営業が属人化していて、キーパーソン頼みの受注から抜け出せない",
+              "採用基準が定まらず、面接官によって評価がぶれる",
+              "資金繰り・管理会計が見えておらず、意思決定が後手に回る",
+              "AI・DX活用の方針が定まらず、手探りのまま時間だけが過ぎる",
+              "事業拡大のスピードに、組織体制が追いついていない",
+              "カスタマーサクセスが属人的で、解約の予兆に気づけない",
+            ].map((t) => (
+              <div key={t} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "16px 18px", fontSize: 13, color: COLORS.text, lineHeight: 1.7 }}>
+                {t}
+              </div>
+            ))}
+          </div>
+          <p style={{ textAlign: "center", fontSize: 13, color: COLORS.muted, marginTop: 22 }}>
+            こうした課題は、多くの場合「もう1人の社員」ではなく「今その領域に強い実務経験者」で解決できます。
+          </p>
+        </section>
+
+        {/* 伴走中もAIが並走する(プロジェクト管理・90日プラン・月次レビュー等、診断以降の機能を紹介) */}
+        <section style={{ maxWidth: 1040, margin: "0 auto", padding: "0 24px 70px" }}>
+          <div style={{ textAlign: "center", marginBottom: 28 }}>
+            <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: "clamp(20px, 3.5vw, 26px)" }}>
+              マッチングして終わりではありません。
+            </div>
+            <p style={{ fontSize: 13.5, color: COLORS.muted, marginTop: 10, maxWidth: 520, marginLeft: "auto", marginRight: "auto", lineHeight: 1.8 }}>
+              伴走が始まった後も、進捗と成果をAIが並走して可視化します。
+            </p>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+            {[
+              { title: "90日の実行プランを自動生成", body: "課題が特定できたら、AIが最初の90日でやるべきことを月ごとに提案します。" },
+              { title: "タスク・KPI・稼働ログを共有", body: "プロジェクト画面で、企業と実務経験者が同じ進捗を見ながら伴走できます。" },
+              { title: "AIによる月次進捗レビュー", body: "溜まったタスク・KPI・稼働ログから、AIが進捗の要点を毎月まとめます。" },
+              { title: "3ヶ月ごとの再診断で変化を確認", body: "スコアがどう変わったか、Before/Afterで振り返ることができます。" },
+            ].map((f) => (
+              <div key={f.title} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 22 }}>
+                <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14.5, marginBottom: 8 }}>{f.title}</div>
+                <div style={{ fontSize: 12.5, color: COLORS.muted, lineHeight: 1.7 }}>{f.body}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* 月10時間の価値 */}
         <section style={{ maxWidth: 1040, margin: "0 auto", padding: "0 24px 70px" }}>
           <div style={{ textAlign: "center", marginBottom: 24 }}>
             <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: "clamp(20px, 3.5vw, 26px)", lineHeight: 1.5 }}>
-              必要なのは、もう1人の社員ではない。<br />月10時間の経験かもしれない。
+              正社員採用と、何が違うのか。
             </div>
           </div>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
@@ -328,17 +376,13 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Differentiation */}
-        <section style={{ maxWidth: 780, margin: "0 auto", padding: "0 24px 70px", textAlign: "center" }}>
-          <div style={{ display: "flex", gap: 20, justifyContent: "center", flexWrap: "wrap", fontSize: 13, color: COLORS.muted }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><TrendingUp size={14} color={COLORS.teal} /> 知見の共有ではなく、実行力の提供</span>
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><MessageSquare size={14} color={COLORS.teal} /> マッチング後はそのままメッセージで連絡可能</span>
-          </div>
-        </section>
-
         {/* FAQ */}
         <section style={{ maxWidth: 760, margin: "0 auto", padding: "0 24px 80px" }}>
-          <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 700, textAlign: "center", margin: "0 0 28px" }}>よくある質問</h2>
+          <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 700, textAlign: "center", margin: "0 0 10px" }}>よくある質問</h2>
+          <div style={{ display: "flex", gap: 20, justifyContent: "center", flexWrap: "wrap", fontSize: 12.5, color: COLORS.muted, marginBottom: 28 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><TrendingUp size={13} color={COLORS.teal} /> 知見の共有ではなく、実行力の提供</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><MessageSquare size={13} color={COLORS.teal} /> マッチング後はそのままメッセージで連絡可能</span>
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {[
               { q: "診断だけ受けて、そのまま利用しなくても大丈夫ですか?", a: "はい。AI企業診断・Growth Mapの作成まではすべて無料で、そこで終えていただいても構いません。提案された人材と話してみるかどうかは、診断結果を見てから判断できます。" },
