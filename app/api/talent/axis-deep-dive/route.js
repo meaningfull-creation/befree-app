@@ -10,7 +10,7 @@ import {
   buildTalentAxisDeepDiveSummaryPrompt,
 } from "@/lib/talentDialoguePrompts";
 
-const MAX_DEEP_DIVE_TURNS = 3; // 深掘りは短く3問まで
+const MAX_DEEP_DIVE_TURNS = 5; // 初回対話が5問に短縮された分、項目ごとの深掘りをより充実させる
 const AXIS_LABEL_BY_KEY = Object.fromEntries(AXES.map((a) => [a.key, a.label]));
 
 // POST /api/talent/axis-deep-dive

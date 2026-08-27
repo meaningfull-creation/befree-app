@@ -3,7 +3,7 @@ import { AdminShell, COLORS, FONT_MONO } from "@/lib/adminTheme";
 import { AXES } from "@/lib/axes";
 import { scoreMatch } from "@/lib/matching";
 import { getAxisWeightMultipliers } from "@/lib/axisPerformance";
-import { recordMatchAction, acceptMatchAction, declineMatchAction } from "@/lib/actions";
+import { recordMatchAction, acceptMatchAction, declineMatchAction, adminUpdateTalentAction, adminUpdateCapacityAction, adminDeleteTalentAction } from "@/lib/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -69,25 +69,31 @@ async function RecordedMatches({ talentId, skillMapIds }) {
               <span className="admin-badge">
                 {m.status === "proposed" ? "提案中" : m.status === "accepted" ? "契約済み" : "見送り"}
               </span>
+              {m.status === "proposed" && m.companyReadyAt && m.talentReadyAt && (
+                <span className="admin-badge" style={{ color: COLORS.teal, marginLeft: 6 }}>双方合意済み・要対応</span>
+              )}
             </td>
             <td>
-              {m.status === "proposed" && (
-                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                  <form action={acceptMatchAction} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                    <input type="hidden" name="matchId" value={m.id} />
-                    <input type="hidden" name="redirectPath" value={`/admin/talents/${talentId}`} />
-                    <input className="admin-input" type="number" name="monthlyHours" defaultValue={10} title="月の稼働時間(h)" />
-                    <input className="admin-input" style={{ width: 100 }} type="number" name="companyAmount" placeholder="企業請求額" title="企業へ請求する月額(円)" />
-                    <input className="admin-input" style={{ width: 100 }} type="number" name="talentAmount" placeholder="人材支払額" title="人材へ支払う月額(円)。標準料率: 企業請求額の60%(BATTER BOXの取り分40%で確定)" />
-                    <button type="submit" className="admin-btn">契約にする</button>
-                  </form>
-                  <form action={declineMatchAction}>
-                    <input type="hidden" name="matchId" value={m.id} />
-                    <input type="hidden" name="redirectPath" value={`/admin/talents/${talentId}`} />
-                    <button type="submit" className="admin-btn-muted">見送る</button>
-                  </form>
-                </div>
-              )}
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <a href={`/admin/matches/${m.id}/messages`} className="admin-btn-muted" style={{ display: "inline-block" }}>メッセージを見る</a>
+                {m.status === "proposed" && (
+                  <>
+                    <form action={acceptMatchAction} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      <input type="hidden" name="matchId" value={m.id} />
+                      <input type="hidden" name="redirectPath" value={`/admin/talents/${talentId}`} />
+                      <input className="admin-input" type="number" name="monthlyHours" defaultValue={10} title="月の稼働時間(h)" />
+                      <input className="admin-input" style={{ width: 100 }} type="number" name="companyAmount" placeholder="企業請求額" title="企業へ請求する月額(円)" />
+                      <input className="admin-input" style={{ width: 100 }} type="number" name="talentAmount" placeholder="人材支払額" title="人材へ支払う月額(円)。標準料率: 企業請求額の60%(BATTER BOXの取り分40%で確定)" />
+                      <button type="submit" className="admin-btn">契約にする</button>
+                    </form>
+                    <form action={declineMatchAction}>
+                      <input type="hidden" name="matchId" value={m.id} />
+                      <input type="hidden" name="redirectPath" value={`/admin/talents/${talentId}`} />
+                      <button type="submit" className="admin-btn-muted">見送る</button>
+                    </form>
+                  </>
+                )}
+              </div>
             </td>
           </tr>
         ))}
@@ -116,6 +122,24 @@ export default async function TalentDetailPage({ params }) {
       <p style={{ color: COLORS.muted, fontSize: 13.5, margin: "0 0 24px" }}>
         {[talent.title, talent.industry, talent.years].filter(Boolean).join(" / ")}
       </p>
+
+      <div className="admin-card">
+        <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 12 }}>基本情報の編集(表記ミスの修正等)</div>
+        <form action={adminUpdateTalentAction} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <input type="hidden" name="talentId" value={talent.id} />
+          <input type="hidden" name="redirectPath" value={`/admin/talents/${talent.id}`} />
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <input className="admin-input" name="name" defaultValue={talent.name} placeholder="氏名" required style={{ flex: 1, minWidth: 160 }} />
+            <input className="admin-input" name="title" defaultValue={talent.title || ""} placeholder="直近の役職" style={{ flex: 1, minWidth: 180 }} />
+            <input className="admin-input" name="years" defaultValue={talent.years || ""} placeholder="実務経験年数" style={{ width: 140 }} />
+          </div>
+          <input className="admin-input" name="industry" defaultValue={talent.industry || ""} placeholder="主な業種経験" />
+          <textarea className="admin-input" name="bio" defaultValue={talent.bio || ""} placeholder="自己紹介・実績" rows={3} style={{ resize: "vertical", fontFamily: "inherit" }} />
+          <div>
+            <button type="submit" className="admin-btn">保存する</button>
+          </div>
+        </form>
+      </div>
 
       {(Array.isArray(talent.experiencedFunctions) && talent.experiencedFunctions.length > 0 ||
         Array.isArray(talent.workStyleTags) && talent.workStyleTags.length > 0 ||
@@ -149,14 +173,22 @@ export default async function TalentDetailPage({ params }) {
         </div>
       )}
 
-      {talent.capacity && (
-        <div className="admin-card">
-          <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 8 }}>稼働状況</div>
-          <span className="admin-badge">
-            現在 {talent.capacity.currentCommittedHours}h / 上限 {talent.capacity.maxConcurrentEngagements}社まで同時受託可
-          </span>
-        </div>
-      )}
+      <div className="admin-card">
+        <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 12 }}>稼働状況(上限は管理者が調整可能)</div>
+        <form action={adminUpdateCapacityAction} style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <input type="hidden" name="talentId" value={talent.id} />
+          <input type="hidden" name="redirectPath" value={`/admin/talents/${talent.id}`} />
+          <label style={{ fontSize: 12.5, color: COLORS.muted }}>
+            現在の稼働時間(h)
+            <input className="admin-input" type="number" min="0" name="currentCommittedHours" defaultValue={talent.capacity?.currentCommittedHours ?? 0} style={{ width: 90, marginLeft: 8 }} />
+          </label>
+          <label style={{ fontSize: 12.5, color: COLORS.muted }}>
+            同時受託の上限(社)
+            <input className="admin-input" type="number" min="0" name="maxConcurrentEngagements" defaultValue={talent.capacity?.maxConcurrentEngagements ?? 3} style={{ width: 90, marginLeft: 8 }} />
+          </label>
+          <button type="submit" className="admin-btn">保存する</button>
+        </form>
+      </div>
 
       <div className="admin-card">
         <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 12 }}>最新のスキルマップ</div>
@@ -270,6 +302,20 @@ export default async function TalentDetailPage({ params }) {
           </table>
         </div>
       )}
+
+      <div className="admin-card" style={{ borderColor: COLORS.amber }}>
+        <div style={{ fontSize: 12, color: COLORS.amber, marginBottom: 8 }}>危険な操作</div>
+        <p style={{ fontSize: 12.5, color: COLORS.muted, marginBottom: 12, lineHeight: 1.7 }}>
+          この人材と、紐づくスキルマップ・マッチング・契約・プロジェクト・請求書・ログインアカウントをすべて削除します。取り消せません。
+          サンプルデータの整理を目的とした操作です。実際の登録者データには使用しないでください。
+        </p>
+        <form action={adminDeleteTalentAction} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <input type="hidden" name="talentId" value={talent.id} />
+          <input type="hidden" name="expectedName" value={talent.name} />
+          <input className="admin-input" name="confirmText" placeholder={`確認のため「${talent.name}」と入力`} style={{ minWidth: 220 }} />
+          <button type="submit" className="admin-btn-muted" style={{ borderColor: COLORS.amber, color: COLORS.amber }}>この人材を完全に削除する</button>
+        </form>
+      </div>
     </AdminShell>
   );
 }

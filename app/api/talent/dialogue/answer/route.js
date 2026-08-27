@@ -55,7 +55,7 @@ export async function POST(req) {
 
     let talentId = isTalentUser ? user.talentId : null;
     let talentSkillMapId = null;
-    let talentStatus = "pending";
+    let talentStatus = "approved"; // 新規作成時のDBデフォルトと合わせている(現段階は自動承認運用)
     if (isTalentUser) {
       try {
         if (talentId) {

@@ -3,7 +3,7 @@ import { AdminShell, COLORS, FONT_MONO } from "@/lib/adminTheme";
 import { AXES } from "@/lib/axes";
 import { scoreMatch } from "@/lib/matching";
 import { getAxisWeightMultipliers } from "@/lib/axisPerformance";
-import { recordMatchAction, acceptMatchAction, declineMatchAction, adjustCompanyScoreAction } from "@/lib/actions";
+import { recordMatchAction, acceptMatchAction, declineMatchAction, adjustCompanyScoreAction, adminUpdateCompanyAction, adminDeleteCompanyAction } from "@/lib/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -68,25 +68,31 @@ async function RecordedMatches({ companyId, skillMapIds }) {
               <span className="admin-badge">
                 {m.status === "proposed" ? "提案中" : m.status === "accepted" ? "契約済み" : "見送り"}
               </span>
+              {m.status === "proposed" && m.companyReadyAt && m.talentReadyAt && (
+                <span className="admin-badge" style={{ color: COLORS.teal, marginLeft: 6 }}>双方合意済み・要対応</span>
+              )}
             </td>
             <td>
-              {m.status === "proposed" && (
-                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                  <form action={acceptMatchAction} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                    <input type="hidden" name="matchId" value={m.id} />
-                    <input type="hidden" name="redirectPath" value={`/admin/companies/${companyId}`} />
-                    <input className="admin-input" type="number" name="monthlyHours" defaultValue={10} title="月の稼働時間(h)" />
-                    <input className="admin-input" style={{ width: 100 }} type="number" name="companyAmount" placeholder="企業請求額" title="企業へ請求する月額(円)" />
-                    <input className="admin-input" style={{ width: 100 }} type="number" name="talentAmount" placeholder="人材支払額" title="人材へ支払う月額(円)。標準料率: 企業請求額の60%(BATTER BOXの取り分40%で確定)" />
-                    <button type="submit" className="admin-btn">契約にする</button>
-                  </form>
-                  <form action={declineMatchAction}>
-                    <input type="hidden" name="matchId" value={m.id} />
-                    <input type="hidden" name="redirectPath" value={`/admin/companies/${companyId}`} />
-                    <button type="submit" className="admin-btn-muted">見送る</button>
-                  </form>
-                </div>
-              )}
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <a href={`/admin/matches/${m.id}/messages`} className="admin-btn-muted" style={{ display: "inline-block" }}>メッセージを見る</a>
+                {m.status === "proposed" && (
+                  <>
+                    <form action={acceptMatchAction} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      <input type="hidden" name="matchId" value={m.id} />
+                      <input type="hidden" name="redirectPath" value={`/admin/companies/${companyId}`} />
+                      <input className="admin-input" type="number" name="monthlyHours" defaultValue={10} title="月の稼働時間(h)" />
+                      <input className="admin-input" style={{ width: 100 }} type="number" name="companyAmount" placeholder="企業請求額" title="企業へ請求する月額(円)" />
+                      <input className="admin-input" style={{ width: 100 }} type="number" name="talentAmount" placeholder="人材支払額" title="人材へ支払う月額(円)。標準料率: 企業請求額の60%(BATTER BOXの取り分40%で確定)" />
+                      <button type="submit" className="admin-btn">契約にする</button>
+                    </form>
+                    <form action={declineMatchAction}>
+                      <input type="hidden" name="matchId" value={m.id} />
+                      <input type="hidden" name="redirectPath" value={`/admin/companies/${companyId}`} />
+                      <button type="submit" className="admin-btn-muted">見送る</button>
+                    </form>
+                  </>
+                )}
+              </div>
             </td>
           </tr>
         ))}
@@ -116,6 +122,31 @@ export default async function CompanyDetailPage({ params }) {
       <p style={{ color: COLORS.muted, fontSize: 13.5, margin: "0 0 24px" }}>
         {[company.industry, company.phase, company.headcount, company.revenue].filter(Boolean).join(" / ")}
       </p>
+
+      <div className="admin-card">
+        <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 12 }}>基本情報の編集(表記ミスの修正等)</div>
+        <form action={adminUpdateCompanyAction} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <input type="hidden" name="companyId" value={company.id} />
+          <input type="hidden" name="redirectPath" value={`/admin/companies/${company.id}`} />
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <input className="admin-input" name="name" defaultValue={company.name} placeholder="会社名" required style={{ flex: 1, minWidth: 180 }} />
+            <input className="admin-input" name="industry" defaultValue={company.industry || ""} placeholder="業種" style={{ flex: 1, minWidth: 160 }} />
+            <input className="admin-input" name="headcount" defaultValue={company.headcount || ""} placeholder="従業員数" style={{ width: 120 }} />
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <select className="admin-input" name="fundingType" defaultValue={company.fundingType || ""} style={{ width: 200 }}>
+              <option value="">外部資本の有無(未設定)</option>
+              <option value="independent">外部資本なし</option>
+              <option value="vc">外部資本あり</option>
+            </select>
+            <input className="admin-input" name="phase" defaultValue={company.phase || ""} placeholder="成長段階/資金調達フェーズ" style={{ flex: 1, minWidth: 180 }} />
+            <input className="admin-input" name="revenue" defaultValue={company.revenue || ""} placeholder="年商" style={{ width: 140 }} />
+          </div>
+          <div>
+            <button type="submit" className="admin-btn">保存する</button>
+          </div>
+        </form>
+      </div>
 
       <div className="admin-card">
         <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 12 }}>最新の課題スキルマップ(スコアは手動調整可能)</div>
@@ -220,6 +251,20 @@ export default async function CompanyDetailPage({ params }) {
           </table>
         </div>
       )}
+
+      <div className="admin-card" style={{ borderColor: COLORS.amber }}>
+        <div style={{ fontSize: 12, color: COLORS.amber, marginBottom: 8 }}>危険な操作</div>
+        <p style={{ fontSize: 12.5, color: COLORS.muted, marginBottom: 12, lineHeight: 1.7 }}>
+          この企業と、紐づく診断履歴・マッチング・契約・プロジェクト・請求書・ログインアカウントをすべて削除します。取り消せません。
+          サンプルデータの整理を目的とした操作です。実際の顧客データには使用しないでください。
+        </p>
+        <form action={adminDeleteCompanyAction} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <input type="hidden" name="companyId" value={company.id} />
+          <input type="hidden" name="expectedName" value={company.name} />
+          <input className="admin-input" name="confirmText" placeholder={`確認のため「${company.name}」と入力`} style={{ minWidth: 220 }} />
+          <button type="submit" className="admin-btn-muted" style={{ borderColor: COLORS.amber, color: COLORS.amber }}>この企業を完全に削除する</button>
+        </form>
+      </div>
     </AdminShell>
   );
 }

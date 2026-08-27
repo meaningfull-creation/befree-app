@@ -31,6 +31,10 @@ export async function POST(req) {
       return NextResponse.json({ error: "メールアドレスまたはパスワードが正しくありません" }, { status: 401 });
     }
 
+    if (user.disabledAt) {
+      return NextResponse.json({ error: "このアカウントは停止されています。運営までお問い合わせください。" }, { status: 403 });
+    }
+
     if (expectedRole && user.role !== expectedRole) {
       const roleLabel = { company: "企業", talent: "実務経験者" };
       return NextResponse.json(

@@ -4,7 +4,7 @@ import { AdminShell, COLORS, FONT_MONO } from "@/lib/adminTheme";
 export const dynamic = "force-dynamic"; // 常に最新のDB状態を表示する
 
 async function getCounts() {
-  const [companies, talents, companySkillMaps, talentSkillMaps, matches, engagements, newInquiries] = await Promise.all([
+  const [companies, talents, companySkillMaps, talentSkillMaps, matches, engagements, newInquiries, actionNeededMatches] = await Promise.all([
     prisma.company.count(),
     prisma.talent.count(),
     prisma.companySkillMap.count(),
@@ -12,8 +12,9 @@ async function getCounts() {
     prisma.match.count(),
     prisma.engagement.count(),
     prisma.inquiry.count({ where: { status: "new" } }),
+    prisma.match.count({ where: { status: "proposed", companyReadyAt: { not: null }, talentReadyAt: { not: null } } }),
   ]);
-  return { companies, talents, companySkillMaps, talentSkillMaps, matches, engagements, newInquiries };
+  return { companies, talents, companySkillMaps, talentSkillMaps, matches, engagements, newInquiries, actionNeededMatches };
 }
 
 function StatCard({ label, value }) {
@@ -43,6 +44,7 @@ export default async function AdminDashboard() {
         <StatCard label="マッチング件数" value={c.matches} />
         <StatCard label="契約(伴走)件数" value={c.engagements} />
         <StatCard label="未対応の問い合わせ" value={c.newInquiries} />
+        <StatCard label="対応が必要なマッチング(双方合意済み)" value={c.actionNeededMatches} />
       </div>
 
       <div className="admin-card" style={{ fontSize: 13, color: COLORS.muted, lineHeight: 1.8 }}>

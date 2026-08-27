@@ -30,6 +30,8 @@ import { COLORS, FONT_DISPLAY, FONT_BODY, FONT_MONO, GlobalStyle } from "@/lib/t
 // Design tokens (BATTER BOX_技術構成設計.md / プロトタイプと共通)
 // ---------------------------------------------------------------------------
 const MAX_DIALOG_TURNS = 10;
+// 人材側のAI自己分析対話は、企業側とは別に5問に短縮している(実運用で「10問は大変」との声を受けて調整)。
+const TALENT_DIALOG_TURNS = 5;
 const AI_PERSONA_NAME = "タクト";
 const AXIS_LABEL_BY_KEY = Object.fromEntries(AXES.map((a) => [a.key, a.label]));
 const ANALYZING_STEPS = [
@@ -1186,7 +1188,7 @@ export function StepTalentDialogue({ talentForm, onNext }) {
         {talentForm.name || "あなた"}の自己分析を{AI_PERSONA_NAME}が対話形式で深めています
       </h1>
       <p style={{ color: COLORS.muted, fontSize: 14, margin: "0 0 24px" }}>
-        質問 {Math.min(history.length + 1, MAX_DIALOG_TURNS)} / {MAX_DIALOG_TURNS}
+        質問 {Math.min(history.length + 1, TALENT_DIALOG_TURNS)} / {TALENT_DIALOG_TURNS}
       </p>
       <div ref={scrollRef} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 24, height: 380, overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
         {messages.map((m, i) => (
@@ -1346,7 +1348,7 @@ function TalentAxisDeepDive({ talentForm, axisKey, axisLabel, currentScore, curr
   return (
     <div className="fade-in" style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16, marginTop: 8 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <span style={{ fontSize: 12, color: COLORS.muted }}>{axisLabel}を深掘り中({Math.min(history.length + 1, 3)}/3)</span>
+        <span style={{ fontSize: 12, color: COLORS.muted }}>{axisLabel}を深掘り中({Math.min(history.length + 1, 5)}/5)</span>
         <button className="btn-ghost" onClick={onCancel} style={{ fontSize: 11, padding: "3px 10px" }}>閉じる</button>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
@@ -1377,7 +1379,7 @@ function TalentAxisDeepDive({ talentForm, axisKey, axisLabel, currentScore, curr
 export function StepTalentSkillMap({ name, scores, fit, talentForm, talentSkillMapId, onNext }) {
   const [progress, setProgress] = useState(0);
   const [revealed, setRevealed] = useState(false);
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useState(true);
   const [localScores, setLocalScores] = useState(scores);
   const [deepDiveAxis, setDeepDiveAxis] = useState(null);
 
@@ -1408,7 +1410,7 @@ export function StepTalentSkillMap({ name, scores, fit, talentForm, talentSkillM
     <div className="fade-in">
       <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 600, margin: "0 0 6px" }}>{name || "あなた"}のスキルマップ</h1>
       <p style={{ color: COLORS.muted, fontSize: 14, margin: "0 0 28px" }}>
-        10軸・各30点満点でスコア化しています。スコアが高い軸ほど、実績として強く裏付けられた強みです。
+        10軸・各30点満点でスコア化しています。今回の対話で直接お聞きしたのは一部の軸のみです。気になる項目は、下部の「項目ごとに深掘り」からいつでも詳しく確認・更新できます。
         {fit.fallback && <span style={{ color: COLORS.amber, display: "block", marginTop: 6, fontSize: 12.5 }}>※ AIとの通信に失敗したため、参考値で表示しています</span>}
       </p>
 
@@ -1616,8 +1618,18 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
   const [sending, setSending] = useState(false);
   const [context, setContext] = useState(null);
   const [showContext, setShowContext] = useState(true);
+  const [readyStatus, setReadyStatus] = useState(null);
+  const [markingReady, setMarkingReady] = useState(false);
   const scrollRef = useRef(null);
   const pollRef = useRef(null);
+
+  const loadReadyStatus = async () => {
+    try {
+      const res = await fetch(`/api/matches/${matchId}/ready`);
+      const d = await res.json();
+      if (!d.error) setReadyStatus(d);
+    } catch (e) { /* ステータス取得の失敗は致命的ではないので無視 */ }
+  };
 
   const load = async (silent) => {
     if (!silent) setErrorMsg(null);
@@ -1634,11 +1646,25 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
 
   useEffect(() => {
     load(false);
+    loadReadyStatus();
     fetch(`/api/matches/${matchId}/context`).then((r) => r.json()).then((d) => { if (!d.error) setContext(d); }).catch(() => {});
-    pollRef.current = setInterval(() => load(true), 5000);
+    pollRef.current = setInterval(() => { load(true); loadReadyStatus(); }, 5000);
     return () => clearInterval(pollRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId]);
+
+  const markReady = async () => {
+    setMarkingReady(true);
+    try {
+      const res = await fetch(`/api/matches/${matchId}/ready`, { method: "POST" });
+      const d = await res.json();
+      if (!d.error) setReadyStatus((s) => ({ ...s, ...d }));
+    } catch (e) {
+      setErrorMsg("送信に失敗しました。");
+    } finally {
+      setMarkingReady(false);
+    }
+  };
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -1665,6 +1691,44 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
     <div className="fade-in">
       <button className="btn-ghost" onClick={onBack} style={{ marginBottom: 16 }}>← 戻る</button>
       <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 600, margin: "0 0 16px" }}>{counterpartName}とのメッセージ</h1>
+
+      {readyStatus && (() => {
+        const myReady = readyStatus.myRole === "company" ? readyStatus.companyReady : readyStatus.talentReady;
+        const counterpartReady = readyStatus.myRole === "company" ? readyStatus.talentReady : readyStatus.companyReady;
+        if (readyStatus.hasEngagement) {
+          return (
+            <div style={{ background: "rgba(27,58,99,0.08)", border: `1px solid ${COLORS.teal}`, borderRadius: 10, padding: "12px 16px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+              <span style={{ fontSize: 12.5, color: COLORS.text }}>契約が成立しています。プロジェクト画面で進捗を共有できます。</span>
+              {readyStatus.projectId && (
+                <a href={`/app/projects/${readyStatus.projectId}`} className="btn-ghost" style={{ fontSize: 12, padding: "6px 14px" }}>プロジェクトを見る →</a>
+              )}
+            </div>
+          );
+        }
+        if (readyStatus.bothReady) {
+          return (
+            <div style={{ background: "rgba(27,58,99,0.08)", border: `1px solid ${COLORS.teal}`, borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
+              <span style={{ fontSize: 12.5, color: COLORS.text }}>双方が契約に進みたい意向を示しています。運営が確認のうえ、契約手続きのご連絡をいたします。</span>
+            </div>
+          );
+        }
+        return (
+          <div style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "12px 16px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+            <span style={{ fontSize: 12.5, color: COLORS.muted }}>
+              {myReady
+                ? "あなたは契約に進みたい意向を伝え済みです。相手の返答をお待ちください。"
+                : counterpartReady
+                ? "相手はすでに契約に進みたい意向を示しています。"
+                : "ある程度お話しが進んだら、契約に進みたい意向を伝えられます。"}
+            </span>
+            {!myReady && (
+              <button className="btn-ghost" onClick={markReady} disabled={markingReady} style={{ fontSize: 12, padding: "6px 14px", flexShrink: 0 }}>
+                {markingReady ? "送信中…" : "契約に進みたい"}
+              </button>
+            )}
+          </div>
+        );
+      })()}
 
       {context && (
         <div style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "14px 18px", marginBottom: 16 }}>
