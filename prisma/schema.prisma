@@ -75,7 +75,8 @@ model Talent {
   workStyleTags        Json? // 得意な働き方(複数選択タグ)
   valueTags            Json? // 大切にしている価値観(複数選択タグ)
   values               String? // 仕事において大切にしていること・価値観(自由記述の補足)
-  status               String   @default("pending") // pending | approved | rejected — 承認された人材のみマッチング候補に表示
+  status               String   @default("approved") // pending | approved | rejected — 現段階では運用負荷を下げるため新規登録時は自動承認とし、
+                                                        // 承認/却下は管理画面から必要な時だけ手動で行う運用にしている(却下されたマッチング候補には表示されない)
   createdAt            DateTime @default(now())
 
   skillMaps TalentSkillMap[]
@@ -109,6 +110,8 @@ model Match {
   axisFit           Json?
   reason            String?
   status            String          @default("proposed") // proposed | accepted | declined
+  companyReadyAt    DateTime? // 企業側が「契約に進みたい」意向を示した日時(メッセージのやり取り後の次のアクションを明確にするため)
+  talentReadyAt     DateTime? // 人材側が「契約に進みたい」意向を示した日時
   createdAt         DateTime        @default(now())
 
   engagement Engagement?
@@ -278,6 +281,14 @@ model AxisPerformance {
   updatedAt        DateTime @updatedAt
 }
 
+// プラットフォーム全体の設定値(手数料率等)をkey-valueで保持する。管理画面から変更可能にするための土台。
+// 値が未設定のキーは、呼び出し側でハードコードされたデフォルト値にフォールバックする。
+model PlatformSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 // 公開の問い合わせフォーム(/contact)からの送信内容。認証不要で送信できる。
 model Inquiry {
   id          String   @id @default(uuid())
@@ -292,16 +303,17 @@ model Inquiry {
 // アカウント。企業ユーザー(role=company)・実務経験者(role=talent)・BeFree運営(role=admin)の3種類。
 // company/talentロールは、それぞれ自分のCompany/Talentレコードに1:1で紐づく。
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
+  id           String    @id @default(uuid())
+  email        String    @unique
   passwordHash String
   passwordSalt String
   role         String // "company" | "talent" | "admin"
-  companyId    String?  @unique
-  company      Company? @relation(fields: [companyId], references: [id])
-  talentId     String?  @unique
-  talent       Talent?  @relation(fields: [talentId], references: [id])
-  createdAt    DateTime @default(now())
+  companyId    String?   @unique
+  company      Company?  @relation(fields: [companyId], references: [id])
+  talentId     String?   @unique
+  talent       Talent?   @relation(fields: [talentId], references: [id])
+  disabledAt   DateTime? // 管理者がアカウントを停止した日時(nullなら有効)
+  createdAt    DateTime  @default(now())
 
   sessions Session[]
   messages Message[]
