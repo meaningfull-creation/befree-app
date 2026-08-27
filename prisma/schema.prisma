@@ -133,7 +133,7 @@ model Engagement {
   contractType    String    @default("business_delegation") // 業務委託(準委任)固定
   companyAmount   Int? // 企業がBeFreeに支払う月額(円)
   talentAmount    Int? // BeFreeが人材に支払う月額(円)。差額(companyAmount - talentAmount)がBeFreeの取り分
-  status          String    @default("active") // active | paused | completed
+  status          String    @default("active") // proposed(企業が提案し人材の確認待ち) | active | paused | completed
   createdAt       DateTime  @default(now())
 
   outcomes EngagementOutcome[]
