@@ -68,8 +68,8 @@ async function RecordedMatches({ companyId, skillMapIds }) {
               <span className="admin-badge">
                 {m.status === "proposed" ? "提案中" : m.status === "accepted" ? "契約済み" : "見送り"}
               </span>
-              {m.status === "proposed" && m.companyReadyAt && m.talentReadyAt && (
-                <span className="admin-badge" style={{ color: COLORS.teal, marginLeft: 6 }}>双方合意済み・要対応</span>
+              {m.engagement?.status === "proposed" && (
+                <span className="admin-badge" style={{ color: COLORS.teal, marginLeft: 6 }}>契約提案中・人材の回答待ち</span>
               )}
             </td>
             <td>

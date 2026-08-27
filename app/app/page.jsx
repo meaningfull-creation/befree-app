@@ -1618,16 +1618,19 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
   const [sending, setSending] = useState(false);
   const [context, setContext] = useState(null);
   const [showContext, setShowContext] = useState(true);
-  const [readyStatus, setReadyStatus] = useState(null);
-  const [markingReady, setMarkingReady] = useState(false);
+  const [contractStatus, setContractStatus] = useState(null);
+  const [showProposeForm, setShowProposeForm] = useState(false);
+  const [proposeForm, setProposeForm] = useState({ monthlyHours: "10", companyAmount: "" });
+  const [proposing, setProposing] = useState(false);
+  const [responding, setResponding] = useState(false);
   const scrollRef = useRef(null);
   const pollRef = useRef(null);
 
-  const loadReadyStatus = async () => {
+  const loadContractStatus = async () => {
     try {
-      const res = await fetch(`/api/matches/${matchId}/ready`);
+      const res = await fetch(`/api/matches/${matchId}/contract`);
       const d = await res.json();
-      if (!d.error) setReadyStatus(d);
+      if (!d.error) setContractStatus(d);
     } catch (e) { /* ステータス取得の失敗は致命的ではないので無視 */ }
   };
 
@@ -1646,23 +1649,49 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
 
   useEffect(() => {
     load(false);
-    loadReadyStatus();
+    loadContractStatus();
     fetch(`/api/matches/${matchId}/context`).then((r) => r.json()).then((d) => { if (!d.error) setContext(d); }).catch(() => {});
-    pollRef.current = setInterval(() => { load(true); loadReadyStatus(); }, 5000);
+    pollRef.current = setInterval(() => { load(true); loadContractStatus(); }, 5000);
     return () => clearInterval(pollRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId]);
 
-  const markReady = async () => {
-    setMarkingReady(true);
+  const proposeContract = async () => {
+    setProposing(true);
+    setErrorMsg(null);
     try {
-      const res = await fetch(`/api/matches/${matchId}/ready`, { method: "POST" });
+      const res = await fetch(`/api/matches/${matchId}/propose-contract`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ monthlyHours: proposeForm.monthlyHours, companyAmount: proposeForm.companyAmount }),
+      });
       const d = await res.json();
-      if (!d.error) setReadyStatus((s) => ({ ...s, ...d }));
+      if (!res.ok) throw new Error(d.error);
+      setShowProposeForm(false);
+      await loadContractStatus();
     } catch (e) {
-      setErrorMsg("送信に失敗しました。");
+      setErrorMsg(e.message || "契約提案の送信に失敗しました。");
     } finally {
-      setMarkingReady(false);
+      setProposing(false);
+    }
+  };
+
+  const respondContract = async (accept) => {
+    setResponding(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch(`/api/matches/${matchId}/respond-contract`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accept }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error);
+      await loadContractStatus();
+    } catch (e) {
+      setErrorMsg(e.message || "回答の送信に失敗しました。");
+    } finally {
+      setResponding(false);
     }
   };
 
@@ -1692,40 +1721,87 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
       <button className="btn-ghost" onClick={onBack} style={{ marginBottom: 16 }}>← 戻る</button>
       <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 600, margin: "0 0 16px" }}>{counterpartName}とのメッセージ</h1>
 
-      {readyStatus && (() => {
-        const myReady = readyStatus.myRole === "company" ? readyStatus.companyReady : readyStatus.talentReady;
-        const counterpartReady = readyStatus.myRole === "company" ? readyStatus.talentReady : readyStatus.companyReady;
-        if (readyStatus.hasEngagement) {
+      {contractStatus && (() => {
+        const eng = contractStatus.engagement;
+        // 契約成立済み
+        if (eng?.status === "active" || eng?.status === "completed") {
           return (
             <div style={{ background: "rgba(27,58,99,0.08)", border: `1px solid ${COLORS.teal}`, borderRadius: 10, padding: "12px 16px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-              <span style={{ fontSize: 12.5, color: COLORS.text }}>契約が成立しています。プロジェクト画面で進捗を共有できます。</span>
-              {readyStatus.projectId && (
-                <a href={`/app/projects/${readyStatus.projectId}`} className="btn-ghost" style={{ fontSize: 12, padding: "6px 14px" }}>プロジェクトを見る →</a>
+              <span style={{ fontSize: 12.5, color: COLORS.text }}>
+                契約が成立しています(月{eng.monthlyHours}時間 / 月額¥{eng.companyAmount?.toLocaleString()})。プロジェクト画面で進捗を共有できます。
+              </span>
+              <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                <a href={`/app/contracts/${eng.id}`} className="btn-ghost" style={{ fontSize: 12, padding: "6px 14px" }}>契約内容確認書</a>
+                {contractStatus.projectId && (
+                  <a href={`/app/projects/${contractStatus.projectId}`} className="btn-ghost" style={{ fontSize: 12, padding: "6px 14px" }}>プロジェクトを見る →</a>
+                )}
+              </div>
+            </div>
+          );
+        }
+        // 提案中(人材の回答待ち)
+        if (eng?.status === "proposed") {
+          if (contractStatus.myRole === "talent") {
+            return (
+              <div style={{ background: "rgba(27,58,99,0.08)", border: `1px solid ${COLORS.teal}`, borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
+                <div style={{ fontSize: 12.5, color: COLORS.text, marginBottom: 10 }}>
+                  {counterpartName}さんから契約条件が届いています。月間稼働 <b>{eng.monthlyHours}時間</b> / 月額 <b>¥{eng.companyAmount?.toLocaleString()}</b>
+                  {eng.talentAmount ? <>(あなたの受取額の目安: ¥{eng.talentAmount.toLocaleString()})</> : null}
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className="btn-primary" onClick={() => respondContract(true)} disabled={responding} style={{ fontSize: 12.5, padding: "8px 16px" }}>
+                    {responding ? "送信中…" : "承諾する"}
+                  </button>
+                  <button className="btn-ghost" onClick={() => respondContract(false)} disabled={responding} style={{ fontSize: 12.5, padding: "8px 16px" }}>辞退する</button>
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
+              <span style={{ fontSize: 12.5, color: COLORS.muted }}>
+                契約条件を提案済みです(月間稼働 {eng.monthlyHours}時間 / 月額 ¥{eng.companyAmount?.toLocaleString()})。{counterpartName}さんの回答をお待ちください。
+              </span>
+            </div>
+          );
+        }
+        // まだ契約提案がない
+        if (contractStatus.myRole === "company") {
+          return (
+            <div style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
+              {!showProposeForm ? (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                  <span style={{ fontSize: 12.5, color: COLORS.muted }}>ある程度お話しが進んだら、契約条件を提案できます。</span>
+                  <button className="btn-ghost" onClick={() => setShowProposeForm(true)} style={{ fontSize: 12, padding: "6px 14px" }}>契約条件を提案する</button>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ fontSize: 12.5, color: COLORS.text, marginBottom: 10, fontWeight: 500 }}>契約条件を提案する</div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+                    <label style={{ fontSize: 12, color: COLORS.muted }}>
+                      月間稼働時間(h)
+                      <input className="field-input" type="number" min="1" value={proposeForm.monthlyHours} onChange={(e) => setProposeForm({ ...proposeForm, monthlyHours: e.target.value })} style={{ width: 90, marginLeft: 8, display: "inline-block" }} />
+                    </label>
+                    <label style={{ fontSize: 12, color: COLORS.muted }}>
+                      月額・企業支払額(円)
+                      <input className="field-input" type="number" min="1" placeholder="例: 300000" value={proposeForm.companyAmount} onChange={(e) => setProposeForm({ ...proposeForm, companyAmount: e.target.value })} style={{ width: 140, marginLeft: 8, display: "inline-block" }} />
+                    </label>
+                  </div>
+                  <p style={{ fontSize: 11, color: COLORS.faint, margin: "0 0 10px" }}>人材への支払額は、標準料率(企業支払額の60%)を目安に自動計算されます。契約種別は業務委託(準委任)です。</p>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button className="btn-primary" onClick={proposeContract} disabled={proposing || !proposeForm.companyAmount} style={{ fontSize: 12.5, padding: "8px 16px" }}>
+                      {proposing ? "送信中…" : "この内容で提案する"}
+                    </button>
+                    <button className="btn-ghost" onClick={() => setShowProposeForm(false)} style={{ fontSize: 12.5, padding: "8px 16px" }}>キャンセル</button>
+                  </div>
+                </div>
               )}
             </div>
           );
         }
-        if (readyStatus.bothReady) {
-          return (
-            <div style={{ background: "rgba(27,58,99,0.08)", border: `1px solid ${COLORS.teal}`, borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
-              <span style={{ fontSize: 12.5, color: COLORS.text }}>双方が契約に進みたい意向を示しています。運営が確認のうえ、契約手続きのご連絡をいたします。</span>
-            </div>
-          );
-        }
         return (
-          <div style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "12px 16px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-            <span style={{ fontSize: 12.5, color: COLORS.muted }}>
-              {myReady
-                ? "あなたは契約に進みたい意向を伝え済みです。相手の返答をお待ちください。"
-                : counterpartReady
-                ? "相手はすでに契約に進みたい意向を示しています。"
-                : "ある程度お話しが進んだら、契約に進みたい意向を伝えられます。"}
-            </span>
-            {!myReady && (
-              <button className="btn-ghost" onClick={markReady} disabled={markingReady} style={{ fontSize: 12, padding: "6px 14px", flexShrink: 0 }}>
-                {markingReady ? "送信中…" : "契約に進みたい"}
-              </button>
-            )}
+          <div style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
+            <span style={{ fontSize: 12.5, color: COLORS.muted }}>話が進むと、{counterpartName}さんから契約条件が提示されます。</span>
           </div>
         );
       })()}

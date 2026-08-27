@@ -2,15 +2,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { logError } from "@/lib/errorLog";
+import { sendEmail } from "@/lib/mailer";
+import { getSiteUrl } from "@/lib/siteUrl";
 
 const TOKEN_TTL_MS = 1000 * 60 * 60; // 1時間
 
 // POST /api/auth/forgot-password
 // body: { email }
 // 常に { ok: true } を返す(メールアドレスの存在有無を外部から推測させないため)。
-//
-// 注意: 現状メール送信サービスは未連携。リセットリンクはサーバーのコンソールログにのみ出力される。
-// 本番運用前に、Resend/SendGrid等のメールプロバイダを lib/mailer.js のような形で連携してください。
 export async function POST(req) {
   try {
     const { email } = await req.json();
@@ -28,8 +27,16 @@ export async function POST(req) {
       const token = await prisma.passwordResetToken.create({
         data: { userId: user.id, expiresAt: new Date(Date.now() + TOKEN_TTL_MS) },
       });
-      // TODO: 実際のメール送信に置き換える。現状はログ出力のみ。
-      console.log(`[password reset] ${email} -> /reset-password?token=${token.id} (1時間有効)`);
+      const resetUrl = `${getSiteUrl()}/reset-password?token=${token.id}`;
+      try {
+        await sendEmail({
+          to: email.trim(),
+          subject: "【BATTER BOX】パスワード再設定のご案内",
+          text: `パスワード再設定のリクエストを受け付けました。\n\n以下のリンクから、新しいパスワードを設定してください(1時間有効です)。\n${resetUrl}\n\n心当たりがない場合は、このメールを無視してください。`,
+        });
+      } catch (mailErr) {
+        console.error("failed to send password reset email:", mailErr.message);
+      }
     }
 
     return NextResponse.json({ ok: true });

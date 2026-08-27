@@ -15,6 +15,7 @@ async function getThreads(q) {
       companySkillMap: { include: { company: true } },
       talentSkillMap: { include: { talent: true } },
       messages: { orderBy: { createdAt: "desc" }, take: 1 },
+      engagement: true,
       _count: { select: { messages: true } },
     },
   });
@@ -26,7 +27,7 @@ async function getThreads(q) {
     messageCount: m._count.messages,
     lastMessage: m.messages[0] || null,
     matchStatus: m.status,
-    bothReady: !!m.companyReadyAt && !!m.talentReadyAt,
+    contractProposed: m.engagement?.status === "proposed",
   }));
 
   if (q) {
@@ -74,8 +75,8 @@ export default async function AdminMessagesPage({ searchParams }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
               <span style={{ fontSize: 14, fontWeight: 600 }}>{t.companyName} × {t.talentName}</span>
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                {t.bothReady && t.matchStatus === "proposed" && (
-                  <span className="admin-badge" style={{ color: COLORS.teal }}>双方合意済み・要対応</span>
+                {t.contractProposed && (
+                  <span className="admin-badge" style={{ color: COLORS.teal }}>契約提案中・人材の回答待ち</span>
                 )}
                 <span className="admin-badge">{STATUS_LABEL[t.matchStatus] || t.matchStatus}</span>
               </div>

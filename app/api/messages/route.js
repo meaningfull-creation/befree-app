@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getMatchIfAuthorized } from "@/lib/matchAccess";
+import { sendEmail } from "@/lib/mailer";
+import { getSiteUrl } from "@/lib/siteUrl";
 
 // GET /api/messages?matchId=...
 // 認証必須。呼び出し元がそのMatchの当事者(企業側/人材側/管理者)であることを確認してから返す。
@@ -51,6 +53,29 @@ export async function POST(req) {
     const message = await prisma.message.create({
       data: { matchId, senderId: user.id, senderRole: user.role, body: body.trim() },
     });
+
+    // 新着メッセージを、相手(受信側)の登録メールアドレスに通知する。
+    // 通知メールの送信に失敗しても、メッセージの送信自体は成功として扱う(致命的ではないため)。
+    try {
+      const isSenderCompany = user.role === "company";
+      const recipientUser = isSenderCompany
+        ? authorized.match.talentSkillMap.talent.user
+        : authorized.match.companySkillMap.company.user;
+      const senderName = isSenderCompany
+        ? authorized.match.companySkillMap.company.name
+        : authorized.match.talentSkillMap.talent.name;
+
+      if (recipientUser?.email) {
+        const preview = body.trim().length > 140 ? `${body.trim().slice(0, 140)}…` : body.trim();
+        await sendEmail({
+          to: recipientUser.email,
+          subject: `【BATTER BOX】${senderName}さんから新しいメッセージが届いています`,
+          text: `${senderName}さんから新しいメッセージが届いています。\n\n「${preview}」\n\nBATTER BOXにログインして返信する:\n${getSiteUrl()}/app`,
+        });
+      }
+    } catch (mailErr) {
+      console.error("failed to send message notification email:", mailErr.message);
+    }
 
     return NextResponse.json({ message: { id: message.id, senderRole: message.senderRole, body: message.body, createdAt: message.createdAt, mine: true } });
   } catch (e) {
