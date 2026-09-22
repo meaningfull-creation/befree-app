@@ -41,6 +41,9 @@ export async function POST(req) {
           role: t.title,
           industry: t.industry,
           years: t.years,
+          photoUpdatedAt: t.photoUpdatedAt, // 顔写真の有無(画像本体は /api/talents/[id]/photo から取得)
+          experiencedFunctions: t.experiencedFunctions || [],
+          workStyleTags: t.workStyleTags || [],
           axis: (sm.bottlenecks && sm.bottlenecks[0]) || "",
           bottleneckTags: sm.bottlenecks || [],
           reason: t.bio,

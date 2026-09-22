@@ -19,6 +19,8 @@ import {
   Clock,
   BadgeCheck,
   ChevronRight,
+  ChevronDown,
+  Wallet,
   Settings,
   ClipboardList,
   UserRound,
@@ -27,6 +29,7 @@ import {
 } from "lucide-react";
 import { AXES, TALENT_SCORE_RUBRIC } from "@/lib/axes";
 import { computeScoreDelta } from "@/lib/scoreDelta";
+import { DEFAULT_SCHEDULE } from "@/lib/paymentSchedule";
 import { COLORS, FONT_DISPLAY, FONT_BODY, FONT_MONO, GlobalStyle, TASK_STATUS_META, TASK_STATUS_ORDER } from "@/lib/theme";
 import { PROJECT_FLOW_STEPS, projectFlowStepIndex, projectStatusMeta, completionActionFor } from "@/lib/projectFlow";
 
@@ -117,13 +120,192 @@ export function ProgressRail({ step, steps, onStepClick }) {
   );
 }
 
+// 複数選択をプルダウン(アコーディオン)形式で行うコンポーネント。
+// 選択肢が多くタグを常時展開すると画面が縦に伸びるため、普段は「選択中の件数」だけを見せ、
+// クリックで開いて選ぶ方式にしている。開いた中身はチェックボックス付きの行。
+export function MultiSelectDropdown({ label, hint, options, selected, onChange, accent }) {
+  const [open, setOpen] = useState(false);
+  const values = selected || [];
+  const color = accent || COLORS.teal;
+  const labelOf = (o) => (typeof o === "string" ? o : o.label);
+  const valueOf = (o) => (typeof o === "string" ? o : o.value);
+  const toggle = (v) => onChange(values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
+  const summary = values.length === 0
+    ? "選択してください"
+    : options.filter((o) => values.includes(valueOf(o))).map(labelOf).join("、");
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <label className="field-label">{label}{hint ? <span style={{ color: COLORS.faint, fontWeight: 400 }}>({hint})</span> : null}</label>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", gap: 10, textAlign: "left",
+          background: COLORS.surfaceRaised, border: `1.5px solid ${open ? color : COLORS.border}`,
+          borderRadius: open ? "14px 14px 0 0" : 14, padding: "12px 14px", cursor: "pointer",
+          fontFamily: FONT_BODY, fontSize: 14, color: values.length ? COLORS.text : COLORS.faint,
+        }}
+      >
+        <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{summary}</span>
+        {values.length > 0 && (
+          <span style={{ flexShrink: 0, background: color, color: COLORS.onAccent, borderRadius: 999, fontSize: 11, fontWeight: 700, padding: "2px 8px", fontFamily: FONT_DISPLAY }}>
+            {values.length}
+          </span>
+        )}
+        <ChevronDown size={16} style={{ flexShrink: 0, color: COLORS.muted, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s ease" }} />
+      </button>
+      {open && (
+        <div className="fade-in" style={{ border: `1.5px solid ${color}`, borderTop: "none", borderRadius: "0 0 14px 14px", background: COLORS.surface, maxHeight: 260, overflowY: "auto" }}>
+          {options.map((o) => {
+            const v = valueOf(o);
+            const active = values.includes(v);
+            return (
+              <button
+                key={v}
+                type="button"
+                onClick={() => toggle(v)}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", gap: 10, textAlign: "left",
+                  background: active ? "rgba(244,105,25,0.07)" : "transparent", border: "none",
+                  borderBottom: `1px solid ${COLORS.border}`, padding: "11px 14px", cursor: "pointer",
+                  fontFamily: FONT_BODY, fontSize: 13.5, color: active ? COLORS.text : COLORS.muted,
+                }}
+              >
+                <span style={{
+                  width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                  border: `1.5px solid ${active ? color : COLORS.border}`, background: active ? color : COLORS.surface,
+                  color: COLORS.onAccent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700,
+                }}>
+                  {active ? "✓" : ""}
+                </span>
+                <span style={{ flex: 1 }}>{labelOf(o)}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 顔写真の登録・差し替え・削除。画像はDBに保存する(/api/talent/photo)。
+export function TalentPhotoField({ talentId, name, photoUpdatedAt, onChange }) {
+  const [busy, setBusy] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
+  const fileRef = useRef(null);
+
+  const upload = async (file) => {
+    if (!file) return;
+    setBusy(true);
+    setErrorMsg(null);
+    try {
+      const fd = new FormData();
+      fd.append("photo", file);
+      const res = await fetch("/api/talent/photo", { method: "POST", body: fd });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "アップロードに失敗しました");
+      onChange(d.photoUpdatedAt);
+    } catch (e) {
+      setErrorMsg(e.message);
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const remove = async () => {
+    if (!window.confirm("顔写真を削除しますか?")) return;
+    setBusy(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch("/api/talent/photo", { method: "DELETE" });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "削除に失敗しました");
+      onChange(null);
+    } catch (e) {
+      setErrorMsg(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <label className="field-label">顔写真</label>
+      <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+        <TalentAvatar talentId={talentId} name={name} photoUpdatedAt={photoUpdatedAt} size={76} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <label className="btn-ghost" style={{ fontSize: 12.5, padding: "8px 16px", cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.5 : 1 }}>
+              {busy ? "処理中…" : photoUpdatedAt ? "写真を変更" : "写真を登録"}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                disabled={busy}
+                style={{ display: "none" }}
+                onChange={(e) => upload(e.target.files?.[0])}
+              />
+            </label>
+            {photoUpdatedAt && (
+              <button type="button" className="btn-ghost" onClick={remove} disabled={busy} style={{ fontSize: 12.5, padding: "8px 16px" }}>削除</button>
+            )}
+          </div>
+          <div style={{ fontSize: 11, color: COLORS.faint, lineHeight: 1.6 }}>
+            JPEG・PNG・WebP / 3MBまで。<br />企業のマッチング候補一覧と詳細画面に表示されます(ログイン中の企業のみ閲覧可)。
+          </div>
+        </div>
+      </div>
+      <ErrorNote message={errorMsg} />
+    </div>
+  );
+}
+
+// 人材のアバター。顔写真が登録されていれば /api/talents/[id]/photo を表示し、
+// なければ従来どおり頭文字のプレースホルダーを出す。
+// photoUpdatedAt をクエリに付けて、差し替え直後に古い画像がキャッシュから出るのを防ぐ。
+export function TalentAvatar({ talentId, name, photoUpdatedAt, size = 46 }) {
+  const [failed, setFailed] = useState(false);
+  // 写真を差し替えたら、前回の読み込み失敗状態は破棄して再挑戦する
+  useEffect(() => { setFailed(false); }, [talentId, photoUpdatedAt]);
+  const base = {
+    width: size, height: size, borderRadius: "50%", flexShrink: 0,
+    border: `1px solid ${COLORS.border}`, overflow: "hidden",
+  };
+  if (talentId && photoUpdatedAt && !failed) {
+    return (
+      <img
+        src={`/api/talents/${talentId}/photo?v=${encodeURIComponent(photoUpdatedAt)}`}
+        alt={name ? `${name}さんの顔写真` : "顔写真"}
+        onError={() => setFailed(true)}
+        style={{ ...base, objectFit: "cover", display: "block", background: COLORS.surfaceRaised }}
+      />
+    );
+  }
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        ...base,
+        background: `linear-gradient(135deg, ${COLORS.tealDim}, ${COLORS.surfaceRaised})`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: Math.round(size * 0.33), color: COLORS.onAccent,
+      }}
+    >
+      {(name || "?")[0]}
+    </div>
+  );
+}
+
 export function Shell({ children, step, steps, headerRight, onStepClick, nav }) {
   return (
     <div className="app-root">
       <GlobalStyle />
       <header className="app-topbar">
         <div className="app-topbar-inner">
-          <img src="/logo.png" alt="BATTER BOX" style={{ height: 42, width: "auto" }} />
+          <img className="app-topbar-logo" src="/logo.png" alt="BATTER BOX" />
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>{headerRight}</div>
         </div>
       </header>
@@ -770,9 +952,7 @@ function StepTalentProposal({ companyScores, companyPhase, companyIndustry, onRe
         <button className="btn-ghost" onClick={() => setSelectedId(null)} style={{ marginBottom: 20 }}>← 候補一覧に戻る</button>
 
         <div style={{ display: "flex", gap: 18, alignItems: "center", marginBottom: 24 }}>
-          <div style={{ width: 56, height: 56, borderRadius: "50%", background: `linear-gradient(135deg, ${COLORS.tealDim}, ${COLORS.surfaceRaised})`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 19, flexShrink: 0, border: `1px solid ${COLORS.border}` }}>
-            {selected.name[0]}
-          </div>
+          <TalentAvatar talentId={selected.id} name={selected.name} photoUpdatedAt={selected.photoUpdatedAt} size={72} />
           <div>
             <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 19 }}>{selected.name}</div>
             <div style={{ fontSize: 13.5, color: COLORS.muted, marginTop: 2 }}>{selected.role}</div>
@@ -789,6 +969,28 @@ function StepTalentProposal({ companyScores, companyPhase, companyIndustry, onRe
             <span>主な業種経験: <span style={{ color: COLORS.text }}>{selected.industry || "—"}</span></span>
             <span>実務経験年数: <span style={{ color: COLORS.text }}>{selected.years || "—"}</span></span>
           </div>
+          {selected.experiencedFunctions?.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 6 }}>経験してきた機能領域</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {selected.experiencedFunctions.map((k) => (
+                  <span key={k} style={{ fontSize: 11.5, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "3px 9px", color: COLORS.muted }}>
+                    {AXES.find((a) => a.key === k)?.label || k}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {selected.workStyleTags?.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 6 }}>得意な働き方</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {selected.workStyleTags.map((tag) => (
+                  <span key={tag} style={{ fontSize: 11.5, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "3px 9px", color: COLORS.muted }}>{tag}</span>
+                ))}
+              </div>
+            </div>
+          )}
           {selected.reason && (
             <p style={{ fontSize: 13.5, lineHeight: 1.8, color: COLORS.text, margin: 0 }}>{selected.reason}</p>
           )}
@@ -862,9 +1064,7 @@ function StepTalentProposal({ companyScores, companyPhase, companyIndustry, onRe
               onClick={() => setSelectedId(t.id)}
               style={{ textAlign: "left", background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 22, display: "flex", gap: 18, alignItems: "center", cursor: "pointer", width: "100%" }}
             >
-              <div style={{ width: 46, height: 46, borderRadius: "50%", background: `linear-gradient(135deg, ${COLORS.tealDim}, ${COLORS.surfaceRaised})`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 15, flexShrink: 0, border: `1px solid ${COLORS.border}` }}>
-                {t.name[0]}
-              </div>
+              <TalentAvatar talentId={t.id} name={t.name} photoUpdatedAt={t.photoUpdatedAt} size={56} />
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                   <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 15.5, color: COLORS.text }}>{t.name}</span>
@@ -872,7 +1072,12 @@ function StepTalentProposal({ companyScores, companyPhase, companyIndustry, onRe
                     MATCH {t.match}%
                   </span>
                 </div>
-                <div style={{ fontSize: 13, color: COLORS.muted, margin: "3px 0 10px" }}>{t.role}{t.years ? ` ・ 実務経験${t.years}` : ""}</div>
+                <div style={{ fontSize: 13, color: COLORS.muted, margin: "3px 0 6px" }}>{t.role || "—"}</div>
+                {/* 経験(業種・年数)を一覧の時点で分かるようにする */}
+                <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 11.5, color: COLORS.muted, marginBottom: 10 }}>
+                  {t.years && <span>実務経験 <span style={{ color: COLORS.text, fontWeight: 600 }}>{t.years}</span></span>}
+                  {t.industry && <span>業種 <span style={{ color: COLORS.text, fontWeight: 600 }}>{t.industry}</span></span>}
+                </div>
                 {t.bottleneckTags && t.bottleneckTags.length > 0 && (
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {t.bottleneckTags.slice(0, 3).map((tag) => (
@@ -988,10 +1193,6 @@ export function StepTalentInput({ onNext, initialForm }) {
         }
   );
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
-  const toggleTag = (k, tag) => {
-    const current = form[k] || [];
-    setForm({ ...form, [k]: current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag] });
-  };
   const valid = form.name.trim().length > 0;
 
   return (
@@ -1047,69 +1248,33 @@ export function StepTalentInput({ onNext, initialForm }) {
             />
           )}
         </div>
-        <div style={{ marginBottom: 20 }}>
-          <label className="field-label">これまで経験してきた機能領域(複数選択可)</label>
-          <p style={{ fontSize: 11.5, color: COLORS.faint, margin: "0 0 10px" }}>選んだ領域は、スキルスコアの精度を上げるために使われます。経験していない領域は選ばないでください。</p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {AXES.map((a) => {
-              const active = (form.experiencedFunctions || []).includes(a.key);
-              return (
-                <button
-                  key={a.key} type="button" onClick={() => toggleTag("experiencedFunctions", a.key)}
-                  style={{
-                    fontSize: 12.5, padding: "7px 14px", borderRadius: 999, cursor: "pointer",
-                    border: `1px solid ${active ? COLORS.teal : COLORS.border}`,
-                    background: active ? COLORS.teal : COLORS.surfaceRaised,
-                    color: active ? COLORS.onAccent : COLORS.muted,
-                  }}
-                >
-                  {a.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        <div style={{ marginBottom: 20 }}>
-          <label className="field-label">得意な働き方(複数選択可)</label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {WORK_STYLE_OPTIONS.map((tag) => {
-              const active = (form.workStyleTags || []).includes(tag);
-              return (
-                <button
-                  key={tag} type="button" onClick={() => toggleTag("workStyleTags", tag)}
-                  style={{
-                    fontSize: 12.5, padding: "7px 14px", borderRadius: 999, cursor: "pointer",
-                    border: `1px solid ${active ? COLORS.amber : COLORS.border}`,
-                    background: active ? "rgba(27,58,99,0.12)" : COLORS.surfaceRaised,
-                    color: active ? COLORS.amber : COLORS.muted,
-                  }}
-                >
-                  {tag}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <p style={{ fontSize: 11.5, color: COLORS.faint, margin: "0 0 10px" }}>経験してきた機能領域は、スキルスコアの精度を上げるために使われます。経験していない領域は選ばないでください。</p>
+        <MultiSelectDropdown
+          label="これまで経験してきた機能領域"
+          hint="複数選択可"
+          options={AXES.map((a) => ({ value: a.key, label: a.label }))}
+          selected={form.experiencedFunctions || []}
+          onChange={(v) => setForm({ ...form, experiencedFunctions: v })}
+        />
+        <MultiSelectDropdown
+          label="得意な働き方"
+          hint="複数選択可"
+          options={WORK_STYLE_OPTIONS}
+          selected={form.workStyleTags || []}
+          onChange={(v) => setForm({ ...form, workStyleTags: v })}
+          accent={COLORS.amber}
+        />
         <div style={{ marginBottom: 20 }}>
           <label className="field-label">職務経歴・プロジェクト実績(任意)</label>
           <textarea className="field-input" rows={4} placeholder="例: 大手人材会社にて採用〜組織開発を10年担当。急拡大期の新卒・中途採用基準の設計と定着施策を主導…" style={{ resize: "vertical", fontFamily: FONT_BODY, lineHeight: 1.6 }} value={form.summary} onChange={set("summary")} />
         </div>
-        <div style={{ marginBottom: 12 }}>
-          <label className="field-label">大切にしている価値観(複数選択可)</label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
-            {VALUE_OPTIONS.map((tag) => {
-              const active = (form.valueTags || []).includes(tag);
-              return (
-                <button
-                  key={tag} type="button" onClick={() => toggleTag("valueTags", tag)}
-                  style={{ fontSize: 12.5, padding: "7px 14px", borderRadius: 999, cursor: "pointer", border: `1px solid ${active ? COLORS.teal : COLORS.border}`, background: active ? COLORS.teal : COLORS.surfaceRaised, color: active ? COLORS.onAccent : COLORS.muted }}
-                >
-                  {tag}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <MultiSelectDropdown
+          label="大切にしている価値観"
+          hint="複数選択可"
+          options={VALUE_OPTIONS}
+          selected={form.valueTags || []}
+          onChange={(v) => setForm({ ...form, valueTags: v })}
+        />
         <div>
           <label className="field-label">その他、大切にしていること(任意・自由記述)</label>
           <textarea className="field-input" rows={2} placeholder="例: スピードよりも、まず現場の話を聞いて型を作ることを大事にしている" style={{ resize: "vertical", fontFamily: FONT_BODY, lineHeight: 1.6 }} value={form.values} onChange={set("values")} />
@@ -1801,6 +1966,10 @@ function ProjectCompletionPanel({ project, myRole, tasks, onAction }) {
 
   // 完了済み
   if (available === "none" && (project.completedAt || project.status === "completed")) {
+    const pay = project.payment || {};
+    const isTalent = myRole === "talent";
+    const dueDate = isTalent ? pay.talentPayoutDate : pay.companyDueDate;
+    const amount = isTalent ? pay.talentAmount : pay.companyAmount;
     return (
       <div style={{ ...box, borderColor: COLORS.success, background: COLORS.successBg }}>
         <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14.5, color: COLORS.successDim, marginBottom: 6 }}>✓ 契約完了</div>
@@ -1808,6 +1977,27 @@ function ProjectCompletionPanel({ project, myRole, tasks, onAction }) {
           {project.completedAt ? `${new Date(project.completedAt).toLocaleDateString("ja-JP")}に企業が完了を承認しました。` : "このプロジェクトは完了しています。"}
           {myRole === "company" && " お相手への評価がまだの場合は、下の「実務経験者の評価」からご記入ください。"}
         </div>
+        {dueDate && (
+          <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.success}`, borderRadius: 10, padding: "14px 16px", marginTop: 12 }}>
+            <div style={{ fontSize: 11.5, color: COLORS.muted, marginBottom: 4 }}>{isTalent ? "入金予定日" : "お支払い期日"}</div>
+            <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 21, color: COLORS.successDim }}>
+              {new Date(dueDate).toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric" })}
+            </div>
+            {amount != null && (
+              <div style={{ fontSize: 13, color: COLORS.text, marginTop: 4 }}>
+                {isTalent ? "受取額" : "お支払い額"} <span style={{ fontFamily: FONT_MONO, fontWeight: 600 }}>{amount.toLocaleString()}円</span>
+                <span style={{ color: COLORS.faint, fontSize: 11.5 }}>(月額)</span>
+              </div>
+            )}
+            <div style={{ fontSize: 11, color: COLORS.faint, marginTop: 6, lineHeight: 1.7 }}>
+              {pay.closingDate ? `${new Date(pay.closingDate).toLocaleDateString("ja-JP", { year: "numeric", month: "long" })}締め。` : ""}
+              {isTalent
+                ? "企業からのご入金を確認のうえ、BATTER BOXよりお振り込みします。"
+                : "BATTER BOXより請求書をお送りします。"}
+              土日に当たる場合は前営業日となります(祝日は考慮していません)。
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -2668,10 +2858,6 @@ function ProfileFieldsTalent({ initial, onSaved }) {
   const [status, setStatus] = useState("idle");
   const [errorMsg, setErrorMsg] = useState(null);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
-  const toggleTag = (k, tag) => {
-    const current = form[k] || [];
-    setForm({ ...form, [k]: current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag] });
-  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -2724,58 +2910,32 @@ function ProfileFieldsTalent({ initial, onSaved }) {
           </select>
         </div>
       </div>
-      <div style={{ marginBottom: 16 }}>
-        <label className="field-label">これまで経験してきた機能領域(複数選択可)</label>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {AXES.map((a) => {
-            const active = (form.experiencedFunctions || []).includes(a.key);
-            return (
-              <button
-                key={a.key} type="button" onClick={() => toggleTag("experiencedFunctions", a.key)}
-                style={{ fontSize: 12, padding: "6px 12px", borderRadius: 999, cursor: "pointer", border: `1px solid ${active ? COLORS.teal : COLORS.border}`, background: active ? COLORS.teal : COLORS.surfaceRaised, color: active ? COLORS.onAccent : COLORS.muted }}
-              >
-                {a.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      <div style={{ marginBottom: 16 }}>
-        <label className="field-label">得意な働き方(複数選択可)</label>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {WORK_STYLE_OPTIONS.map((tag) => {
-            const active = (form.workStyleTags || []).includes(tag);
-            return (
-              <button
-                key={tag} type="button" onClick={() => toggleTag("workStyleTags", tag)}
-                style={{ fontSize: 12, padding: "6px 12px", borderRadius: 999, cursor: "pointer", border: `1px solid ${active ? COLORS.amber : COLORS.border}`, background: active ? "rgba(27,58,99,0.12)" : COLORS.surfaceRaised, color: active ? COLORS.amber : COLORS.muted }}
-              >
-                {tag}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <MultiSelectDropdown
+        label="これまで経験してきた機能領域"
+        hint="複数選択可"
+        options={AXES.map((a) => ({ value: a.key, label: a.label }))}
+        selected={form.experiencedFunctions || []}
+        onChange={(v) => setForm({ ...form, experiencedFunctions: v })}
+      />
+      <MultiSelectDropdown
+        label="得意な働き方"
+        hint="複数選択可"
+        options={WORK_STYLE_OPTIONS}
+        selected={form.workStyleTags || []}
+        onChange={(v) => setForm({ ...form, workStyleTags: v })}
+        accent={COLORS.amber}
+      />
       <div style={{ marginBottom: 16 }}>
         <label className="field-label">自己紹介・実績</label>
         <textarea className="field-input" rows={4} style={{ resize: "vertical", fontFamily: "inherit", lineHeight: 1.6 }} value={form.bio || ""} onChange={set("bio")} />
       </div>
-      <div style={{ marginBottom: 16 }}>
-        <label className="field-label">大切にしている価値観(複数選択可)</label>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {VALUE_OPTIONS.map((tag) => {
-            const active = (form.valueTags || []).includes(tag);
-            return (
-              <button
-                key={tag} type="button" onClick={() => toggleTag("valueTags", tag)}
-                style={{ fontSize: 12, padding: "6px 12px", borderRadius: 999, cursor: "pointer", border: `1px solid ${active ? COLORS.teal : COLORS.border}`, background: active ? COLORS.teal : COLORS.surfaceRaised, color: active ? COLORS.onAccent : COLORS.muted }}
-              >
-                {tag}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <MultiSelectDropdown
+        label="大切にしている価値観"
+        hint="複数選択可"
+        options={VALUE_OPTIONS}
+        selected={form.valueTags || []}
+        onChange={(v) => setForm({ ...form, valueTags: v })}
+      />
       <div>
         <label className="field-label">その他、大切にしていること(任意・自由記述)</label>
         <textarea className="field-input" rows={2} style={{ resize: "vertical", fontFamily: "inherit", lineHeight: 1.6 }} value={form.values || ""} onChange={set("values")} />
@@ -3717,7 +3877,156 @@ function TalentDashboard({ onOpenProjects, onOpenProjectDetail, onBack }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// 入出金 — 企業は「いつ・いくら支払うか」、人材は「いつ・いくら入金されるか」を月次で確認する。
+// 金額は契約条件(Engagement)から算出した予定値で、運営が請求書/支払いを発行済みの月は
+// その確定値とステータスを表示する(lib/paymentSchedule.js)。
+// ---------------------------------------------------------------------------
+const INVOICE_STATUS_LABEL = { draft: "準備中", sent: "請求済み", paid: "入金済み" };
+const PAYOUT_STATUS_LABEL = { draft: "準備中", scheduled: "支払予定", paid: "支払済み" };
+
+function PaymentStatusBadge({ status, isForecast, isCompany }) {
+  const label = isForecast
+    ? "予定"
+    : (isCompany ? INVOICE_STATUS_LABEL : PAYOUT_STATUS_LABEL)[status] || status;
+  const paid = status === "paid";
+  return (
+    <span style={{
+      fontSize: 11, fontFamily: FONT_DISPLAY, fontWeight: 700, borderRadius: 999, padding: "3px 10px", whiteSpace: "nowrap",
+      background: paid ? COLORS.success : isForecast ? COLORS.surface : "#FFF3EA",
+      color: paid ? COLORS.onAccent : isForecast ? COLORS.muted : COLORS.tealDim,
+      border: `1.5px solid ${paid ? COLORS.success : isForecast ? COLORS.border : COLORS.teal}`,
+    }}>
+      {label}
+    </span>
+  );
+}
+
+function PaymentsView({ mode, onBack, onOpenProjectDetail }) {
+  const [data, setData] = useState(viewCache.payments || null);
+  const [errorMsg, setErrorMsg] = useState(null);
+  const isCompany = mode === "company";
+
+  useEffect(() => {
+    fetch("/api/payments")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.error) throw new Error(d.error);
+        viewCache.payments = d;
+        setData(d);
+      })
+      .catch(() => { if (!viewCache.payments) setErrorMsg("入出金の予定を取得できませんでした。"); });
+  }, []);
+
+  const fmtDate = (d) => new Date(d).toLocaleDateString("ja-JP", { year: "numeric", month: "numeric", day: "numeric" });
+  const sectionStyle = { background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 20, marginBottom: 16 };
+
+  // 直近の支払い/入金予定(未確定=予定の行のうち、期日が一番近いもの)
+  const nextRow = (() => {
+    if (!data) return null;
+    const all = data.contracts.flatMap((c) => c.rows.filter((r) => r.status !== "paid").map((r) => ({ ...r, c })));
+    if (!all.length) return null;
+    return all.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))[0];
+  })();
+
+  return (
+    <div className="fade-in">
+      <button className="btn-ghost" onClick={onBack} style={{ marginBottom: 16 }}>← 戻る</button>
+      <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 700, margin: "0 0 6px" }}>{isCompany ? "お支払い" : "入金予定"}</h1>
+      <p style={{ color: COLORS.muted, fontSize: 13, margin: "0 0 20px", lineHeight: 1.8 }}>
+        {isCompany
+          ? "成立した契約ごとに、いつ・いくらお支払いいただくかを月単位で表示します。金額は契約条件にもとづく予定額で、請求書が発行済みの月はその金額が確定値です。"
+          : "成立した契約ごとに、いつ・いくら入金されるかを月単位で表示します。表示は契約条件にもとづく予定額です。"}
+      </p>
+
+      <ErrorNote message={errorMsg} onRetry={() => window.location.reload()} />
+      {!data && !errorMsg && <div style={{ color: COLORS.muted, fontSize: 13 }}>読み込み中…</div>}
+
+      {data && data.contracts.length === 0 && (
+        <div style={{ ...sectionStyle, color: COLORS.muted, fontSize: 13 }}>
+          まだ成立した契約がありません。契約が成立すると、ここに{isCompany ? "お支払い" : "入金"}の予定が表示されます。
+        </div>
+      )}
+
+      {nextRow && (
+        <div style={{ ...sectionStyle, borderColor: COLORS.teal, borderWidth: 2 }}>
+          <div style={{ fontSize: 11.5, color: COLORS.muted, marginBottom: 4 }}>次の{isCompany ? "お支払い" : "ご入金"}</div>
+          <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 24, color: COLORS.tealDim }}>{fmtDate(nextRow.dueDate)}</div>
+          <div style={{ fontSize: 13.5, color: COLORS.text, marginTop: 4 }}>
+            {nextRow.amount != null ? <span style={{ fontFamily: FONT_MONO, fontWeight: 600 }}>{nextRow.amount.toLocaleString()}円</span> : "金額未設定"}
+            <span style={{ color: COLORS.muted, fontSize: 12 }}> ・ {nextRow.periodLabel} ・ {nextRow.c.counterpartName}</span>
+          </div>
+        </div>
+      )}
+
+      {data && data.contracts.map((c) => (
+        <div key={c.engagementId} style={sectionStyle}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
+            <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14.5 }}>{c.projectName || c.counterpartName}</div>
+            <span style={{ fontSize: 11.5, color: COLORS.muted }}>
+              {c.status === "completed" ? "契約完了" : c.status === "paused" ? "一時停止" : "契約中"}
+            </span>
+          </div>
+          <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 14 }}>
+            {c.counterpartName}
+            {c.monthlyHours ? ` ・ 月${c.monthlyHours}時間` : ""}
+            {c.monthlyAmount != null ? ` ・ 月額${c.monthlyAmount.toLocaleString()}円` : ""}
+            {c.startDate ? ` ・ ${fmtDate(c.startDate)}開始` : ""}
+          </div>
+
+          {c.rows.length === 0 ? (
+            <div style={{ fontSize: 12.5, color: COLORS.faint }}>まだ対象期間がありません。</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {c.rows.map((r) => (
+                <div
+                  key={r.periodLabel}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
+                    background: r.isCurrentMonth ? "#FFF9F5" : COLORS.surfaceRaised,
+                    border: `1px solid ${r.isCurrentMonth ? COLORS.teal : COLORS.border}`,
+                    borderRadius: 10, padding: "11px 14px",
+                  }}
+                >
+                  <span style={{ fontSize: 12.5, fontWeight: 600, minWidth: 92 }}>{r.periodLabel}</span>
+                  <span style={{ fontSize: 12, color: COLORS.muted, minWidth: 150 }}>
+                    {isCompany ? "支払期日" : "入金予定日"} <span style={{ color: COLORS.text, fontWeight: 600 }}>{fmtDate(r.dueDate)}</span>
+                  </span>
+                  <span style={{ fontFamily: FONT_MONO, fontSize: 13, fontWeight: 600, marginLeft: "auto" }}>
+                    {r.amount != null ? `${r.amount.toLocaleString()}円` : "—"}
+                  </span>
+                  <PaymentStatusBadge status={r.status} isForecast={r.isForecast} isCompany={isCompany} />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {c.projectId && (
+            <button className="btn-ghost" onClick={() => onOpenProjectDetail(c.projectId)} style={{ fontSize: 12, padding: "7px 16px", marginTop: 12 }}>
+              プロジェクトを開く
+            </button>
+          )}
+        </div>
+      ))}
+
+      {data && data.contracts.length > 0 && (
+        <div style={{ fontSize: 11.5, color: COLORS.faint, lineHeight: 1.9, marginTop: 4 }}>
+          ※ 月末締め。{isCompany
+            ? `お支払い期日は締め日の翌月末（締め日から${DEFAULT_SCHEDULE.companyDueMonthOffset}ヶ月後の末日）です。`
+            : `入金日は締め日の翌々月${DEFAULT_SCHEDULE.talentPayoutDay}日（企業からのご入金を確認のうえお振り込みします）です。`}
+          期日が土日に当たる場合は前営業日となります（祝日は考慮していません）。<br />
+          ※「予定」と表示されている月は、運営が請求書{isCompany ? "" : "・支払い"}を発行する前の概算です。実際の金額・期日は発行時に確定します。
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SettingsView({ mode, user, profile, onBack, onProfileSaved }) {
+  // 顔写真は /api/talent/photo で個別に保存するため、プロフィールフォームとは別に状態を持つ
+  const [photoUpdatedAt, setPhotoUpdatedAt] = useState(profile.data?.photoUpdatedAt || null);
+  useEffect(() => { setPhotoUpdatedAt(profile.data?.photoUpdatedAt || null); }, [profile.data?.photoUpdatedAt]);
+
   return (
     <div className="fade-in">
       <button className="btn-ghost" onClick={onBack} style={{ marginBottom: 16 }}>← 戻る</button>
@@ -3726,7 +4035,15 @@ function SettingsView({ mode, user, profile, onBack, onProfileSaved }) {
         mode === "company" ? (
           <ProfileFieldsCompany initial={profile.data?.companyForm} onSaved={onProfileSaved} />
         ) : (
-          <ProfileFieldsTalent initial={profile.data?.talentForm} onSaved={onProfileSaved} />
+          <>
+            <TalentPhotoField
+              talentId={profile.data?.talentId || user.talentId}
+              name={profile.data?.talentForm?.name}
+              photoUpdatedAt={photoUpdatedAt}
+              onChange={setPhotoUpdatedAt}
+            />
+            <ProfileFieldsTalent initial={profile.data?.talentForm} onSaved={onProfileSaved} />
+          </>
         )
       ) : (
         <div style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 20, marginBottom: 20, fontSize: 13, color: COLORS.muted }}>
@@ -3832,6 +4149,7 @@ export default function Home() {
   const openSettings = () => setView("settings");
   const openCompare = () => setView("compare");
   const openProjects = () => setView("projects");
+  const openPayments = () => setView("payments");
   const openProjectDetail = (id) => { setActiveProjectId(id); setView("projectDetail"); };
   const handleProfileSaved = (form) => {
     setProfile((p) => ({
@@ -3883,6 +4201,8 @@ export default function Home() {
     { key: "inbox", label: "メッセージ", Icon: Send, onClick: openInbox, badge: unreadCount },
     ...(profile.data?.hasData ? [{ key: "dashboard", label: "ダッシュボード", Icon: LayoutDashboard, onClick: openDashboard }] : []),
     { key: "projects", label: "プロジェクト", Icon: ClipboardList, onClick: openProjects },
+    // 企業は「いつ支払うか」、人材は「いつ入金されるか」。同じ画面をロール別の見出しで出す。
+    { key: "payments", label: mode === "company" ? "お支払い" : "入金予定", Icon: Wallet, onClick: openPayments },
     { key: "settings", label: "設定", Icon: Settings, onClick: openSettings },
   ].map((item) => ({ ...item, active: item.key === activeNavKey }));
   const logout = async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/login"; };
@@ -3931,6 +4251,14 @@ export default function Home() {
     return (
       <Shell step={step} steps={null} headerRight={headerRight} nav={navItems}>
         <SettingsView mode={mode} user={authState.user} profile={profile} onBack={backHome} onProfileSaved={handleProfileSaved} />
+      </Shell>
+    );
+  }
+
+  if (view === "payments") {
+    return (
+      <Shell step={step} steps={null} headerRight={headerRight} nav={navItems}>
+        <PaymentsView mode={mode} onBack={backHome} onOpenProjectDetail={openProjectDetail} />
       </Shell>
     );
   }

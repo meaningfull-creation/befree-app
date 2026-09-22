@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getProjectIfAuthorized } from "@/lib/projectAccess";
 import { AXES } from "@/lib/axes";
+import { scheduleFor } from "@/lib/paymentSchedule";
 
 const AXIS_LABEL_BY_KEY = Object.fromEntries(AXES.map((a) => [a.key, a.label]));
 
@@ -62,6 +63,9 @@ export async function GET(req, { params }) {
       completionNote: project.completionNote,
       completionRejectedAt: project.completionRejectedAt,
       completedAt: project.completedAt,
+      // 完了承認後の入出金予定(lib/paymentSchedule.js の既定ルールで算出)。
+      // 人材には企業の支払額(手数料込み)を見せない方針(v4.9)に合わせ、金額の出し分けもここで行う。
+      payment: buildPaymentInfo(project, myRole),
     },
     myRole,
     companyInfo,
@@ -70,6 +74,22 @@ export async function GET(req, { params }) {
     workLogs,
     comments,
   });
+}
+
+// 完了承認後に表示する入出金予定。未完了の場合も、契約条件から「完了した場合の目安」を返す。
+function buildPaymentInfo(project, myRole) {
+  const e = project.engagement;
+  const anchor = project.completedAt || null;
+  const s = anchor ? scheduleFor(anchor) : null;
+  return {
+    monthlyHours: e.monthlyHours,
+    // 人材には talentAmount のみ。企業・管理者は両方見られる。
+    talentAmount: e.talentAmount,
+    companyAmount: myRole === "talent" ? null : e.companyAmount,
+    closingDate: s ? s.closingDate : null,
+    companyDueDate: s ? s.companyDueDate : null,
+    talentPayoutDate: s ? s.talentPayoutDate : null,
+  };
 }
 
 // PATCH /api/projects/[id]

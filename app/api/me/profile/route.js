@@ -52,6 +52,8 @@ export async function GET() {
     return NextResponse.json({
       role: "talent",
       hasData: true,
+      talentId: talent.id,
+      photoUpdatedAt: talent.photoUpdatedAt, // 顔写真の有無と、差し替え時のキャッシュ破棄に使う
       talentForm: {
         name: talent.name,
         title: talent.title,

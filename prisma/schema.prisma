@@ -77,11 +77,26 @@ model Talent {
   values               String? // 仕事において大切にしていること・価値観(自由記述の補足)
   status               String   @default("approved") // pending | approved | rejected — 現段階では運用負荷を下げるため新規登録時は自動承認とし、
                                                         // 承認/却下は管理画面から必要な時だけ手動で行う運用にしている(却下されたマッチング候補には表示されない)
+  photoUpdatedAt       DateTime? // 顔写真の最終更新日時。存在判定とキャッシュ制御に使う(画像の実体はTalentPhoto)
   createdAt            DateTime @default(now())
 
   skillMaps TalentSkillMap[]
   capacity  Capacity?
   user      User?
+  photo     TalentPhoto?
+}
+
+// 人材の顔写真。Talent本体にBytesを持たせると、マッチング等の一覧取得(findMany)のたびに
+// 画像データまで読み込んでしまうため別テーブルに分けている。
+// 外部ストレージを使わずDB(bytea)に保存する方針はWorkLogAttachmentと同じ(ベータ規模向け)。
+model TalentPhoto {
+  id          String   @id @default(uuid())
+  talentId    String   @unique
+  talent      Talent   @relation(fields: [talentId], references: [id])
+  contentType String
+  size        Int
+  data        Bytes
+  updatedAt   DateTime @updatedAt
 }
 
 // 人材のスキルマップ。経歴入力・更新のたびに新規作成(0〜30点、高いほど強み)。

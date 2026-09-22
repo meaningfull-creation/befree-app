@@ -64,7 +64,10 @@ export function GlobalStyle() {
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
       * { box-sizing: border-box; }
-      .app-root { font-family: ${FONT_BODY}; background: ${COLORS.bg}; color: ${COLORS.text}; min-height: 100vh; width: 100%; position: relative; overflow-x: hidden; }
+      .app-root { font-family: ${FONT_BODY}; background: ${COLORS.bg}; color: ${COLORS.text}; min-height: 100vh; width: 100%; position: relative;
+        /* clip はスクロールコンテナを作らないため、ヘッダーの position:sticky が効く。
+           未対応ブラウザは直前の hidden にフォールバックする(その場合ヘッダーは固定されない) */
+        overflow-x: hidden; overflow-x: clip; }
       .app-root::before {
         content: ""; position: absolute; inset: 0;
         background: radial-gradient(ellipse 900px 500px at 15% -10%, rgba(244,105,25,0.07), transparent 60%),
@@ -88,6 +91,25 @@ export function GlobalStyle() {
       *:focus-visible { outline: 2px solid ${COLORS.teal}; outline-offset: 2px; }
       ::selection { background: rgba(244,105,25,0.18); }
       .two-col { grid-template-columns: 1fr 1fr; }
+      /* アプリ画面のヘッダー。ロゴを左上・操作を右上に固定表示する(スクロールしても常に見える) */
+      .app-topbar {
+        position: sticky; top: 0; z-index: 50;
+        background: rgba(255,255,255,0.92);
+        backdrop-filter: saturate(180%) blur(10px);
+        -webkit-backdrop-filter: saturate(180%) blur(10px);
+        border-bottom: 1px solid ${COLORS.border};
+        padding-top: env(safe-area-inset-top);
+      }
+      .app-topbar-inner {
+        display: flex; align-items: center; gap: 12px;
+        max-width: 880px; margin: 0 auto;
+        padding: 10px max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
+      }
+      .app-topbar-logo { height: 42px; width: auto; display: block; }
+      @media (max-width: 720px) {
+        .app-topbar-inner { padding-top: 8px; padding-bottom: 8px; }
+        .app-topbar-logo { height: 32px; }
+      }
       /* 契約の進行フロー(契約成立→実行中→完了報告→企業が確認→契約完了)のステッパー */
       .flow-steps { display: flex; align-items: flex-start; }
       .flow-step { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; }
@@ -117,6 +139,10 @@ export function GlobalStyle() {
         }
         .bottom-nav button .bn-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         .bottom-nav button.active { color: ${COLORS.teal}; font-weight: 700; }
+      }
+      /* 下部タブが6項目になったため、狭い画面ではラベルを一段小さくして収まりを良くする */
+      @media (max-width: 400px) {
+        .bottom-nav button { font-size: 9px; padding: 6px 1px; }
       }
       @media (max-width: 620px) {
         .two-col { grid-template-columns: 1fr !important; }
