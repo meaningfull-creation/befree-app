@@ -4,6 +4,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { getMatchIfAuthorized } from "@/lib/matchAccess";
 import { standardTalentAmount } from "@/lib/pricing";
 import { logAudit } from "@/lib/auditLog";
+import { sendEmail } from "@/lib/mailer";
+import { getSiteUrl } from "@/lib/siteUrl";
 
 // POST /api/matches/[matchId]/propose-contract
 // 認証必須(role=company、そのマッチングの企業側当事者のみ)。
@@ -50,6 +52,20 @@ export async function POST(req, { params }) {
     targetId: engagement.id,
     metadata: { matchId: params.matchId, monthlyHours: hours, companyAmount: cAmount, talentAmount: tAmount },
   });
+
+  // 提案を受け取る人材へメール通知する。送信に失敗しても提案自体は成立済みなので処理は継続する。
+  try {
+    const talentUser = authorized.match.talentSkillMap.talent.user;
+    if (talentUser?.email) {
+      await sendEmail({
+        to: talentUser.email,
+        subject: `【BATTER BOX】${authorized.match.companySkillMap.company.name}さんから契約条件の提案が届いています`,
+        text: `${authorized.match.companySkillMap.company.name}さんから、以下の条件で契約の提案が届いています。\n\n月間稼働時間: ${hours}時間\n月額報酬(目安): ¥${tAmount.toLocaleString()}\n\nBATTER BOXにログインして内容を確認する:\n${getSiteUrl()}/app`,
+      });
+    }
+  } catch (mailErr) {
+    console.error("failed to send contract proposal email:", mailErr.message);
+  }
 
   return NextResponse.json({ ok: true, engagement: { status: engagement.status, monthlyHours: engagement.monthlyHours, companyAmount: engagement.companyAmount, talentAmount: engagement.talentAmount } });
 }

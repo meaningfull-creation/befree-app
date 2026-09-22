@@ -6,6 +6,9 @@ import { AXES } from "@/lib/axes";
 import { logError } from "@/lib/errorLog";
 import { buildDialogSystemPrompt, buildAxisDeepDivePrompt, buildAxisDeepDiveSummaryPrompt } from "@/lib/dialoguePrompts";
 
+// AI呼び出しを含むため、Vercelの関数タイムアウトに余裕を持たせる
+export const maxDuration = 60;
+
 const MAX_DEEP_DIVE_TURNS = 3; // 深掘りは短く3問まで
 const AXIS_LABEL_BY_KEY = Object.fromEntries(AXES.map((a) => [a.key, a.label]));
 
@@ -26,7 +29,8 @@ export async function POST(req) {
       const result = await callClaudeJSON(
         buildDialogSystemPrompt(),
         buildAxisDeepDivePrompt(companyForm, axisLabel, currentNote, history),
-        600
+        600,
+        { fast: true }
       );
       return NextResponse.json({
         done: false,
@@ -39,7 +43,8 @@ export async function POST(req) {
     const result = await callClaudeJSON(
       buildDialogSystemPrompt(),
       buildAxisDeepDiveSummaryPrompt(companyForm, axisLabel, currentScore, currentNote, history),
-      500
+      500,
+      { fast: true }
     );
     const newScore = Number.isFinite(Number(result.score)) ? Math.max(0, Math.min(100, Math.round(Number(result.score)))) : currentScore;
     const newNote = typeof result.note === "string" ? result.note.slice(0, 300) : currentNote;

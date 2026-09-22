@@ -5,6 +5,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { logError } from "@/lib/errorLog";
 import { buildDialogSystemPrompt, buildDialogNextQuestionPrompt } from "@/lib/dialoguePrompts";
 
+// AI呼び出しを含むため、Vercelの関数タイムアウトに余裕を持たせる
+export const maxDuration = 60;
+
 // POST /api/diagnosis/start
 // 認証は必須ではない。ログイン前の訪問者でも診断を始められるようにするため
 // (アカウント作成は診断結果が出た後にまとめて行う設計 — /api/diagnosis/claim 参照)。
@@ -24,7 +27,8 @@ export async function POST(req) {
     const result = await callClaudeJSON(
       buildDialogSystemPrompt(),
       buildDialogNextQuestionPrompt(companyForm, []),
-      700 // 質問1問分の小さな応答。体感速度を上げるため小さめに絞る
+      700, // 質問1問分の小さな応答。体感速度を上げるため小さめに絞る
+      { fast: true } // 対話の1問は高速モデルで返し、体感速度を優先する
     );
 
     // 診断開始時点でCompanyレコードを作成/更新し、対話セッション(DiagnosisSession)と

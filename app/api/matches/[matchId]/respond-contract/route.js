@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getMatchIfAuthorized } from "@/lib/matchAccess";
 import { logAudit } from "@/lib/auditLog";
+import { sendEmail } from "@/lib/mailer";
+import { getSiteUrl } from "@/lib/siteUrl";
 
 // POST /api/matches/[matchId]/respond-contract
 // 認証必須(role=talent、そのマッチングの人材側当事者のみ)。
@@ -31,6 +33,7 @@ export async function POST(req, { params }) {
       actorId: user.id, actorEmail: user.email, action: "engagement.decline",
       targetType: "Engagement", targetId: engagement.id, metadata: { matchId: params.matchId },
     });
+    await notifyCompany(authorized, "declined");
     return NextResponse.json({ ok: true, accepted: false });
   }
 
@@ -66,6 +69,31 @@ export async function POST(req, { params }) {
     actorId: user.id, actorEmail: user.email, action: "engagement.accept",
     targetType: "Engagement", targetId: engagement.id, metadata: { matchId: params.matchId, projectId: project.id },
   });
+  await notifyCompany(authorized, "accepted");
 
   return NextResponse.json({ ok: true, accepted: true, engagementId: engagement.id, projectId: project.id });
+}
+
+// 企業へ、人材の回答(承諾/辞退)をメールで通知する。送信失敗時も本体の処理は継続済みなので握りつぶす。
+async function notifyCompany(authorized, result) {
+  try {
+    const companyUser = authorized.match.companySkillMap.company.user;
+    const talentName = authorized.match.talentSkillMap.talent.name;
+    if (!companyUser?.email) return;
+    if (result === "accepted") {
+      await sendEmail({
+        to: companyUser.email,
+        subject: `【BATTER BOX】${talentName}さんが契約を承諾しました`,
+        text: `${talentName}さんが契約条件を承諾し、契約が成立しました。プロジェクト画面から進捗を共有できます。\n\nBATTER BOXにログインする:\n${getSiteUrl()}/app`,
+      });
+    } else {
+      await sendEmail({
+        to: companyUser.email,
+        subject: `【BATTER BOX】${talentName}さんが契約提案を辞退しました`,
+        text: `${talentName}さんが、ご提案いただいた契約条件を辞退されました。条件を見直して再度提案することができます。\n\nBATTER BOXにログインする:\n${getSiteUrl()}/app`,
+      });
+    }
+  } catch (mailErr) {
+    console.error("failed to send contract response email:", mailErr.message);
+  }
 }

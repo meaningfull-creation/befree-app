@@ -10,6 +10,9 @@ import {
   buildTalentAxisDeepDiveSummaryPrompt,
 } from "@/lib/talentDialoguePrompts";
 
+// AI呼び出しを含むため、Vercelの関数タイムアウトに余裕を持たせる
+export const maxDuration = 60;
+
 const MAX_DEEP_DIVE_TURNS = 5; // 初回対話が5問に短縮された分、項目ごとの深掘りをより充実させる
 const AXIS_LABEL_BY_KEY = Object.fromEntries(AXES.map((a) => [a.key, a.label]));
 
@@ -30,7 +33,8 @@ export async function POST(req) {
       const result = await callClaudeJSON(
         buildTalentDialogSystemPrompt(),
         buildTalentAxisDeepDivePrompt(talentForm, axisLabel, currentNote, history),
-        600
+        600,
+        { fast: true }
       );
       return NextResponse.json({
         done: false,
@@ -43,7 +47,8 @@ export async function POST(req) {
     const result = await callClaudeJSON(
       buildTalentDialogSystemPrompt(),
       buildTalentAxisDeepDiveSummaryPrompt(talentForm, axisLabel, currentScore, currentNote, history),
-      500
+      500,
+      { fast: true }
     );
     const newScore = Number.isFinite(Number(result.score)) ? Math.max(0, Math.min(30, Math.round(Number(result.score)))) : currentScore;
     const newNote = typeof result.note === "string" ? result.note.slice(0, 300) : currentNote;

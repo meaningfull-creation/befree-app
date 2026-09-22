@@ -11,6 +11,9 @@ import {
   MAX_DIALOG_TURNS,
 } from "@/lib/dialoguePrompts";
 
+// AI呼び出しを含むため、Vercelの関数タイムアウトに余裕を持たせる
+export const maxDuration = 60;
+
 // POST /api/diagnosis/answer
 // 認証は必須ではない(/api/diagnosis/start と同様、未ログインでも診断を進められる)。
 // 企業アカウントでログイン済みの場合のみ、その場でDB保存する。
@@ -41,7 +44,8 @@ export async function POST(req) {
       const result = await callClaudeJSON(
         buildDialogSystemPrompt(),
         buildDialogNextQuestionPrompt(companyForm, history),
-        700 // 質問1問分の小さな応答。体感速度を上げるため小さめに絞る
+        700, // 質問1問分の小さな応答。体感速度を上げるため小さめに絞る
+        { fast: true } // 対話の1問は高速モデルで返し、体感速度を優先する
       );
 
       let nextTurnId = null;

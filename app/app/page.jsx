@@ -1623,6 +1623,8 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
   const [proposeForm, setProposeForm] = useState({ monthlyHours: "10", companyAmount: "" });
   const [proposing, setProposing] = useState(false);
   const [responding, setResponding] = useState(false);
+  const [suggestedPatterns, setSuggestedPatterns] = useState(null);
+  const [suggesting, setSuggesting] = useState(false);
   const scrollRef = useRef(null);
   const pollRef = useRef(null);
 
@@ -1655,6 +1657,25 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
     return () => clearInterval(pollRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId]);
+
+  const suggestPatterns = async () => {
+    setSuggesting(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch(`/api/matches/${matchId}/suggest-contract-terms`, { method: "POST" });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error);
+      setSuggestedPatterns(d.patterns);
+    } catch (e) {
+      setErrorMsg(e.message || "AIによる提案の生成に失敗しました。");
+    } finally {
+      setSuggesting(false);
+    }
+  };
+
+  const applyPattern = (p) => {
+    setProposeForm({ monthlyHours: String(p.monthlyHours), companyAmount: String(p.companyAmount) });
+  };
 
   const proposeContract = async () => {
     setProposing(true);
@@ -1776,7 +1797,33 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
                 </div>
               ) : (
                 <div>
-                  <div style={{ fontSize: 12.5, color: COLORS.text, marginBottom: 10, fontWeight: 500 }}>契約条件を提案する</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <div style={{ fontSize: 12.5, color: COLORS.text, fontWeight: 500 }}>契約条件を提案する</div>
+                    <button className="btn-ghost" onClick={suggestPatterns} disabled={suggesting} style={{ fontSize: 11.5, padding: "5px 12px" }}>
+                      <Sparkles size={12} style={{ verticalAlign: -2, marginRight: 4 }} />
+                      {suggesting ? "生成中…" : "AIに提案してもらう"}
+                    </button>
+                  </div>
+                  {suggestedPatterns && (
+                    <div className="fade-in" style={{ marginBottom: 14 }}>
+                      <p style={{ fontSize: 10.5, color: COLORS.faint, margin: "0 0 8px" }}>
+                        ※ このプラットフォームにはまだ実際の成約相場データがなく、AIによる一般的な感覚に基づく「たたき台」です。参考程度にご覧のうえ、自由に調整してください。
+                      </p>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
+                        {suggestedPatterns.map((p) => (
+                          <button
+                            key={p.label}
+                            onClick={() => applyPattern(p)}
+                            style={{ textAlign: "left", background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "10px 12px", cursor: "pointer" }}
+                          >
+                            <div style={{ fontSize: 11.5, fontWeight: 600, color: COLORS.teal, marginBottom: 4 }}>{p.label}</div>
+                            <div style={{ fontSize: 12, fontFamily: FONT_MONO, marginBottom: 4 }}>{p.monthlyHours}h ・ ¥{p.companyAmount.toLocaleString()}</div>
+                            <div style={{ fontSize: 10.5, color: COLORS.muted, lineHeight: 1.5 }}>{p.rationale}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
                     <label style={{ fontSize: 12, color: COLORS.muted }}>
                       月間稼働時間(h)

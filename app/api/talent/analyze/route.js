@@ -6,6 +6,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { logError } from "@/lib/errorLog";
 import { buildTalentSystemPrompt, buildTalentAnalysisPrompt } from "@/lib/talentPrompts";
 
+// AI呼び出しを含むため、Vercelの関数タイムアウトに余裕を持たせる
+export const maxDuration = 60;
+
 // POST /api/talent/analyze
 // 認証は必須ではない(未ログインでもスキル解析を進められる。アカウント作成は
 // 結果が出た後にまとめて行う設計 — /api/talent/claim 参照)。

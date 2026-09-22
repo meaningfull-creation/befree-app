@@ -5,6 +5,9 @@ import { generate90DayPlan } from "@/lib/ninetyDayPlan";
 import { logError } from "@/lib/errorLog";
 import { AXES } from "@/lib/axes";
 
+// AI呼び出しを含むため、Vercelの関数タイムアウトに余裕を持たせる
+export const maxDuration = 60;
+
 const AXIS_LABEL_BY_KEY = Object.fromEntries(AXES.map((a) => [a.key, a.label]));
 
 // POST /api/projects/[id]/plan

@@ -5,6 +5,9 @@ import { getProjectIfAuthorized } from "@/lib/projectAccess";
 import { generateProjectReview } from "@/lib/projectAI";
 import { logError } from "@/lib/errorLog";
 
+// AI呼び出しを含むため、Vercelの関数タイムアウトに余裕を持たせる
+export const maxDuration = 60;
+
 // POST /api/projects/[id]/summary
 // 認証必須。現在のタスク・KPI・稼働ログ・コメントから、AIがレビュー(進捗サマリー/月次レビュー)を生成する。
 // 生成結果は保存しない(都度、最新の状態から生成する on-demand 方式)。

@@ -5,6 +5,9 @@ import { scoreMatch } from "@/lib/matching";
 import { getAxisWeightMultipliers } from "@/lib/axisPerformance";
 import { generateOutreachMessage } from "@/lib/messageDraft";
 
+// AI呼び出しを含むため、Vercelの関数タイムアウトに余裕を持たせる
+export const maxDuration = 60;
+
 // POST /api/matches/connect
 // 認証必須。企業ユーザーは { talentSkillMapId } を、実務経験者ユーザーは { companySkillMapId } を渡す。
 // 呼び出し側の最新スキルマップと組み合わせてMatchを作成(既存なら再利用)し、メッセージスレッドの起点にする。

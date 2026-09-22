@@ -3,6 +3,9 @@ import { callClaudeJSON } from "@/lib/claude";
 import { logError } from "@/lib/errorLog";
 import { buildTalentDialogSystemPrompt, buildTalentDialogNextQuestionPrompt } from "@/lib/talentDialoguePrompts";
 
+// AI呼び出しを含むため、Vercelの関数タイムアウトに余裕を持たせる
+export const maxDuration = 60;
+
 // POST /api/talent/dialogue/start
 // 認証は必須ではない(未ログインの/joinフローでも使えるようにするため)。
 // body: { talentForm }
@@ -17,7 +20,8 @@ export async function POST(req) {
     const result = await callClaudeJSON(
       buildTalentDialogSystemPrompt(),
       buildTalentDialogNextQuestionPrompt(talentForm, []),
-      700
+      700,
+      { fast: true } // 対話の1問は高速モデルで返し、体感速度を優先する
     );
 
     return NextResponse.json({

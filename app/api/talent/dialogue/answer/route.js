@@ -11,6 +11,9 @@ import {
   MAX_TALENT_DIALOG_TURNS,
 } from "@/lib/talentDialoguePrompts";
 
+// AI呼び出しを含むため、Vercelの関数タイムアウトに余裕を持たせる
+export const maxDuration = 60;
+
 // POST /api/talent/dialogue/answer
 // 認証は必須ではない(未ログインでも自己分析対話を進められる)。
 // 実務経験者アカウントでログイン済みの場合のみ、最終ターンでその場でDB保存する。
@@ -31,7 +34,8 @@ export async function POST(req) {
       const result = await callClaudeJSON(
         buildTalentDialogSystemPrompt(),
         buildTalentDialogNextQuestionPrompt(talentForm, history),
-        700
+        700,
+        { fast: true } // 対話の1問は高速モデルで返し、体感速度を優先する
       );
       return NextResponse.json({
         done: false,

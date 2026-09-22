@@ -3,6 +3,9 @@ import { requireRole } from "@/lib/auth";
 import { generateProfileSuggestions } from "@/lib/profileSuggestion";
 import { logError } from "@/lib/errorLog";
 
+// AI呼び出しを含むため、Vercelの関数タイムアウトに余裕を持たせる
+export const maxDuration = 60;
+
 // POST /api/talent/profile-suggestion
 // 認証必須(role=talent)。都度生成する方式(保存はしない)。
 export async function POST() {
