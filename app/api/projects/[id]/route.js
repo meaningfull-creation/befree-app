@@ -56,6 +56,12 @@ export async function GET(req, { params }) {
       plan: project.plan || null,
       planGeneratedAt: project.planGeneratedAt,
       createdAt: project.createdAt,
+      // 完了フロー(人材の完了報告 → 企業の確認 → 契約完了)の状態
+      engagementStatus: project.engagement.status,
+      completionRequestedAt: project.completionRequestedAt,
+      completionNote: project.completionNote,
+      completionRejectedAt: project.completionRejectedAt,
+      completedAt: project.completedAt,
     },
     myRole,
     companyInfo,

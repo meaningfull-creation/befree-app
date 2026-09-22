@@ -42,6 +42,9 @@ export async function GET() {
     talentName: p.engagement.match.talentSkillMap.talent.name,
     taskCount: p.tasks.length,
     doneTaskCount: p.tasks.filter((t) => t.status === "done").length,
+    inProgressTaskCount: p.tasks.filter((t) => t.status === "in_progress").length,
+    completionRequestedAt: p.completionRequestedAt,
+    completedAt: p.completedAt,
     createdAt: p.createdAt,
   }));
 

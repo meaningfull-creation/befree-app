@@ -156,6 +156,15 @@ model Project {
   planGeneratedAt  DateTime?
   createdAt        DateTime  @default(now())
 
+  // 完了フロー(人材が完了を報告 → 企業が確認して承認 → 契約完了)。
+  // 人材側が報告するとcompletionRequestedAtが入り、企業側に確認待ちとして表示される。
+  // 企業が承認するとcompletedAtが入り、Projectとengagementの双方がcompletedになる。
+  // 企業が差し戻すとcompletionRequestedAtがクリアされ、completionRejectedAtが記録される。
+  completionRequestedAt DateTime?
+  completionNote        String? // 人材が完了報告時に添える成果サマリー
+  completionRejectedAt  DateTime?
+  completedAt           DateTime?
+
   tasks    ProjectTask[]
   kpis     ProjectKPI[]
   workLogs WorkLog[]

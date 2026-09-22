@@ -27,7 +27,8 @@ import {
 } from "lucide-react";
 import { AXES, TALENT_SCORE_RUBRIC } from "@/lib/axes";
 import { computeScoreDelta } from "@/lib/scoreDelta";
-import { COLORS, FONT_DISPLAY, FONT_BODY, FONT_MONO, GlobalStyle } from "@/lib/theme";
+import { COLORS, FONT_DISPLAY, FONT_BODY, FONT_MONO, GlobalStyle, TASK_STATUS_META, TASK_STATUS_ORDER } from "@/lib/theme";
+import { PROJECT_FLOW_STEPS, projectFlowStepIndex, projectStatusMeta, completionActionFor } from "@/lib/projectFlow";
 
 // ---------------------------------------------------------------------------
 // Design tokens (BATTER BOX_技術構成設計.md / プロトタイプと共通)
@@ -1718,19 +1719,263 @@ function StepTalentMatches({ talentScores, talentPhases, onRestart, onOpenThread
 // セッション(タブ)内のメモリにのみ保持され、リロードで消える。
 const viewCache = {};
 
+// プロジェクト一覧・ダッシュボードで使う状態バッジ(配色の判定は lib/projectFlow.js)。
+function ProjectStatusBadge({ project }) {
+  const m = projectStatusMeta(project);
+  return (
+    <span style={{ background: m.bg, color: m.fg, border: `1.5px solid ${m.border}`, borderRadius: 999, fontSize: 11, fontFamily: FONT_DISPLAY, fontWeight: 700, padding: "4px 11px", whiteSpace: "nowrap", flexShrink: 0 }}>
+      {m.label}
+    </span>
+  );
+}
+
+// 契約(プロジェクト)の進行フローを可視化するステッパー。
+// 契約成立 → 実行中 → 完了報告 → 企業が確認 → 契約完了 の5段階のうち、今どこにいるかを示す
+// (段階の定義と判定は lib/projectFlow.js)。
+function ProjectFlowStepper({ project }) {
+  const current = projectFlowStepIndex(project);
+  return (
+    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "18px 20px", marginBottom: 16 }}>
+      <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14.5, marginBottom: 14 }}>契約の進行状況</div>
+      <div className="flow-steps">
+        {PROJECT_FLOW_STEPS.map((step, i) => {
+          const done = i < current;
+          const active = i === current;
+          const color = done ? COLORS.success : active ? COLORS.teal : COLORS.faint;
+          return (
+            <div key={step.key} className="flow-step" title={step.hint}>
+              <div className="flow-step-line" style={{ background: i === 0 ? "transparent" : i <= current ? COLORS.success : COLORS.border }} />
+              <div
+                style={{
+                  // position:relative がないと、絶対配置のライン(.flow-step-line)が
+                  // 丸の上に描画されてしまう(z-indexは配置済み要素にしか効かないため)
+                  position: "relative",
+                  width: 26, height: 26, borderRadius: 999, flexShrink: 0,
+                  background: done || active ? color : COLORS.surface,
+                  border: `2px solid ${done || active ? color : COLORS.border}`,
+                  color: done || active ? COLORS.onAccent : COLORS.faint,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 11, fontWeight: 700, fontFamily: FONT_DISPLAY, zIndex: 1,
+                }}
+              >
+                {done ? "✓" : i + 1}
+              </div>
+              <div style={{ fontSize: 11.5, marginTop: 6, color: active ? COLORS.text : COLORS.muted, fontWeight: active ? 700 : 400, textAlign: "center", lineHeight: 1.4 }}>
+                {step.label}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ fontSize: 11.5, color: COLORS.muted, marginTop: 12, lineHeight: 1.7 }}>
+        {PROJECT_FLOW_STEPS[current].hint}
+      </div>
+    </div>
+  );
+}
+
+// 完了フローの操作パネル。人材には「完了を報告する」、企業には確認待ちの承認/差し戻しを出す。
+function ProjectCompletionPanel({ project, myRole, tasks, onAction }) {
+  const [note, setNote] = useState("");
+  const [mode, setMode] = useState(null); // "request" | "reject" — 入力欄を開いている操作
+  const [busy, setBusy] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
+
+  const run = async (action) => {
+    setBusy(true);
+    setErrorMsg(null);
+    try {
+      await onAction(action, note);
+      setNote("");
+      setMode(null);
+    } catch (e) {
+      setErrorMsg(e.message || "処理に失敗しました。");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const box = { background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 20, marginBottom: 16 };
+  const openTaskCount = tasks.filter((t) => t.status !== "done").length;
+  const available = completionActionFor(project, myRole); // 表示するUIの分岐(判定は lib/projectFlow.js)
+
+  // 完了済み
+  if (available === "none" && (project.completedAt || project.status === "completed")) {
+    return (
+      <div style={{ ...box, borderColor: COLORS.success, background: COLORS.successBg }}>
+        <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14.5, color: COLORS.successDim, marginBottom: 6 }}>✓ 契約完了</div>
+        <div style={{ fontSize: 12.5, color: COLORS.text, lineHeight: 1.8 }}>
+          {project.completedAt ? `${new Date(project.completedAt).toLocaleDateString("ja-JP")}に企業が完了を承認しました。` : "このプロジェクトは完了しています。"}
+          {myRole === "company" && " お相手への評価がまだの場合は、下の「実務経験者の評価」からご記入ください。"}
+        </div>
+      </div>
+    );
+  }
+
+  // 企業側: 完了報告が届いている
+  if (available === "confirm") {
+    return (
+      <div style={{ ...box, borderColor: COLORS.teal, borderWidth: 2 }}>
+        <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14.5, color: COLORS.tealDim, marginBottom: 6 }}>完了報告が届いています</div>
+        <div style={{ fontSize: 12.5, color: COLORS.muted, marginBottom: 10 }}>
+          {new Date(project.completionRequestedAt).toLocaleString("ja-JP", { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} に報告されました。
+        </div>
+        {project.completionNote && (
+          <div style={{ background: COLORS.surfaceRaised, borderLeft: `3px solid ${COLORS.teal}`, borderRadius: "0 8px 8px 0", padding: "12px 14px", fontSize: 12.5, lineHeight: 1.8, whiteSpace: "pre-wrap", marginBottom: 12 }}>
+            {project.completionNote}
+          </div>
+        )}
+        <p style={{ fontSize: 12, color: COLORS.muted, lineHeight: 1.8, margin: "0 0 12px" }}>
+          成果物・稼働ログをご確認のうえ、問題なければ承認してください。<strong style={{ color: COLORS.text }}>承認すると契約が完了</strong>し、以降この契約での稼働は発生しません。まだ続きがある場合は差し戻してください。
+        </p>
+        <ErrorNote message={errorMsg} />
+        {mode === "reject" ? (
+          <div className="fade-in">
+            <textarea className="field-input" rows={3} placeholder="差し戻す理由・残っている対応を入力してください" value={note} onChange={(e) => setNote(e.target.value)} style={{ resize: "vertical", lineHeight: 1.6, marginBottom: 10 }} />
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button className="btn-primary" onClick={() => run("reject")} disabled={busy || !note.trim()} style={{ fontSize: 12.5, padding: "9px 20px" }}>
+                {busy ? "送信中…" : "差し戻す"}
+              </button>
+              <button className="btn-ghost" onClick={() => { setMode(null); setNote(""); }} disabled={busy} style={{ fontSize: 12.5, padding: "9px 20px" }}>キャンセル</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              onClick={() => { if (window.confirm("完了を承認します。この契約は完了となり、元に戻せません。よろしいですか?")) run("approve"); }}
+              disabled={busy}
+              style={{ background: COLORS.success, color: COLORS.onAccent, border: "none", borderRadius: 999, padding: "11px 24px", fontSize: 13.5, fontFamily: FONT_DISPLAY, fontWeight: 700, cursor: busy ? "not-allowed" : "pointer", boxShadow: `0 3px 0 ${COLORS.successDim}`, opacity: busy ? 0.5 : 1 }}
+            >
+              {busy ? "処理中…" : "✓ 完了を承認する"}
+            </button>
+            <button className="btn-ghost" onClick={() => setMode("reject")} disabled={busy} style={{ fontSize: 12.5, padding: "11px 20px" }}>まだ完了ではない(差し戻す)</button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 人材側: 完了報告済み(企業の確認待ち)
+  if (available === "await_confirmation") {
+    return (
+      <div style={{ ...box, borderColor: COLORS.teal }}>
+        <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14.5, color: COLORS.tealDim, marginBottom: 6 }}>企業の確認待ちです</div>
+        <div style={{ fontSize: 12.5, color: COLORS.muted, lineHeight: 1.8 }}>
+          {new Date(project.completionRequestedAt).toLocaleString("ja-JP", { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} に完了を報告しました。
+          企業が承認すると契約完了となります。差し戻された場合は、このページの「要望・フィードバック」に理由が届きます。
+        </div>
+      </div>
+    );
+  }
+
+  // 人材側: 完了を報告する
+  if (available === "request") {
+    return (
+      <div style={box}>
+        <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14.5, marginBottom: 6 }}>作業の完了報告</div>
+        {project.completionRejectedAt && (
+          <div style={{ fontSize: 12, color: COLORS.tealDim, background: "#FFF3EA", border: `1px solid ${COLORS.teal}`, borderRadius: 8, padding: "9px 12px", marginBottom: 10, lineHeight: 1.7 }}>
+            前回の完了報告は企業から差し戻されています。理由は「要望・フィードバック」欄をご確認ください。
+          </div>
+        )}
+        <p style={{ fontSize: 12, color: COLORS.muted, lineHeight: 1.8, margin: "0 0 12px" }}>
+          すべての対応が終わったら、成果のサマリーを添えて企業に完了を報告してください。企業が承認すると契約完了となります。
+          {openTaskCount > 0 && <span style={{ color: COLORS.tealDim }}>(未完了のタスクが{openTaskCount}件あります)</span>}
+        </p>
+        <ErrorNote message={errorMsg} />
+        {mode === "request" ? (
+          <div className="fade-in">
+            <textarea className="field-input" rows={4} placeholder="実施したこと・到達した成果を簡潔にまとめてください(企業の確認画面とメールに表示されます)" value={note} onChange={(e) => setNote(e.target.value)} style={{ resize: "vertical", lineHeight: 1.6, marginBottom: 10 }} />
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button className="btn-primary" onClick={() => run("request")} disabled={busy || !note.trim()} style={{ fontSize: 12.5, padding: "9px 20px" }}>
+                {busy ? "送信中…" : "企業に完了を報告する"}
+              </button>
+              <button className="btn-ghost" onClick={() => { setMode(null); setNote(""); }} disabled={busy} style={{ fontSize: 12.5, padding: "9px 20px" }}>キャンセル</button>
+            </div>
+          </div>
+        ) : (
+          <button className="btn-primary" onClick={() => setMode("request")} style={{ fontSize: 13, padding: "10px 22px" }}>完了を報告する</button>
+        )}
+      </div>
+    );
+  }
+
+  // 企業側(報告待ち)・管理者
+  return (
+    <div style={box}>
+      <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14.5, marginBottom: 6 }}>完了の確認</div>
+      <div style={{ fontSize: 12.5, color: COLORS.muted, lineHeight: 1.8 }}>
+        実務経験者がすべての対応を終えて「完了を報告する」を押すと、ここに確認ボタンが表示されます。
+        承認した時点で契約完了となります。
+      </div>
+    </div>
+  );
+}
+
+// タスクのステータスバッジ。未着手(白抜きグレー・○)/ 進行中(オレンジのベタ塗り・▶)/
+// 完了(緑のベタ塗り・✓)で、色・塗り・記号の3点が変わるようにして見分けやすくしている。
+function TaskStatusBadge({ status, onClick, size = "md" }) {
+  const meta = TASK_STATUS_META[status] || TASK_STATUS_META.todo;
+  const style = {
+    display: "inline-flex", alignItems: "center", gap: 4,
+    background: meta.bg, color: meta.fg, border: `1.5px solid ${meta.border}`,
+    borderRadius: 999, fontFamily: FONT_DISPLAY, fontWeight: 700,
+    fontSize: size === "sm" ? 10 : 11, lineHeight: 1,
+    padding: size === "sm" ? "4px 8px" : "5px 11px",
+    whiteSpace: "nowrap", flexShrink: 0,
+    cursor: onClick ? "pointer" : "default",
+  };
+  const content = (<><span style={{ fontSize: size === "sm" ? 9 : 10 }}>{meta.icon}</span>{meta.label}</>);
+  if (!onClick) return <span style={style}>{content}</span>;
+  return (
+    <button type="button" onClick={onClick} aria-label={`ステータス: ${meta.label}(タップで次へ進める)`} style={style}>
+      {content}
+    </button>
+  );
+}
+
+// タスクの進捗バー。未着手/進行中/完了の内訳を1本の帯で見せる。
+function TaskProgressBar({ tasks }) {
+  const total = tasks.length;
+  if (!total) return null;
+  const counts = {
+    done: tasks.filter((t) => t.status === "done").length,
+    in_progress: tasks.filter((t) => t.status === "in_progress").length,
+  };
+  counts.todo = total - counts.done - counts.in_progress;
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: "flex", height: 8, borderRadius: 999, overflow: "hidden", background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}` }}>
+        {TASK_STATUS_ORDER.slice().reverse().map((k) =>
+          counts[k] > 0 ? <div key={k} style={{ width: `${(counts[k] / total) * 100}%`, background: TASK_STATUS_META[k].bar }} /> : null
+        )}
+      </div>
+      <div style={{ display: "flex", gap: 12, marginTop: 6, fontSize: 11, color: COLORS.muted, flexWrap: "wrap" }}>
+        {TASK_STATUS_ORDER.map((k) => (
+          <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+            <span style={{ width: 9, height: 9, borderRadius: 3, background: TASK_STATUS_META[k].bar, border: k === "todo" ? `1px solid ${COLORS.border}` : "none", display: "inline-block" }} />
+            {TASK_STATUS_META[k].label} {counts[k]}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // タスク行。タップでステータスを進める(従来どおり)ほか、スマホでは指スライドに対応:
-// 右スワイプ = 次のステータスへ(未着手→着手中→完了)、左スワイプ = 1つ戻す。
-function SwipeTaskRow({ task, statusLabel, onSetStatus, onEditTitle, onDelete }) {
+// 右スワイプ = 次のステータスへ(未着手→進行中→完了)、左スワイプ = 1つ戻す。
+// 行の左端にステータス色のバーを出し、進行中はうっすらオレンジの背景にして
+// バッジを見なくても状態が分かるようにしている。
+function SwipeTaskRow({ task, onSetStatus, onEditTitle, onDelete }) {
   const [dx, setDx] = useState(0);
   const startX = useRef(null);
-  const ORDER = ["todo", "in_progress", "done"];
-  const advance = () => onSetStatus(task, ORDER[Math.min(2, ORDER.indexOf(task.status) + 1)]);
-  const revert = () => onSetStatus(task, ORDER[Math.max(0, ORDER.indexOf(task.status) - 1)]);
-  const statusColor = task.status === "done" ? COLORS.teal : task.status === "in_progress" ? COLORS.amber : COLORS.muted;
+  const meta = TASK_STATUS_META[task.status] || TASK_STATUS_META.todo;
+  const advance = () => onSetStatus(task, TASK_STATUS_ORDER[Math.min(2, TASK_STATUS_ORDER.indexOf(task.status) + 1)]);
+  const revert = () => onSetStatus(task, TASK_STATUS_ORDER[Math.max(0, TASK_STATUS_ORDER.indexOf(task.status) - 1)]);
   return (
     <div style={{ position: "relative", overflow: "hidden", borderRadius: 8 }}>
       {dx !== 0 && (
-        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: dx > 0 ? "flex-start" : "flex-end", padding: "0 14px", fontSize: 11, fontWeight: 700, color: COLORS.onAccent, background: dx > 0 ? COLORS.teal : COLORS.faint, borderRadius: 8 }}>
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: dx > 0 ? "flex-start" : "flex-end", padding: "0 14px", fontSize: 11, fontWeight: 700, color: COLORS.onAccent, background: dx > 0 ? COLORS.success : COLORS.faint, borderRadius: 8 }}>
           {dx > 0 ? "進める →" : "← 戻す"}
         </div>
       )}
@@ -1743,12 +1988,10 @@ function SwipeTaskRow({ task, statusLabel, onSetStatus, onEditTitle, onDelete })
           setDx(0);
           startX.current = null;
         }}
-        style={{ display: "flex", alignItems: "center", gap: 10, background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "10px 13px", color: COLORS.text, fontSize: 13, transform: `translateX(${dx}px)`, transition: dx === 0 ? "transform 0.18s ease" : "none", touchAction: "pan-y" }}
+        style={{ display: "flex", alignItems: "center", gap: 10, background: meta.rowBg, border: `1px solid ${COLORS.border}`, borderLeft: `4px solid ${meta.bar}`, borderRadius: 8, padding: "10px 13px", color: COLORS.text, fontSize: 13, transform: `translateX(${dx}px)`, transition: dx === 0 ? "transform 0.18s ease" : "none", touchAction: "pan-y" }}
       >
-        <button onClick={advance} style={{ background: "none", border: `1.5px solid ${statusColor}`, color: statusColor, borderRadius: 999, fontSize: 10.5, fontFamily: FONT_MONO, padding: "3px 9px", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
-          {statusLabel[task.status]}
-        </button>
-        <span style={{ flex: 1, textDecoration: task.status === "done" ? "line-through" : "none", color: task.status === "done" ? COLORS.faint : COLORS.text, minWidth: 0, overflowWrap: "anywhere" }}>{task.title}</span>
+        <TaskStatusBadge status={task.status} onClick={advance} />
+        <span style={{ flex: 1, textDecoration: task.status === "done" ? "line-through" : "none", color: task.status === "done" ? COLORS.muted : COLORS.text, fontWeight: task.status === "in_progress" ? 600 : 400, minWidth: 0, overflowWrap: "anywhere" }}>{task.title}</span>
         <button onClick={() => onEditTitle(task)} aria-label="タスク名を編集" style={{ background: "none", border: "none", color: COLORS.faint, cursor: "pointer", padding: 4, flexShrink: 0 }}>✎</button>
         <button onClick={() => onDelete(task)} aria-label="タスクを削除" style={{ background: "none", border: "none", color: COLORS.faint, cursor: "pointer", padding: 4, flexShrink: 0 }}>×</button>
       </div>
@@ -2646,10 +2889,11 @@ function ProjectsListView({ onOpenProject, onBack }) {
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, flexWrap: "wrap", gap: 8 }}>
                 <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14.5 }}>{p.name}</span>
-                <span className="btn-ghost" style={{ fontSize: 11, padding: "3px 10px", pointerEvents: "none" }}>{p.status === "active" ? "進行中" : p.status === "completed" ? "完了" : "一時停止"}</span>
+                <ProjectStatusBadge project={p} />
               </div>
               <div style={{ fontSize: 12, color: COLORS.muted }}>
                 {p.companyName} × {p.talentName} ・ タスク {p.doneTaskCount}/{p.taskCount}完了
+                {p.inProgressTaskCount > 0 && <span style={{ color: COLORS.tealDim }}>(進行中 {p.inProgressTaskCount})</span>}
               </div>
             </button>
             <a href={`/app/projects/${p.id}`} style={{ fontSize: 11, color: COLORS.faint, display: "inline-block", marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
@@ -2683,6 +2927,11 @@ function ProjectDetailView({ projectId, onBack }) {
   const [plan, setPlan] = useState(null);
   const [planLoading, setPlanLoading] = useState(false);
   const [planError, setPlanError] = useState(null);
+  const [rating, setRating] = useState(null); // { rating, comment } — 企業→人材の評価(1プロジェクト1件)
+  const [ratingDraft, setRatingDraft] = useState({ rating: 0, comment: "" });
+  const [ratingSaving, setRatingSaving] = useState(false);
+  const [ratingError, setRatingError] = useState(null);
+  const [ratingSaved, setRatingSaved] = useState(false);
 
   const load = async () => {
     try {
@@ -2696,7 +2945,38 @@ function ProjectDetailView({ projectId, onBack }) {
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [projectId]);
+  const loadRating = async () => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/rating`);
+      const d = await res.json();
+      if (!res.ok) return;
+      setRating(d.rating || null);
+      if (d.rating) setRatingDraft({ rating: d.rating.rating, comment: d.rating.comment || "" });
+    } catch (e) { /* 評価の取得失敗は画面全体を止めるほどではないので無視する */ }
+  };
+
+  const saveRating = async () => {
+    setRatingSaving(true);
+    setRatingError(null);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/rating`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: ratingDraft.rating, comment: ratingDraft.comment }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "保存に失敗しました");
+      setRating(d.rating);
+      setRatingSaved(true);
+      setTimeout(() => setRatingSaved(false), 2500);
+    } catch (e) {
+      setRatingError(e.message || "評価の保存に失敗しました。");
+    } finally {
+      setRatingSaving(false);
+    }
+  };
+
+  useEffect(() => { load(); loadRating(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [projectId]);
 
   const setTaskStatus = async (task, status) => {
     if (task.status === status) return;
@@ -2852,13 +3132,24 @@ function ProjectDetailView({ projectId, onBack }) {
     }
   };
 
+  // 完了フロー(人材の完了報告 / 企業の承認・差し戻し)。成功したらプロジェクト全体を読み直す。
+  const runCompletionAction = async (action, note) => {
+    const res = await fetch(`/api/projects/${projectId}/completion`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, note }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || "処理に失敗しました");
+    await load();
+  };
+
   if (errorMsg) return <ErrorNote message={errorMsg} onRetry={load} />;
   if (!data) return <div style={{ color: COLORS.muted, fontSize: 13 }}>読み込み中…</div>;
 
   const { project, tasks, kpis, workLogs, comments, companyInfo } = data;
   // プランはDBに保存されるようになった。手元で生成した直後はplan、それ以外は保存済みのものを表示する。
   const shownPlan = plan || project.plan;
-  const taskStatusLabel = { todo: "未着手", in_progress: "進行中", done: "完了" };
   const sectionStyle = { background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 20, marginBottom: 16 };
   const sectionTitleStyle = { fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14.5, marginBottom: 12 };
 
@@ -2870,6 +3161,9 @@ function ProjectDetailView({ projectId, onBack }) {
         対象課題: {project.targetAxisLabel || "未設定"} ・ 月間稼働: {project.monthlyHours ?? "—"}時間
         {project.currentMonthGoal && <> ・ 今月の目標: {project.currentMonthGoal}</>}
       </div>
+
+      <ProjectFlowStepper project={project} />
+      <ProjectCompletionPanel project={project} myRole={data.myRole} tasks={tasks} onAction={runCompletionAction} />
 
       {data.myRole === "talent" && companyInfo && (
         <div style={sectionStyle}>
@@ -2968,6 +3262,7 @@ function ProjectDetailView({ projectId, onBack }) {
 
       <div style={sectionStyle}>
         <div style={sectionTitleStyle}>タスク</div>
+        <TaskProgressBar tasks={tasks} />
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
           {tasks.length === 0 && <div style={{ fontSize: 12.5, color: COLORS.faint }}>まだタスクがありません</div>}
           {tasks.map((t) =>
@@ -2988,7 +3283,6 @@ function ProjectDetailView({ projectId, onBack }) {
               <SwipeTaskRow
                 key={t.id}
                 task={t}
-                statusLabel={taskStatusLabel}
                 onSetStatus={setTaskStatus}
                 onEditTitle={(task) => setEditingTask({ id: task.id, title: task.title })}
                 onDelete={deleteTask}
@@ -2996,7 +3290,7 @@ function ProjectDetailView({ projectId, onBack }) {
             )
           )}
           {tasks.length > 0 && (
-            <div style={{ fontSize: 10.5, color: COLORS.faint }}>ステータスのバッジをタップ、またはスマホでは行を左右にスワイプして「未着手 → 着手中 → 完了」を切り替えられます。✎でタスク名を編集できます。</div>
+            <div style={{ fontSize: 10.5, color: COLORS.faint }}>ステータスのバッジをタップ、またはスマホでは行を左右にスワイプして「未着手 → 進行中 → 完了」を切り替えられます。✎でタスク名を編集できます。</div>
           )}
         </div>
         <form onSubmit={addTask} style={{ display: "flex", gap: 8 }}>
@@ -3092,6 +3386,49 @@ function ProjectDetailView({ projectId, onBack }) {
         </form>
       </div>
 
+      {data.myRole !== "admin" && (
+        <div style={{ ...sectionStyle, ...(project.completedAt && data.myRole === "company" && !rating ? { borderColor: COLORS.success, borderWidth: 2 } : null) }}>
+          <div style={sectionTitleStyle}>実務経験者の評価</div>
+          {data.myRole === "company" ? (
+            <>
+              <p style={{ fontSize: 12, color: COLORS.muted, lineHeight: 1.8, margin: "-4px 0 12px" }}>
+                {project.completedAt
+                  ? "契約が完了しました。伴走いただいた実務経験者を評価してください。評価はマッチング精度の改善にも使われます。"
+                  : "契約完了後に記録いただく項目です。進行中でも記録・変更できます(相手には点数のみが平均値として反映されます)。"}
+              </p>
+              <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setRatingDraft({ ...ratingDraft, rating: n })}
+                    aria-label={`${n}点`}
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 26, lineHeight: 1, padding: 0, color: n <= ratingDraft.rating ? COLORS.teal : COLORS.border }}
+                  >
+                    ★
+                  </button>
+                ))}
+                <span style={{ fontSize: 12, color: COLORS.muted, alignSelf: "center", marginLeft: 6 }}>
+                  {ratingDraft.rating ? `${ratingDraft.rating} / 5` : "未評価"}
+                </span>
+              </div>
+              <textarea className="field-input" rows={3} placeholder="良かった点・次に依頼するとしたら期待すること(任意)" value={ratingDraft.comment} onChange={(e) => setRatingDraft({ ...ratingDraft, comment: e.target.value })} style={{ resize: "vertical", lineHeight: 1.6, marginBottom: 10 }} />
+              <ErrorNote message={ratingError} />
+              <button className="btn-primary" onClick={saveRating} disabled={ratingSaving || !ratingDraft.rating} style={{ fontSize: 12.5, padding: "9px 20px" }}>
+                {ratingSaving ? "保存中…" : ratingSaved ? "保存しました ✓" : rating ? "評価を更新する" : "評価を記録する"}
+              </button>
+            </>
+          ) : rating ? (
+            <div style={{ fontSize: 13, lineHeight: 1.8 }}>
+              <div style={{ color: COLORS.teal, fontSize: 20, letterSpacing: 2 }}>{"★".repeat(rating.rating)}<span style={{ color: COLORS.border }}>{"★".repeat(5 - rating.rating)}</span></div>
+              {rating.comment && <div style={{ color: COLORS.text, marginTop: 6, whiteSpace: "pre-wrap" }}>{rating.comment}</div>}
+            </div>
+          ) : (
+            <div style={{ fontSize: 12.5, color: COLORS.faint }}>まだ企業からの評価はありません。契約完了後に記録されます。</div>
+          )}
+        </div>
+      )}
+
       <div style={sectionStyle}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div style={sectionTitleStyle}>AIレビュー</div>
@@ -3142,8 +3479,11 @@ function DashboardProjectRow({ p, onOpen }) {
       onClick={() => onOpen(p.id)}
       style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", textAlign: "left", background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "12px 16px", cursor: "pointer", marginBottom: 8 }}
     >
-      <div>
-        <div style={{ fontSize: 13, fontWeight: 500 }}>{p.name}</div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13, fontWeight: 500 }}>{p.name}</span>
+          <ProjectStatusBadge project={p} />
+        </div>
         <div style={{ fontSize: 11.5, color: COLORS.muted, marginTop: 2 }}>
           {p.counterpartName}{p.targetAxisLabel ? ` ・ 対象課題: ${p.targetAxisLabel}` : ""}
         </div>
@@ -3354,9 +3694,10 @@ function TalentDashboard({ onOpenProjects, onOpenProjectDetail, onBack }) {
           <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 10 }}>未完了のタスク</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 24 }}>
             {d.upcomingTasks.map((t) => (
-              <div key={t.id} style={{ display: "flex", justifyContent: "space-between", background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "8px 14px", fontSize: 12.5 }}>
-                <span>{t.title}</span>
-                <span style={{ color: COLORS.faint }}>{t.companyName}</span>
+              <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, background: (TASK_STATUS_META[t.status] || TASK_STATUS_META.todo).rowBg, border: `1px solid ${COLORS.border}`, borderLeft: `4px solid ${(TASK_STATUS_META[t.status] || TASK_STATUS_META.todo).bar}`, borderRadius: 8, padding: "8px 14px", fontSize: 12.5 }}>
+                <TaskStatusBadge status={t.status} size="sm" />
+                <span style={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>{t.title}</span>
+                <span style={{ color: COLORS.faint, flexShrink: 0 }}>{t.companyName}</span>
               </div>
             ))}
           </div>

@@ -3,6 +3,8 @@
 // サイト全体の配色をそのブランドカラーへ統一している。
 // キー名(teal/tealDim/amber等)は初期実装からの互換のため維持しているが、
 // 値そのものはロゴから抽出したネイビー×オレンジのパレットになっている。
+const COLORS_IN_PROGRESS_BG = "#F46919"; // 進行中バッジの塗り(ブランドのオレンジ)
+
 export const COLORS = {
   bg: "#F7F9FC",           // 淡いブルーグレーの背景
   surface: "#FFFFFF",      // カード背景
@@ -15,7 +17,44 @@ export const COLORS = {
   tealDim: "#C35414",      // プライマリアクセントの濃色
   amber: "#1B3A63",        // セカンダリアクセント(ロゴのネイビーの明るいトーン)
   onAccent: "#FFFFFF",     // アクセント色の上に乗せるテキスト・アイコン色
+  success: "#1E9E5A",      // 完了・承認を表す緑(ブランド2色と混同しないよう別系統の色を使う)
+  successDim: "#167A45",   // 緑の濃色
+  successBg: "#E8F6EE",    // 緑の淡い背景
 };
+
+// タスク/プロジェクトのステータス表示を1箇所にまとめたもの。
+// 「未着手」「進行中」「完了」が一目で見分けられるよう、色相(グレー/オレンジ/緑)だけでなく
+// 塗り(白抜き/ベタ塗り)と記号(○/▶/✓)も変えている(色覚特性に配慮)。
+export const TASK_STATUS_META = {
+  todo: {
+    label: "未着手",
+    icon: "○",
+    fg: "#5B6B82",
+    bg: "#FFFFFF",
+    border: "#B9C4D3",
+    bar: "#C8D2E0",
+    rowBg: "#FFFFFF",
+  },
+  in_progress: {
+    label: "進行中",
+    icon: "▶",
+    fg: "#FFFFFF",
+    bg: COLORS_IN_PROGRESS_BG,
+    border: COLORS_IN_PROGRESS_BG,
+    bar: COLORS_IN_PROGRESS_BG,
+    rowBg: "#FFF3EA",
+  },
+  done: {
+    label: "完了",
+    icon: "✓",
+    fg: "#FFFFFF",
+    bg: "#1E9E5A",
+    border: "#1E9E5A",
+    bar: "#1E9E5A",
+    rowBg: "#F2F8F5",
+  },
+};
+export const TASK_STATUS_ORDER = ["todo", "in_progress", "done"];
 export const FONT_DISPLAY = "'M PLUS Rounded 1c', sans-serif";
 export const FONT_BODY = "'Zen Kaku Gothic New', sans-serif";
 export const FONT_MONO = "'IBM Plex Mono', monospace";
@@ -49,6 +88,10 @@ export function GlobalStyle() {
       *:focus-visible { outline: 2px solid ${COLORS.teal}; outline-offset: 2px; }
       ::selection { background: rgba(244,105,25,0.18); }
       .two-col { grid-template-columns: 1fr 1fr; }
+      /* 契約の進行フロー(契約成立→実行中→完了報告→企業が確認→契約完了)のステッパー */
+      .flow-steps { display: flex; align-items: flex-start; }
+      .flow-step { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+      .flow-step-line { position: absolute; top: 12px; right: 50%; left: -50%; height: 2px; }
       /* 未読バッジ(赤の丸ピル)。ヘッダー・下部タブ・メッセージ一覧で共用 */
       .nav-badge { background: #e5484d; color: #ffffff; border-radius: 999px; font-size: 10px; font-weight: 700; line-height: 1; min-width: 17px; height: 17px; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; margin-left: 6px; }
       .nav-badge-float { position: absolute; top: -6px; right: -10px; margin: 0; z-index: 1; box-shadow: 0 0 0 2px ${COLORS.surface}; }
@@ -77,6 +120,7 @@ export function GlobalStyle() {
       }
       @media (max-width: 620px) {
         .two-col { grid-template-columns: 1fr !important; }
+        .flow-step > div:last-child { font-size: 10px !important; }
         .stack-mobile { flex-direction: column !important; align-items: stretch !important; }
         .hide-mobile { display: none !important; }
       }

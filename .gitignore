@@ -1,0 +1,18 @@
+# 依存パッケージ(npm installで復元される)
+/node_modules
+
+# Next.jsのビルド成果物
+/.next
+/out
+
+# 環境変数(APIキー・DB接続文字列。絶対にコミットしない)
+.env
+.env.local
+.env*.local
+
+# Prismaの生成物
+/prisma/generated
+
+# OS・エディタ
+.DS_Store
+*.log
