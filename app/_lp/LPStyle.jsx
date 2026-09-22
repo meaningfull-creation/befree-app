@@ -8,7 +8,10 @@ export default function LPStyle() {
       /* ---- base ---- */
       .lp { font-family: ${F.jp}; color: ${C.ink}; background: ${C.white}; -webkit-font-smoothing: antialiased; overflow-x: clip; }
       .lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
-      .lp a { color: inherit; text-decoration: none; }
+      /* color:inherit の特異度(0-1-1)がボタンのクラス(0-1-0)より高く、
+         リンク型CTAの文字色をすべて上書きしてしまっていた。ボタンは除外する。 */
+      .lp a { text-decoration: none; }
+      .lp a:not(.lp-btn) { color: inherit; }
       .lp ::selection { background: ${C.orange}; color: #fff; }
       .lp :focus-visible { outline: 2px solid ${C.orange}; outline-offset: 3px; }
 
