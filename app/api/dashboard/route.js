@@ -81,7 +81,7 @@ export async function GET() {
     });
     const pool = talents
       .filter((t) => t.skillMaps.length > 0 && isTalentAvailable(t, activeCountByTalent))
-      .map((t) => ({ id: t.id, name: t.name, role: t.title, axisScores: t.skillMaps[0].axisScores, phaseTags: t.skillMaps[0].phases || [] }));
+      .map((t) => ({ id: t.id, name: t.name, role: t.title, photoUpdatedAt: t.photoUpdatedAt, axisScores: t.skillMaps[0].axisScores, phaseTags: t.skillMaps[0].phases || [] }));
     const topMatches = rankCandidates(pool, (t) => scoreMatch(latestSkillMap.axisScores, t.axisScores, company.phase, t.phaseTags, 6, axisWeightMultipliers)).slice(0, 2);
 
     const daysSince = daysBetween(new Date(latestSkillMap.createdAt), new Date());
@@ -92,7 +92,7 @@ export async function GET() {
       companyName: company.name,
       overallScore: Math.round(AXES.reduce((s, a) => s + (latestSkillMap.axisScores[a.key] || 0), 0) / AXES.length),
       topIssues: (latestSkillMap.topIssueDetails || []).map((i) => ({ ...i, axisLabel: AXIS_LABEL_BY_KEY[i.axisKey] || i.axisKey })),
-      topMatches: topMatches.map((t) => ({ id: t.id, name: t.name, role: t.role, match: t.match })),
+      topMatches: topMatches.map((t) => ({ id: t.id, name: t.name, role: t.role, photoUpdatedAt: t.photoUpdatedAt, match: t.match })),
       projects: projects.map((p) => summarizeProject(p, "company")),
       diagnosedAt: latestSkillMap.createdAt,
       daysSinceDiagnosis: daysSince,

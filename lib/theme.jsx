@@ -91,6 +91,25 @@ export function GlobalStyle() {
       *:focus-visible { outline: 2px solid ${COLORS.teal}; outline-offset: 2px; }
       ::selection { background: rgba(244,105,25,0.18); }
       .two-col { grid-template-columns: 1fr 1fr; }
+      /* 新規登録: 左に「登録後に何が起きるか」、右に入力欄を並べる */
+      .signup-split { grid-template-columns: 1fr 1fr; }
+      .role-card { transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease; }
+      .role-card:hover { transform: translateY(-3px); border-color: ${COLORS.teal}; box-shadow: 0 10px 30px rgba(4,22,45,0.09); }
+      @media (max-width: 760px) {
+        .signup-split { grid-template-columns: 1fr; }
+      }
+      /* ダッシュボード: 指標タイル → パネルのグリッド、という2段構成。
+         縦一列に積むと画面が間延びするため、幅が取れるときは自動で多段に並べる。 */
+      .dash-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: 12px; margin-bottom: 18px; }
+      .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 16px; align-items: start; }
+      .dash-grid .span-all { grid-column: 1 / -1; }
+      @media (max-width: 700px) {
+        .dash-grid { grid-template-columns: 1fr; }
+        .dash-stats { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      }
+      /* 一覧行の中の細い進捗バー(タスク進捗など) */
+      .mini-bar { height: 5px; border-radius: 999px; background: ${COLORS.surfaceRaised}; overflow: hidden; flex: 1; min-width: 60px; }
+      .mini-bar > span { display: block; height: 100%; border-radius: 999px; background: ${COLORS.teal}; }
       /* アプリ画面のヘッダー。ロゴを左上・操作を右上に固定表示する(スクロールしても常に見える) */
       .app-topbar {
         position: sticky; top: 0; z-index: 50;
