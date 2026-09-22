@@ -18,9 +18,10 @@ const OVERALL = Math.round(AXES.reduce((s, a) => s + SCORES[a.key], 0) / AXES.le
 
 // レーダーの周囲に置くラベル。長い軸名をそのまま出すと「プロダクト…」のように
 // 省略されて未完成に見えるため、この図版用の短縮名を持つ。
+// モバイルではSVGごと縮むぶんラベルを大きくしているので、左端に来る軸は特に短くする。
 const SHORT = {
   product: "プロダクト", sales: "セールス", marketing: "マーケ", hr: "採用・組織",
-  finance_raise: "資金調達", finance_mgmt: "財務会計", cs: "CS", ops: "オペレーション",
+  finance_raise: "資金調達", finance_mgmt: "財務会計", cs: "CS", ops: "業務・運用",
   tech: "技術基盤", leadership: "経営体制",
 };
 

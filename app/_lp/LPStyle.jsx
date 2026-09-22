@@ -216,8 +216,9 @@ export default function LPStyle() {
       .lp-how-out li::before { content: ""; position: absolute; left: 0; top: 9px; width: 8px; height: 9px; background: ${C.orange}; clip-path: ${HOME_PLATE_CLIP}; }
 
       /* ---- two sides ----
-         以前は各サイドの61%が空白だった。提供写真が「左=企業チーム / 右=実務経験者」
-         という構図なので、左右に割って背景に敷き、暗いスクリムで白文字の可読性を確保する。 */
+         背景は「夕暮れの誰もいない会議室 / 夕陽の打席の白線」という情景写真。
+         もともと暗い写真なので、スクリムは上を薄く・下だけ濃くして、
+         情景を潰さずに白文字のコントラストだけを確保する。 */
       .lp-two { display: flex; min-height: 0; }
       .lp-two-side {
         flex: 1; position: relative; overflow: hidden; isolation: isolate;
@@ -228,8 +229,8 @@ export default function LPStyle() {
         border-left: 1px solid ${C.lineOnInk};
       }
       .lp-two-side:first-child { border-left: none; }
-      .lp-two-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 32%; z-index: -2; transition: transform 900ms cubic-bezier(0.22,1,0.36,1); }
-      .lp-two-scrim { position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(18,18,20,0.58) 0%, rgba(18,18,20,0.80) 42%, rgba(18,18,20,0.93) 72%, rgba(18,18,20,0.97) 100%); transition: opacity ${M.base}; }
+      .lp-two-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; transition: transform 900ms cubic-bezier(0.22,1,0.36,1); }
+      .lp-two-scrim { position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(18,18,20,0.22) 0%, rgba(18,18,20,0.44) 38%, rgba(18,18,20,0.74) 68%, rgba(18,18,20,0.92) 100%); transition: opacity ${M.base}; }
       .lp-two-body { display: flex; flex-direction: column; align-items: flex-start; max-width: 460px; }
       .lp-two-note { font-size: 13.5px; line-height: 1.85; color: rgba(255,255,255,0.86); margin-top: 16px; }
       .lp-two-cta { margin-top: 28px; pointer-events: none; }
@@ -237,21 +238,38 @@ export default function LPStyle() {
         .lp-two:hover .lp-two-side { flex-grow: 0.88; }
         .lp-two .lp-two-side:hover { flex-grow: 1.24; }
         .lp-two-side:hover .lp-two-bg { transform: scale(1.04); }
-        .lp-two-side:hover .lp-two-scrim { opacity: 0.86; }
+        .lp-two-side:hover .lp-two-scrim { opacity: 0.88; }
       }
 
-      /* ---- brand(オレンジの面) ---- */
-      .lp-brand-block { position: relative; overflow: hidden; display: flex; align-items: center; min-height: min(46svh, 380px); padding: clamp(48px, 5.4vw, 76px) 0; }
-      .lp-brand-plate {
-        position: absolute; right: -6%; top: 50%; transform: translateY(-50%);
-        width: min(46vw, 560px); aspect-ratio: 1 / 1.15;
-        background: rgba(255,255,255,0.09); clip-path: ${HOME_PLATE_CLIP}; pointer-events: none;
+      /* ---- brand(オレンジの面) ----
+         以前は2つの面に分けて各380px確保していたため、38文字に約890pxを使っていた。
+         1面にまとめ、主文と副文でサイズの差をつけて間延びを解消する。 */
+      .lp-brand { position: relative; overflow: hidden; padding: clamp(58px, 6.2vw, 92px) 0; }
+      .lp-brand-grid { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr); gap: clamp(26px, 3.6vw, 60px); align-items: end; }
+      .lp-brand-lead {
+        font-family: ${F.jp}; font-weight: 900; margin: 0; white-space: pre-line; color: #fff;
+        font-size: clamp(31px, 5.2vw, 70px); line-height: 1.16; letter-spacing: -0.035em; line-break: strict;
+      }
+      .lp-brand-side { border-left: 2px solid rgba(255,255,255,0.52); padding-left: clamp(16px, 1.8vw, 26px); }
+      .lp-brand-sub {
+        font-family: ${F.jp}; font-weight: 700; margin: 0; white-space: pre-line; color: rgba(255,255,255,0.96);
+        font-size: clamp(17px, 1.95vw, 27px); line-height: 1.62; letter-spacing: -0.02em; line-break: strict;
+      }
+      .lp-brand-mark { margin-top: clamp(20px, 2.4vw, 32px); }
+      /* 打席の白線。ベタ塗りの巨大なホームベースより、線のほうがオレンジ面を濁さない。
+         コピーに重ならないよう、右下の外へ逃がして角だけを見せる */
+      .lp-brand-box {
+        position: absolute; right: -10%; bottom: -34%;
+        width: min(34vw, 400px); aspect-ratio: 1 / 1.06;
+        border: 2px solid rgba(255,255,255,0.26); transform: skewX(-9deg); pointer-events: none;
       }
 
       /* ---- footer ---- */
       /* 7つのリンクを横1列に流さず、2行にまとめる */
-      .lp-footer-links { display: grid; grid-template-columns: repeat(4, max-content); gap: 10px clamp(18px, 2.4vw, 34px); font-size: 13px; color: ${C.inkSoft}; }
+      .lp-footer-links { display: grid; grid-template-columns: repeat(4, max-content); gap: 6px clamp(14px, 1.8vw, 26px); font-size: 13px; letter-spacing: -0.03em; color: ${C.inkSoft}; }
       .lp-footer-links a:hover { color: ${C.orange}; }
+      .lp-footer-top { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; }
+      .lp-footer-bar { border-top: 1px solid ${C.line}; margin-top: 36px; padding-top: 20px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 
       /* ---- mobile ---- */
       /* モバイルは別レイアウトとして設計する。人物を横に詰め込まず、縦と横スワイプで見せる */
@@ -305,13 +323,19 @@ export default function LPStyle() {
         .lp-btn--sm { min-height: 44px; font-size: 13.5px; }
         .lp-ai-input input { font-size: 16px; }
         /* タップできるものは48px以上を確保する */
-        .lp-navlink, .lp-footer-links a, .lp-faq summary { min-height: 48px; display: flex; align-items: center; }
+        .lp-navlink, .lp-faq summary { min-height: 48px; display: flex; align-items: center; }
+        /* フッターだけは48px行が縦の空きになりすぎるため、指で押せる下限(44px)まで詰める */
+        .lp-footer-links a { min-height: 44px; display: flex; align-items: center; }
         .lp-two-side { min-height: clamp(320px, 74vw, 400px); justify-content: flex-end; }
         .lp-two-body { max-width: none; }
-        .lp-brand-block { min-height: 0; padding: clamp(52px, 13vw, 76px) 0; }
-        .lp-brand-plate { right: -18%; width: 62vw; opacity: 0.8; }
+        .lp-brand { padding: clamp(50px, 12vw, 76px) 0; }
+        .lp-brand-grid { grid-template-columns: 1fr; gap: 26px; align-items: start; }
+        .lp-brand-box { right: -44%; bottom: -30%; width: 76vw; }
         /* 自分で決めた下限(11px)を割っていた箇所を、モバイルでは引き上げる */
         .lp-gm-badge, .lp-issue-axis, .lp-gm .lp-label, .lp-gm-legend { font-size: 11.5px !important; }
+        /* SVGはviewBoxごと縮むため、9.5pxの軸ラベルは実寸8.3pxまで落ちていた。
+           縮小率(約0.88)を見込んでユーザー座標を上げ、実寸11px以上にする */
+        .lp-gm-svg text { font-size: 12.6px; }
         .lp-gm-issue-s, .lp-gm-issue .lp-num { font-size: 11.5px; }
         /* ロゴのリンクも指で押せる大きさを確保する */
         .lp-header-inner > a { min-height: 44px; display: flex; align-items: center; }
@@ -319,7 +343,11 @@ export default function LPStyle() {
         .lp-facts { grid-template-columns: repeat(2, 1fr); gap: 26px 20px; }
         .lp-issues { grid-template-columns: 1fr; }
         .lp-problem-split { grid-template-columns: 1fr; gap: 22px; }
-        .lp-footer-links { grid-template-columns: repeat(2, 1fr); gap: 4px 16px; }
+        /* 44pxのタップ領域は保ったまま、文字を少し大きくして行の空きを目立たせない */
+        .lp-footer-links { grid-template-columns: repeat(2, max-content); gap: 0 clamp(14px, 5vw, 28px); font-size: 14px; }
+        /* リンクのまわりの余白も詰める。行の高さ(44px)はタップのために残す */
+        .lp-footer-top { gap: 22px; }
+        .lp-footer-bar { margin-top: 22px; padding-top: 16px; }
         .lp-band-photo { height: clamp(190px, 52vw, 260px); }
         .lp-ai-preview { grid-template-columns: 1fr; gap: 20px; }
         .lp-ai-prev-d { font-size: 13px; }

@@ -5,7 +5,7 @@ import Hero from "./_lp/Hero";
 import AIExperience from "./_lp/AIExperience";
 import People from "./_lp/People";
 import HowItWorks from "./_lp/HowItWorks";
-import { Arrow, Btn, Label, Reveal, Wordmark, Wrap } from "./_lp/parts";
+import { Arrow, Label, Reveal, Wordmark, Wrap } from "./_lp/parts";
 import { EXPERIENCE_MARQUEE, LP_COLOR as C } from "./_lp/tokens";
 import { Compare, AfterMatch, Faq } from "./_lp/Content";
 
@@ -97,30 +97,25 @@ function ConnectBand() {
 
 // 06｜ORANGE BRAND SECTION — 説明文を置かず、ブランド広告として成立させる
 function BrandSection() {
-  // 決め台詞「その経験に、次の打席を。」は最終CTAで使うため、ここでは重複させない。
-  const lines = [
-    "経験を、\n眠らせない。",
-    "その経験を、\n必要としている\n会社がある。",
-  ];
+  // 以前は2面に分けていたが、38文字に約890px使っていて間延びしていた。
+  // 1面に集約し、主文(大)と副文(小)でサイズの差をつけて視線を動かす。
   return (
-    <section className="on-orange" data-tone="orange" style={{ paddingTop: 0, paddingBottom: 0 }}>
-      {lines.map((l, i) => (
-        <div key={i} className="lp-brand-block" style={{ borderTop: i === 0 ? "none" : "1px solid rgba(255,255,255,0.22)" }}>
-          {/* 打席のホームベースを巨大に、ごく薄く重ねる。写真を敷くとオレンジが濁るため、
-              この面はブランドの形だけで持たせる */}
-          <span className="lp-brand-plate" aria-hidden="true" />
-          <Wrap style={{ position: "relative" }}>
-            <Reveal>
-              <h2 className="lp-display" style={{ whiteSpace: "pre-line", color: "#fff" }}>{l}</h2>
-              {i === lines.length - 1 && (
-                <div style={{ marginTop: 34 }}>
-                  <Wordmark size={16} color="rgba(255,255,255,0.8)" />
-                </div>
-              )}
-            </Reveal>
-          </Wrap>
-        </div>
-      ))}
+    <section className="on-orange lp-brand" data-tone="orange">
+      {/* 打席の白線。ベタ塗りで大きく置くとオレンジが鈍るため、線だけで置く */}
+      <span className="lp-brand-box" aria-hidden="true" />
+      <Wrap style={{ position: "relative" }}>
+        <Reveal>
+          <div className="lp-brand-grid">
+            <h2 className="lp-brand-lead">{"経験を、\n眠らせない。"}</h2>
+            <div className="lp-brand-side">
+              <p className="lp-brand-sub">{"その経験を、\n必要としている会社がある。"}</p>
+              <div className="lp-brand-mark">
+                <Wordmark size={15} color="rgba(255,255,255,0.78)" />
+              </div>
+            </div>
+          </div>
+        </Reveal>
+      </Wrap>
     </section>
   );
 }
@@ -128,14 +123,16 @@ function BrandSection() {
 // 08｜TWO SIDES — ホバーでそれぞれの領域が少し広がる
 function TwoSides() {
   const sides = [
-    { en: "For Companies", jp: "会社に足りない\n経験を。", note: "5問・約3分の診断から。結果を見るまで無料です。", cta: "経験を探す", href: "/diagnose", img: "/lp/side-company.jpg", alt: "課題について話し合う企業のチーム" },
-    { en: "For Professionals", jp: "あなたの経験に、\n次の打席を。", note: "月10時間から。本業と並行して関われます。", cta: "経験を登録する", href: "/join", img: "/lp/side-talent.jpg", alt: "経験を持つ実務経験者" },
+    { en: "For Companies", jp: "会社に足りない\n経験を。", note: "5問・約3分の診断から。結果を見るまで無料です。", cta: "経験を探す", href: "/diagnose", img: "/lp/side-company.jpg", alt: "夕暮れの街を望む、まだ誰もいない会議室", pos: "62% 42%" },
+    { en: "For Professionals", jp: "あなたの経験に、\n次の打席を。", note: "月10時間から。本業と並行して関われます。", cta: "経験を登録する", href: "/join", img: "/lp/side-talent.jpg", alt: "夕陽に照らされた打席の白線", pos: "64% 46%" },
   ];
   return (
     <section className="on-ink lp-two" data-tone="dark">
       {sides.map((s) => (
         <a key={s.en} href={s.href} className="lp-two-side">
-          <img src={s.img} alt={s.alt} className="lp-two-bg" loading="lazy" />
+          {/* 写真ごとに見せたい部分(会社=夕陽の街 / 人材=打席の白線)が違うので、
+              トリミング位置は画像側で指定する */}
+          <img src={s.img} alt={s.alt} className="lp-two-bg" style={{ objectPosition: s.pos }} loading="lazy" />
           <span className="lp-two-scrim" aria-hidden="true" />
           <span className="lp-two-body">
             <Label tone="plain" style={{ color: C.orange, marginBottom: 22 }}>{s.en}</Label>
@@ -151,32 +148,11 @@ function TwoSides() {
   );
 }
 
-// 09｜FINAL CTA — もう一度ブランドメッセージへ戻る。余計な説明は置かない
-function FinalCTA() {
-  return (
-    <section className="on-orange lp-sec" data-tone="orange" style={{ textAlign: "center" }}>
-      <Wrap>
-        <Reveal>
-          <h2 className="lp-display" style={{ color: "#fff", whiteSpace: "pre-line" }}>
-            {"その経験に、\n次の打席を。"}
-          </h2>
-          <div style={{ marginTop: 34 }}>
-            <Wordmark size={19} color="rgba(255,255,255,0.8)" />
-          </div>
-          <div style={{ marginTop: 52, display: "flex", justifyContent: "center" }}>
-            <Btn href="/signup" variant="onOrange">BATTER BOXを始める</Btn>
-          </div>
-        </Reveal>
-      </Wrap>
-    </section>
-  );
-}
-
 function Footer() {
   return (
     <footer className="lp-sec lp-sec--tight" style={{ paddingBottom: "clamp(40px, 5vw, 64px)" }}>
       <Wrap>
-        <div style={{ display: "flex", gap: 32, flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between" }}>
+        <div className="lp-footer-top">
           <div>
             <img src="/logo.png" alt="BATTER BOX" style={{ height: 38, width: "auto", display: "block" }} />
             <p className="lp-small" style={{ marginTop: 16, maxWidth: 320 }}>
@@ -193,7 +169,7 @@ function Footer() {
             <a href="/contact">お問い合わせ</a>
           </div>
         </div>
-        <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 36, paddingTop: 20, display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+        <div className="lp-footer-bar">
           <span className="lp-small">© 株式会社BeFree</span>
         </div>
       </Wrap>
@@ -222,7 +198,6 @@ export default async function LandingPage() {
         <AfterMatch />
         <Faq />
         <TwoSides />
-        <FinalCTA />
         <Footer />
       </main>
 
