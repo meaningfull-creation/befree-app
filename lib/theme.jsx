@@ -49,6 +49,32 @@ export function GlobalStyle() {
       *:focus-visible { outline: 2px solid ${COLORS.teal}; outline-offset: 2px; }
       ::selection { background: rgba(244,105,25,0.18); }
       .two-col { grid-template-columns: 1fr 1fr; }
+      /* 未読バッジ(赤の丸ピル)。ヘッダー・下部タブ・メッセージ一覧で共用 */
+      .nav-badge { background: #e5484d; color: #ffffff; border-radius: 999px; font-size: 10px; font-weight: 700; line-height: 1; min-width: 17px; height: 17px; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; margin-left: 6px; }
+      .nav-badge-float { position: absolute; top: -6px; right: -10px; margin: 0; box-shadow: 0 0 0 2px ${COLORS.surface}; }
+      /* メインメニュー: デスクトップはヘッダーのボタン列、モバイルは画面下部の固定タブ */
+      .top-nav { display: flex; align-items: center; gap: 8px; }
+      .top-nav .nav-active { border-color: ${COLORS.teal}; color: ${COLORS.tealDim}; font-weight: 700; }
+      .bottom-nav { display: none; }
+      @media (max-width: 720px) {
+        .top-nav { display: none; }
+        .shell-container { padding: 24px 16px 110px !important; }
+        .bottom-nav {
+          display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+          background: ${COLORS.surface}; border-top: 1px solid ${COLORS.border};
+          box-shadow: 0 -4px 18px rgba(0,0,0,0.06);
+          padding: 6px max(6px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+          justify-content: space-around;
+        }
+        .bottom-nav button {
+          flex: 1; min-width: 0; min-height: 52px;
+          display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+          background: none; border: none; padding: 6px 2px; cursor: pointer;
+          font-family: ${FONT_BODY}; font-size: 10px; font-weight: 500; color: ${COLORS.muted};
+        }
+        .bottom-nav button span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        .bottom-nav button.active { color: ${COLORS.teal}; font-weight: 700; }
+      }
       @media (max-width: 620px) {
         .two-col { grid-template-columns: 1fr !important; }
         .stack-mobile { flex-direction: column !important; align-items: stretch !important; }

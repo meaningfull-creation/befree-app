@@ -338,6 +338,7 @@ model Message {
   senderRole String // "company" | "talent"(送信者がどちら側かの表示用)
   body       String
   createdAt  DateTime @default(now())
+  readAt     DateTime? // 受信者がスレッドを開いた日時。null = 未読
 
   @@index([matchId])
 }
