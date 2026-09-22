@@ -215,12 +215,38 @@ export default function LPStyle() {
       .lp-how-out li { font-size: 13.5px; color: ${C.inkSoft}; line-height: 1.8; padding-left: 18px; position: relative; }
       .lp-how-out li::before { content: ""; position: absolute; left: 0; top: 9px; width: 8px; height: 9px; background: ${C.orange}; clip-path: ${HOME_PLATE_CLIP}; }
 
-      /* ---- two sides ---- */
-      .lp-two { display: flex; min-height: 78svh; }
-      .lp-two-side { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: clamp(48px, 7vw, 96px) ${S.gutter}; transition: flex-grow ${M.base}, background ${M.base}; border-left: 1px solid ${C.lineOnInk}; }
+      /* ---- two sides ----
+         以前は各サイドの61%が空白だった。提供写真が「左=企業チーム / 右=実務経験者」
+         という構図なので、左右に割って背景に敷き、暗いスクリムで白文字の可読性を確保する。 */
+      .lp-two { display: flex; min-height: 0; }
+      .lp-two-side {
+        flex: 1; position: relative; overflow: hidden; isolation: isolate;
+        display: flex; flex-direction: column; justify-content: flex-end;
+        min-height: clamp(380px, 46vw, 540px);
+        padding: clamp(40px, 5vw, 72px) ${S.gutter};
+        transition: flex-grow ${M.base};
+        border-left: 1px solid ${C.lineOnInk};
+      }
       .lp-two-side:first-child { border-left: none; }
-      .lp-two:hover .lp-two-side { flex-grow: 0.86; }
-      .lp-two .lp-two-side:hover { flex-grow: 1.28; background: rgba(255,255,255,0.04); }
+      .lp-two-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 32%; z-index: -2; transition: transform 900ms cubic-bezier(0.22,1,0.36,1); }
+      .lp-two-scrim { position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(18,18,20,0.58) 0%, rgba(18,18,20,0.80) 42%, rgba(18,18,20,0.93) 72%, rgba(18,18,20,0.97) 100%); transition: opacity ${M.base}; }
+      .lp-two-body { display: flex; flex-direction: column; align-items: flex-start; max-width: 460px; }
+      .lp-two-note { font-size: 13.5px; line-height: 1.85; color: rgba(255,255,255,0.86); margin-top: 16px; }
+      .lp-two-cta { margin-top: 28px; pointer-events: none; }
+      @media (hover: hover) {
+        .lp-two:hover .lp-two-side { flex-grow: 0.88; }
+        .lp-two .lp-two-side:hover { flex-grow: 1.24; }
+        .lp-two-side:hover .lp-two-bg { transform: scale(1.04); }
+        .lp-two-side:hover .lp-two-scrim { opacity: 0.86; }
+      }
+
+      /* ---- brand(オレンジの面) ---- */
+      .lp-brand-block { position: relative; overflow: hidden; display: flex; align-items: center; min-height: min(46svh, 380px); padding: clamp(48px, 5.4vw, 76px) 0; }
+      .lp-brand-plate {
+        position: absolute; right: -6%; top: 50%; transform: translateY(-50%);
+        width: min(46vw, 560px); aspect-ratio: 1 / 1.15;
+        background: rgba(255,255,255,0.09); clip-path: ${HOME_PLATE_CLIP}; pointer-events: none;
+      }
 
       /* ---- footer ---- */
       /* 7つのリンクを横1列に流さず、2行にまとめる */
@@ -280,7 +306,10 @@ export default function LPStyle() {
         .lp-ai-input input { font-size: 16px; }
         /* タップできるものは48px以上を確保する */
         .lp-navlink, .lp-footer-links a, .lp-faq summary { min-height: 48px; display: flex; align-items: center; }
-        .lp-two-side { min-height: 0; }
+        .lp-two-side { min-height: clamp(320px, 74vw, 400px); justify-content: flex-end; }
+        .lp-two-body { max-width: none; }
+        .lp-brand-block { min-height: 0; padding: clamp(52px, 13vw, 76px) 0; }
+        .lp-brand-plate { right: -18%; width: 62vw; opacity: 0.8; }
         /* 自分で決めた下限(11px)を割っていた箇所を、モバイルでは引き上げる */
         .lp-gm-badge, .lp-issue-axis, .lp-gm .lp-label, .lp-gm-legend { font-size: 11.5px !important; }
         .lp-gm-issue-s, .lp-gm-issue .lp-num { font-size: 11.5px; }

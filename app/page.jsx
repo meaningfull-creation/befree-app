@@ -105,19 +105,16 @@ function BrandSection() {
   return (
     <section className="on-orange" data-tone="orange" style={{ paddingTop: 0, paddingBottom: 0 }}>
       {lines.map((l, i) => (
-        <div
-          key={i}
-          style={{
-            minHeight: "min(56svh, 470px)", display: "flex", alignItems: "center",
-            borderTop: i === 0 ? "none" : "1px solid rgba(255,255,255,0.22)",
-          }}
-        >
-          <Wrap>
+        <div key={i} className="lp-brand-block" style={{ borderTop: i === 0 ? "none" : "1px solid rgba(255,255,255,0.22)" }}>
+          {/* 打席のホームベースを巨大に、ごく薄く重ねる。写真を敷くとオレンジが濁るため、
+              この面はブランドの形だけで持たせる */}
+          <span className="lp-brand-plate" aria-hidden="true" />
+          <Wrap style={{ position: "relative" }}>
             <Reveal>
               <h2 className="lp-display" style={{ whiteSpace: "pre-line", color: "#fff" }}>{l}</h2>
               {i === lines.length - 1 && (
-                <div style={{ marginTop: 44 }}>
-                  <Wordmark size={17} color="rgba(255,255,255,0.78)" />
+                <div style={{ marginTop: 34 }}>
+                  <Wordmark size={16} color="rgba(255,255,255,0.8)" />
                 </div>
               )}
             </Reveal>
@@ -131,22 +128,22 @@ function BrandSection() {
 // 08｜TWO SIDES — ホバーでそれぞれの領域が少し広がる
 function TwoSides() {
   const sides = [
-    { en: "For Companies", jp: "会社に足りない\n経験を。", cta: "経験を探す", href: "/diagnose" },
-    { en: "For Professionals", jp: "あなたの経験に、\n次の打席を。", cta: "経験を登録する", href: "/join" },
+    { en: "For Companies", jp: "会社に足りない\n経験を。", note: "5問・約3分の診断から。結果を見るまで無料です。", cta: "経験を探す", href: "/diagnose", img: "/lp/side-company.jpg", alt: "課題について話し合う企業のチーム" },
+    { en: "For Professionals", jp: "あなたの経験に、\n次の打席を。", note: "月10時間から。本業と並行して関われます。", cta: "経験を登録する", href: "/join", img: "/lp/side-talent.jpg", alt: "経験を持つ実務経験者" },
   ];
   return (
     <section className="on-ink lp-two" data-tone="dark">
       {sides.map((s) => (
         <a key={s.en} href={s.href} className="lp-two-side">
-          <Label tone="plain" style={{ color: C.orange, marginBottom: 26 }}>{s.en}</Label>
-          <h2 className="lp-head" style={{ whiteSpace: "pre-line", color: "#fff", fontSize: "clamp(27px, 3.6vw, 52px)", lineHeight: 1.3 }}>
-            {s.jp}
-          </h2>
-          <span
-            className="lp-btn lp-btn--onInk"
-            style={{ marginTop: 40, alignSelf: "flex-start", pointerEvents: "none" }}
-          >
-            {s.cta}<Arrow />
+          <img src={s.img} alt={s.alt} className="lp-two-bg" loading="lazy" />
+          <span className="lp-two-scrim" aria-hidden="true" />
+          <span className="lp-two-body">
+            <Label tone="plain" style={{ color: C.orange, marginBottom: 22 }}>{s.en}</Label>
+            <h2 className="lp-head" style={{ whiteSpace: "pre-line", color: "#fff", fontSize: "clamp(26px, 3.4vw, 48px)", lineHeight: 1.32 }}>
+              {s.jp}
+            </h2>
+            <span className="lp-two-note">{s.note}</span>
+            <span className="lp-btn lp-btn--onInk lp-two-cta">{s.cta}<Arrow /></span>
           </span>
         </a>
       ))}
