@@ -18,7 +18,7 @@ export async function GET(req, { params }) {
   const [tasks, kpis, workLogs, comments] = await Promise.all([
     prisma.projectTask.findMany({ where: { projectId: params.id }, orderBy: { createdAt: "asc" } }),
     prisma.projectKPI.findMany({ where: { projectId: params.id }, orderBy: { createdAt: "asc" } }),
-    prisma.workLog.findMany({ where: { projectId: params.id }, orderBy: { loggedAt: "desc" } }),
+    prisma.workLog.findMany({ where: { projectId: params.id }, orderBy: { loggedAt: "desc" }, include: { attachments: { select: { id: true, filename: true, size: true, contentType: true } } } }),
     prisma.projectComment.findMany({ where: { projectId: params.id }, orderBy: { createdAt: "asc" } }),
   ]);
 

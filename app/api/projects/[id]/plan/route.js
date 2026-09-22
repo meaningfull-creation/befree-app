@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getProjectIfAuthorized } from "@/lib/projectAccess";
-import { generate90DayPlan } from "@/lib/ninetyDayPlan";
+import { generate90DayPlan, sanitizePlan } from "@/lib/ninetyDayPlan";
 import { logError } from "@/lib/errorLog";
 import { AXES } from "@/lib/axes";
 
@@ -73,6 +73,29 @@ export async function POST(req, { params }) {
     return NextResponse.json({ plan, tasksSeeded, kpisSeeded });
   } catch (e) {
     await logError("api/projects/[id]/plan", e);
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
+
+// PATCH /api/projects/[id]/plan
+// body: { plan } — 画面上で編集したプランをそのまま保存する(項目の追記・修正・削除)。
+// AI出力と同じサニタイズを通すため、壊れた形式が保存されることはない。
+export async function PATCH(req, { params }) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
+
+    const authorized = await getProjectIfAuthorized(params.id, user);
+    if (!authorized) return NextResponse.json({ error: "このプロジェクトへのアクセス権がありません" }, { status: 403 });
+
+    const { plan: rawPlan } = await req.json();
+    const plan = sanitizePlan(rawPlan, authorized.project.engagement?.monthlyHours);
+    if (!plan) return NextResponse.json({ error: "プランの形式が正しくありません" }, { status: 400 });
+
+    await prisma.project.update({ where: { id: params.id }, data: { plan } });
+    return NextResponse.json({ plan });
+  } catch (e) {
+    await logError("api/projects/[id]/plan:PATCH", e);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }

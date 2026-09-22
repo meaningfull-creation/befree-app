@@ -16,6 +16,10 @@ function daysBetween(a, b) {
 function summarizeProject(p, viewerRole) {
   const doneTasks = p.tasks.filter((t) => t.status === "done").length;
   const kpiOnTrack = p.kpis.filter((k) => k.targetValue != null && k.currentValue != null && k.currentValue >= k.targetValue).length;
+  const workLogs = p.workLogs || [];
+  const totalLoggedHours = Math.round(workLogs.reduce((s, w) => s + (w.hours || 0), 0) * 10) / 10;
+  const deliverableCount = workLogs.reduce((s, w) => s + (w.attachments?.length || 0), 0);
+  const lastLog = workLogs[0] || null;
   return {
     id: p.id,
     name: p.name,
@@ -27,6 +31,15 @@ function summarizeProject(p, viewerRole) {
     doneTaskCount: doneTasks,
     kpiCount: p.kpis.length,
     kpiOnTrackCount: kpiOnTrack,
+    totalLoggedHours,
+    deliverableCount,
+    lastActivityAt: lastLog ? lastLog.loggedAt : null,
+    recentLogs: workLogs.slice(0, 3).map((w) => ({
+      description: w.description.length > 80 ? `${w.description.slice(0, 80)}…` : w.description,
+      hours: w.hours,
+      loggedAt: w.loggedAt,
+      attachmentCount: w.attachments?.length || 0,
+    })),
   };
 }
 
@@ -49,6 +62,7 @@ export async function GET() {
           engagement: { include: { match: { include: { companySkillMap: { include: { company: true } }, talentSkillMap: { include: { talent: true } } } } } },
           tasks: true,
           kpis: true,
+          workLogs: { orderBy: { loggedAt: "desc" }, include: { attachments: { select: { id: true } } } },
         },
         orderBy: { createdAt: "desc" },
       }),
@@ -96,7 +110,7 @@ export async function GET() {
           engagement: { include: { match: { include: { companySkillMap: { include: { company: true } }, talentSkillMap: { include: { talent: true } } } } } },
           tasks: true,
           kpis: true,
-          workLogs: true,
+          workLogs: { orderBy: { loggedAt: "desc" }, include: { attachments: { select: { id: true } } } },
         },
         orderBy: { createdAt: "desc" },
       }),

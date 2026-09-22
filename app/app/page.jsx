@@ -1635,6 +1635,49 @@ function StepTalentMatches({ talentScores, talentPhases, onRestart, onOpenThread
   );
 }
 
+// 画面切り替え時に前回取得したデータを即座に表示し、裏で最新版に更新する簡易キャッシュ。
+// ダッシュボード・メッセージ一覧・プロジェクトなどの「表示されるまでが遅い」対策。
+// セッション(タブ)内のメモリにのみ保持され、リロードで消える。
+const viewCache = {};
+
+// タスク行。タップでステータスを進める(従来どおり)ほか、スマホでは指スライドに対応:
+// 右スワイプ = 次のステータスへ(未着手→着手中→完了)、左スワイプ = 1つ戻す。
+function SwipeTaskRow({ task, statusLabel, onSetStatus, onEditTitle, onDelete }) {
+  const [dx, setDx] = useState(0);
+  const startX = useRef(null);
+  const ORDER = ["todo", "in_progress", "done"];
+  const advance = () => onSetStatus(task, ORDER[Math.min(2, ORDER.indexOf(task.status) + 1)]);
+  const revert = () => onSetStatus(task, ORDER[Math.max(0, ORDER.indexOf(task.status) - 1)]);
+  const statusColor = task.status === "done" ? COLORS.teal : task.status === "in_progress" ? COLORS.amber : COLORS.muted;
+  return (
+    <div style={{ position: "relative", overflow: "hidden", borderRadius: 8 }}>
+      {dx !== 0 && (
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: dx > 0 ? "flex-start" : "flex-end", padding: "0 14px", fontSize: 11, fontWeight: 700, color: COLORS.onAccent, background: dx > 0 ? COLORS.teal : COLORS.faint, borderRadius: 8 }}>
+          {dx > 0 ? "進める →" : "← 戻す"}
+        </div>
+      )}
+      <div
+        onTouchStart={(e) => { startX.current = e.touches[0].clientX; }}
+        onTouchMove={(e) => { if (startX.current != null) setDx(Math.max(-90, Math.min(90, e.touches[0].clientX - startX.current))); }}
+        onTouchEnd={() => {
+          if (dx > 55) advance();
+          else if (dx < -55) revert();
+          setDx(0);
+          startX.current = null;
+        }}
+        style={{ display: "flex", alignItems: "center", gap: 10, background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "10px 13px", color: COLORS.text, fontSize: 13, transform: `translateX(${dx}px)`, transition: dx === 0 ? "transform 0.18s ease" : "none", touchAction: "pan-y" }}
+      >
+        <button onClick={advance} style={{ background: "none", border: `1.5px solid ${statusColor}`, color: statusColor, borderRadius: 999, fontSize: 10.5, fontFamily: FONT_MONO, padding: "3px 9px", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+          {statusLabel[task.status]}
+        </button>
+        <span style={{ flex: 1, textDecoration: task.status === "done" ? "line-through" : "none", color: task.status === "done" ? COLORS.faint : COLORS.text, minWidth: 0, overflowWrap: "anywhere" }}>{task.title}</span>
+        <button onClick={() => onEditTitle(task)} aria-label="タスク名を編集" style={{ background: "none", border: "none", color: COLORS.faint, cursor: "pointer", padding: 4, flexShrink: 0 }}>✎</button>
+        <button onClick={() => onDelete(task)} aria-label="タスクを削除" style={{ background: "none", border: "none", color: COLORS.faint, cursor: "pointer", padding: 4, flexShrink: 0 }}>×</button>
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Messaging — DM between company users and talent users, scoped to a Match
 // ---------------------------------------------------------------------------
@@ -2040,7 +2083,7 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, dr
 }
 
 function Inbox({ onOpenThread, onBack }) {
-  const [threads, setThreads] = useState(null);
+  const [threads, setThreads] = useState(viewCache.threads || null);
   const [errorMsg, setErrorMsg] = useState(null);
 
   const load = async () => {
@@ -2049,9 +2092,10 @@ function Inbox({ onOpenThread, onBack }) {
       const res = await fetch("/api/messages/threads");
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      viewCache.threads = data.threads;
       setThreads(data.threads);
     } catch (e) {
-      setErrorMsg("スレッド一覧の取得に失敗しました。");
+      if (!viewCache.threads) setErrorMsg("スレッド一覧の取得に失敗しました。");
     }
   };
 
@@ -2470,14 +2514,17 @@ function AccountSettings({ currentEmail }) {
 // プロジェクト管理 — 契約成立(Engagement)ごとに自動作成される、企業⇄人材の作業スペース
 // ---------------------------------------------------------------------------
 function ProjectsListView({ onOpenProject, onBack }) {
-  const [projects, setProjects] = useState(null);
+  const [projects, setProjects] = useState(viewCache.projects || null);
   const [errorMsg, setErrorMsg] = useState(null);
 
   useEffect(() => {
     fetch("/api/projects")
       .then((r) => r.json())
-      .then((data) => setProjects(data.projects || []))
-      .catch(() => setErrorMsg("プロジェクト一覧の取得に失敗しました。"));
+      .then((data) => {
+        viewCache.projects = data.projects || [];
+        setProjects(data.projects || []);
+      })
+      .catch(() => { if (!viewCache.projects) setErrorMsg("プロジェクト一覧の取得に失敗しました。"); });
   }, []);
 
   return (
@@ -2520,9 +2567,14 @@ function ProjectsListView({ onOpenProject, onBack }) {
 }
 
 function ProjectDetailView({ projectId, onBack }) {
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(viewCache[`project:${projectId}`] || null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [newTask, setNewTask] = useState("");
+  const [editingTask, setEditingTask] = useState(null); // { id, title } — タスク名のその場編集
+  const [planEdit, setPlanEdit] = useState(null); // 編集中のプラン(保存前のドラフト)
+  const [planSaving, setPlanSaving] = useState(false);
+  const [workLogFiles, setWorkLogFiles] = useState([]);
+  const [workLogSending, setWorkLogSending] = useState(false);
   const [newKpiName, setNewKpiName] = useState("");
   const [newKpiTarget, setNewKpiTarget] = useState("");
   const [newKpiUnit, setNewKpiUnit] = useState("");
@@ -2541,6 +2593,7 @@ function ProjectDetailView({ projectId, onBack }) {
       const res = await fetch(`/api/projects/${projectId}`);
       const d = await res.json();
       if (!res.ok) throw new Error(d.error);
+      viewCache[`project:${projectId}`] = d;
       setData(d);
     } catch (e) {
       setErrorMsg("プロジェクトの取得に失敗しました。");
@@ -2549,9 +2602,23 @@ function ProjectDetailView({ projectId, onBack }) {
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [projectId]);
 
-  const cycleTaskStatus = async (task) => {
-    const next = task.status === "todo" ? "in_progress" : task.status === "in_progress" ? "done" : "todo";
-    await postPatch(`/api/projects/${projectId}/tasks/${task.id}`, { status: next });
+  const setTaskStatus = async (task, status) => {
+    if (task.status === status) return;
+    // 楽観的更新: サーバー応答を待たずに画面へ反映して、スワイプの手応えを軽くする
+    setData((d) => d ? { ...d, tasks: d.tasks.map((t) => (t.id === task.id ? { ...t, status } : t)) } : d);
+    try { await postPatch(`/api/projects/${projectId}/tasks/${task.id}`, { status }); } catch (e) { /* 失敗時はloadで復元 */ }
+    load();
+  };
+
+  const saveTaskTitle = async () => {
+    if (!editingTask?.title?.trim()) { setEditingTask(null); return; }
+    await postPatch(`/api/projects/${projectId}/tasks/${editingTask.id}`, { title: editingTask.title.trim() });
+    setEditingTask(null);
+    load();
+  };
+
+  const deleteTask = async (task) => {
+    await fetch(`/api/projects/${projectId}/tasks/${task.id}`, { method: "DELETE" });
     load();
   };
 
@@ -2578,10 +2645,75 @@ function ProjectDetailView({ projectId, onBack }) {
 
   const addWorkLog = async (e) => {
     e.preventDefault();
-    if (!workLogDesc.trim() || !workLogHours) return;
-    await postJSON(`/api/projects/${projectId}/worklogs`, { description: workLogDesc.trim(), hours: workLogHours });
-    setWorkLogDesc(""); setWorkLogHours("");
-    load();
+    if (!workLogDesc.trim() || !workLogHours || workLogSending) return;
+    setWorkLogSending(true);
+    try {
+      if (workLogFiles.length > 0) {
+        const fd = new FormData();
+        fd.append("description", workLogDesc.trim());
+        fd.append("hours", workLogHours);
+        for (const f of workLogFiles) fd.append("files", f);
+        const res = await fetch(`/api/projects/${projectId}/worklogs`, { method: "POST", body: fd });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error);
+      } else {
+        await postJSON(`/api/projects/${projectId}/worklogs`, { description: workLogDesc.trim(), hours: workLogHours });
+      }
+      setWorkLogDesc(""); setWorkLogHours(""); setWorkLogFiles([]);
+      await load();
+    } catch (err) {
+      setErrorMsg(err.message || "稼働ログの記録に失敗しました。");
+    } finally {
+      setWorkLogSending(false);
+    }
+  };
+
+  // --- 90日プランのその場編集 ---
+  const startPlanEdit = () => {
+    const base = plan || data?.project?.plan;
+    if (!base) return;
+    setPlanEdit(JSON.parse(JSON.stringify(base)));
+  };
+  const setPlanItem = (mi, ii, field, value) => {
+    setPlanEdit((pe) => {
+      const next = JSON.parse(JSON.stringify(pe));
+      next.months[mi].items[ii][field] = field === "hours" ? (value === "" ? null : Number(value)) : value;
+      return next;
+    });
+  };
+  const addPlanItem = (mi) => {
+    setPlanEdit((pe) => {
+      const next = JSON.parse(JSON.stringify(pe));
+      next.months[mi].items.push({ action: "", hours: null });
+      return next;
+    });
+  };
+  const removePlanItem = (mi, ii) => {
+    setPlanEdit((pe) => {
+      const next = JSON.parse(JSON.stringify(pe));
+      next.months[mi].items.splice(ii, 1);
+      return next;
+    });
+  };
+  const savePlanEdit = async () => {
+    setPlanSaving(true);
+    try {
+      const cleaned = { ...planEdit, months: planEdit.months.map((m) => ({ ...m, items: m.items.filter((it) => it.action?.trim()) })) };
+      const res = await fetch(`/api/projects/${projectId}/plan`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: cleaned }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error);
+      setPlan(d.plan);
+      setPlanEdit(null);
+      await load();
+    } catch (err) {
+      setPlanError(err.message || "プランの保存に失敗しました。");
+    } finally {
+      setPlanSaving(false);
+    }
   };
 
   const addComment = async (e) => {
@@ -2646,12 +2778,44 @@ function ProjectDetailView({ projectId, onBack }) {
       <div style={sectionStyle}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div style={sectionTitleStyle}>BATTER BOX 90 DAYS PLAN</div>
-          <button className="btn-ghost" onClick={generatePlan} disabled={planLoading} style={{ fontSize: 12, padding: "6px 14px" }}>
-            {planLoading ? "生成中…" : shownPlan ? "再生成する" : "プランを生成"}
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            {shownPlan && !planEdit && (
+              <button className="btn-ghost" onClick={startPlanEdit} style={{ fontSize: 12, padding: "6px 14px" }}>編集する</button>
+            )}
+            <button className="btn-ghost" onClick={generatePlan} disabled={planLoading || !!planEdit} style={{ fontSize: 12, padding: "6px 14px" }}>
+              {planLoading ? "生成中…" : shownPlan ? "再生成する" : "プランを生成"}
+            </button>
+          </div>
         </div>
         <ErrorNote message={planError} onRetry={generatePlan} />
-        {shownPlan && (
+        {planEdit && (
+          <div className="fade-in">
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+              {planEdit.months.map((m, mi) => (
+                <div key={mi} style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>{m.month}｜{m.title}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {m.items.map((it, ii) => (
+                      <div key={ii} style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+                        <textarea className="field-input" rows={2} value={it.action} onChange={(e) => setPlanItem(mi, ii, "action", e.target.value)} style={{ flex: 1, fontSize: 12, padding: "8px 10px", resize: "vertical", lineHeight: 1.5 }} placeholder="実施内容" />
+                        <input className="field-input" type="number" step="0.5" min="0.5" value={it.hours ?? ""} onChange={(e) => setPlanItem(mi, ii, "hours", e.target.value)} style={{ width: 58, fontSize: 12, padding: "8px 6px" }} placeholder="h" />
+                        <button onClick={() => removePlanItem(mi, ii)} aria-label="項目を削除" style={{ background: "none", border: "none", color: COLORS.faint, cursor: "pointer", padding: "8px 2px" }}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                  <button className="btn-ghost" onClick={() => addPlanItem(mi)} style={{ fontSize: 11.5, padding: "5px 12px", marginTop: 8 }}>＋ 項目を追加</button>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <button className="btn-primary" onClick={savePlanEdit} disabled={planSaving} style={{ fontSize: 12.5, padding: "8px 18px" }}>
+                {planSaving ? "保存中…" : "この内容で保存"}
+              </button>
+              <button className="btn-ghost" onClick={() => setPlanEdit(null)} disabled={planSaving} style={{ fontSize: 12.5, padding: "8px 18px" }}>キャンセル</button>
+            </div>
+          </div>
+        )}
+        {!planEdit && shownPlan && (
           <div className="fade-in" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
             {(shownPlan.months || []).map((m) => (
               <div key={m.month} style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 14 }}>
@@ -2668,7 +2832,7 @@ function ProjectDetailView({ projectId, onBack }) {
             ))}
           </div>
         )}
-        {shownPlan && project.monthlyHours && (
+        {!planEdit && shownPlan && project.monthlyHours && (
           <p style={{ fontSize: 11, color: COLORS.faint, margin: "10px 0 0" }}>
             ※ 契約上の月間稼働{project.monthlyHours}時間に収まるよう設計されています。Month 1の項目はタスクに、KPIはKPI欄に自動登録されます(既に入力がある場合は上書きしません)。
           </p>
@@ -2682,16 +2846,34 @@ function ProjectDetailView({ projectId, onBack }) {
         <div style={sectionTitleStyle}>タスク</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
           {tasks.length === 0 && <div style={{ fontSize: 12.5, color: COLORS.faint }}>まだタスクがありません</div>}
-          {tasks.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => cycleTaskStatus(t)}
-              style={{ textAlign: "left", display: "flex", alignItems: "center", gap: 10, background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "9px 13px", cursor: "pointer", color: COLORS.text, fontSize: 13 }}
-            >
-              <span style={{ fontSize: 11, fontFamily: FONT_MONO, color: t.status === "done" ? COLORS.teal : COLORS.muted, minWidth: 44 }}>{taskStatusLabel[t.status]}</span>
-              <span style={{ textDecoration: t.status === "done" ? "line-through" : "none", color: t.status === "done" ? COLORS.faint : COLORS.text }}>{t.title}</span>
-            </button>
-          ))}
+          {tasks.map((t) =>
+            editingTask?.id === t.id ? (
+              <div key={t.id} style={{ display: "flex", gap: 8 }}>
+                <input
+                  className="field-input"
+                  autoFocus
+                  value={editingTask.title}
+                  onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
+                  onKeyDown={(e) => { if (e.key === "Enter") saveTaskTitle(); if (e.key === "Escape") setEditingTask(null); }}
+                  style={{ flex: 1, fontSize: 13 }}
+                />
+                <button className="btn-primary" onClick={saveTaskTitle} style={{ fontSize: 12, padding: "6px 14px" }}>保存</button>
+                <button className="btn-ghost" onClick={() => setEditingTask(null)} style={{ fontSize: 12, padding: "6px 14px" }}>取消</button>
+              </div>
+            ) : (
+              <SwipeTaskRow
+                key={t.id}
+                task={t}
+                statusLabel={taskStatusLabel}
+                onSetStatus={setTaskStatus}
+                onEditTitle={(task) => setEditingTask({ id: task.id, title: task.title })}
+                onDelete={deleteTask}
+              />
+            )
+          )}
+          {tasks.length > 0 && (
+            <div style={{ fontSize: 10.5, color: COLORS.faint }}>ステータスのバッジをタップ、またはスマホでは行を左右にスワイプして「未着手 → 着手中 → 完了」を切り替えられます。✎でタスク名を編集できます。</div>
+          )}
         </div>
         <form onSubmit={addTask} style={{ display: "flex", gap: 8 }}>
           <input className="field-input" placeholder="新しいタスクを入力…" value={newTask} onChange={(e) => setNewTask(e.target.value)} />
@@ -2730,22 +2912,47 @@ function ProjectDetailView({ projectId, onBack }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12, maxHeight: 200, overflowY: "auto" }}>
           {workLogs.length === 0 && <div style={{ fontSize: 12.5, color: COLORS.faint }}>まだ稼働ログがありません</div>}
           {workLogs.map((w) => (
-            <div key={w.id} style={{ display: "flex", gap: 10, fontSize: 12.5, color: COLORS.text }}>
-              <span style={{ fontFamily: FONT_MONO, color: COLORS.teal, minWidth: 40 }}>{w.hours}h</span>
-              <span style={{ flex: 1 }}>{w.description}</span>
-              <span style={{ color: COLORS.faint, fontSize: 11 }}>{new Date(w.loggedAt).toLocaleDateString("ja-JP")}</span>
+            <div key={w.id} style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "10px 13px" }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "baseline", marginBottom: 3 }}>
+                <span style={{ fontFamily: FONT_MONO, color: COLORS.teal, fontSize: 12.5, fontWeight: 600 }}>{w.hours}h</span>
+                <span style={{ color: COLORS.faint, fontSize: 11, marginLeft: "auto" }}>{new Date(w.loggedAt).toLocaleDateString("ja-JP")}</span>
+              </div>
+              <div style={{ fontSize: 12.5, color: COLORS.text, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{w.description}</div>
+              {w.attachments?.length > 0 && (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+                  {w.attachments.map((a) => (
+                    <a key={a.id} href={`/api/attachments/${a.id}`} style={{ fontSize: 11.5, color: COLORS.tealDim, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "3px 9px", textDecoration: "none" }}>
+                      📎 {a.filename}<span style={{ color: COLORS.faint }}>({Math.max(1, Math.round(a.size / 1024))}KB)</span>
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
-        <form onSubmit={addWorkLog} style={{ display: "flex", gap: 8 }}>
-          <input className="field-input" style={{ flex: 1 }} placeholder="実施内容" value={workLogDesc} onChange={(e) => setWorkLogDesc(e.target.value)} />
-          <input className="field-input" style={{ width: 80 }} placeholder="時間" type="number" step="0.5" value={workLogHours} onChange={(e) => setWorkLogHours(e.target.value)} />
-          <button className="btn-ghost" type="submit">記録</button>
+        <form onSubmit={addWorkLog} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <textarea className="field-input" rows={2} placeholder="実施内容(何をどこまで進めたか、詳しく書けます)" value={workLogDesc} onChange={(e) => setWorkLogDesc(e.target.value)} style={{ resize: "vertical", lineHeight: 1.6 }} />
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <input className="field-input" style={{ width: 90 }} placeholder="時間" type="number" step="0.5" value={workLogHours} onChange={(e) => setWorkLogHours(e.target.value)} />
+            <label className="btn-ghost" style={{ fontSize: 12, padding: "8px 14px", cursor: "pointer" }}>
+              📎 成果物を添付
+              <input type="file" multiple style={{ display: "none" }} onChange={(e) => setWorkLogFiles(Array.from(e.target.files || []).slice(0, 3))} />
+            </label>
+            <button className="btn-primary" type="submit" disabled={workLogSending} style={{ fontSize: 12.5, padding: "8px 18px", marginLeft: "auto" }}>
+              {workLogSending ? "記録中…" : "記録する"}
+            </button>
+          </div>
+          {workLogFiles.length > 0 && (
+            <div style={{ fontSize: 11.5, color: COLORS.muted }}>
+              添付: {workLogFiles.map((f) => f.name).join("、")}(3ファイルまで・各5MBまで)
+            </div>
+          )}
         </form>
       </div>
 
       <div style={sectionStyle}>
-        <div style={sectionTitleStyle}>コメント・議事メモ</div>
+        <div style={sectionTitleStyle}>要望・フィードバック</div>
+        <p style={{ fontSize: 11.5, color: COLORS.faint, margin: "-6px 0 12px" }}>企業⇄人材で要望・依頼・フィードバックをやり取りできます。投稿すると相手にメールで通知されます。</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12, maxHeight: 240, overflowY: "auto" }}>
           {comments.length === 0 && <div style={{ fontSize: 12.5, color: COLORS.faint }}>まだコメントがありません</div>}
           {comments.map((c) => (
@@ -2756,7 +2963,7 @@ function ProjectDetailView({ projectId, onBack }) {
           ))}
         </div>
         <form onSubmit={addComment} style={{ display: "flex", gap: 8 }}>
-          <input className="field-input" placeholder="コメントを入力…" value={commentText} onChange={(e) => setCommentText(e.target.value)} />
+          <input className="field-input" placeholder="要望・フィードバックを入力…" value={commentText} onChange={(e) => setCommentText(e.target.value)} />
           <button className="btn-ghost" type="submit">送信</button>
         </form>
       </div>
@@ -2817,22 +3024,30 @@ function DashboardProjectRow({ p, onOpen }) {
           {p.counterpartName}{p.targetAxisLabel ? ` ・ 対象課題: ${p.targetAxisLabel}` : ""}
         </div>
       </div>
-      <div style={{ display: "flex", gap: 14, fontSize: 11.5, color: COLORS.muted, flexShrink: 0 }}>
+      <div style={{ display: "flex", gap: 14, fontSize: 11.5, color: COLORS.muted, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
         <span>タスク {p.doneTaskCount}/{p.taskCount}</span>
         <span>KPI {p.kpiOnTrackCount}/{p.kpiCount}</span>
+        {p.totalLoggedHours != null && <span>累計稼働 {p.totalLoggedHours}h</span>}
+        {p.deliverableCount > 0 && <span>成果物 {p.deliverableCount}件</span>}
+        {p.lastActivityAt && <span>最終活動 {new Date(p.lastActivityAt).toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" })}</span>}
       </div>
     </button>
   );
 }
 
 function CompanyDashboard({ onOpenProjects, onOpenProjectDetail, onBack }) {
-  const [data, setData] = useState({ loading: true, value: null, error: null });
+  const [data, setData] = useState(
+    viewCache.dashboard ? { loading: false, value: viewCache.dashboard, error: null } : { loading: true, value: null, error: null }
+  );
 
   useEffect(() => {
     fetch("/api/dashboard")
       .then((r) => r.json())
-      .then((d) => setData({ loading: false, value: d, error: d.error || null }))
-      .catch(() => setData({ loading: false, value: null, error: "取得に失敗しました" }));
+      .then((d) => {
+        if (!d.error) viewCache.dashboard = d;
+        setData({ loading: false, value: d, error: d.error || null });
+      })
+      .catch(() => setData((prev) => (prev.value ? prev : { loading: false, value: null, error: "取得に失敗しました" })));
   }, []);
 
   if (data.loading) return <div className="fade-in" style={{ color: COLORS.muted, fontSize: 13 }}>読み込み中…</div>;
@@ -2906,7 +3121,9 @@ function CompanyDashboard({ onOpenProjects, onOpenProjectDetail, onBack }) {
 }
 
 function TalentDashboard({ onOpenProjects, onOpenProjectDetail, onBack }) {
-  const [data, setData] = useState({ loading: true, value: null, error: null });
+  const [data, setData] = useState(
+    viewCache.dashboard ? { loading: false, value: viewCache.dashboard, error: null } : { loading: true, value: null, error: null }
+  );
   const [suggestions, setSuggestions] = useState(null);
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestError, setSuggestError] = useState(null);
@@ -2914,8 +3131,11 @@ function TalentDashboard({ onOpenProjects, onOpenProjectDetail, onBack }) {
   useEffect(() => {
     fetch("/api/dashboard")
       .then((r) => r.json())
-      .then((d) => setData({ loading: false, value: d, error: d.error || null }))
-      .catch(() => setData({ loading: false, value: null, error: "取得に失敗しました" }));
+      .then((d) => {
+        if (!d.error) viewCache.dashboard = d;
+        setData({ loading: false, value: d, error: d.error || null });
+      })
+      .catch(() => setData((prev) => (prev.value ? prev : { loading: false, value: null, error: "取得に失敗しました" })));
   }, []);
 
   const generateSuggestions = async () => {
@@ -3072,6 +3292,18 @@ export default function Home() {
       .then((r) => r.json())
       .then((data) => setAuthState({ loading: false, user: data.user }))
       .catch(() => setAuthState({ loading: false, user: null }));
+  }, []);
+
+  // /app?project=<id> で開かれた場合は、そのプロジェクト詳細を直接表示する
+  // (メール内のリンクや /app/projects/[id] からのリダイレクトで使う)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const pid = new URLSearchParams(window.location.search).get("project");
+    if (pid) {
+      setActiveProjectId(pid);
+      setView("projectDetail");
+      initializedViewRef.current = true; // マイページ自動オープンに上書きさせない
+    }
   }, []);
 
   useEffect(() => {
