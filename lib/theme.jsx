@@ -51,7 +51,7 @@ export function GlobalStyle() {
       .two-col { grid-template-columns: 1fr 1fr; }
       /* 未読バッジ(赤の丸ピル)。ヘッダー・下部タブ・メッセージ一覧で共用 */
       .nav-badge { background: #e5484d; color: #ffffff; border-radius: 999px; font-size: 10px; font-weight: 700; line-height: 1; min-width: 17px; height: 17px; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; margin-left: 6px; }
-      .nav-badge-float { position: absolute; top: -6px; right: -10px; margin: 0; box-shadow: 0 0 0 2px ${COLORS.surface}; }
+      .nav-badge-float { position: absolute; top: -6px; right: -10px; margin: 0; z-index: 1; box-shadow: 0 0 0 2px ${COLORS.surface}; }
       /* メインメニュー: デスクトップはヘッダーのボタン列、モバイルは画面下部の固定タブ */
       .top-nav { display: flex; align-items: center; gap: 8px; }
       .top-nav .nav-active { border-color: ${COLORS.teal}; color: ${COLORS.tealDim}; font-weight: 700; }
@@ -72,7 +72,7 @@ export function GlobalStyle() {
           background: none; border: none; padding: 6px 2px; cursor: pointer;
           font-family: ${FONT_BODY}; font-size: 10px; font-weight: 500; color: ${COLORS.muted};
         }
-        .bottom-nav button span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        .bottom-nav button .bn-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         .bottom-nav button.active { color: ${COLORS.teal}; font-weight: 700; }
       }
       @media (max-width: 620px) {

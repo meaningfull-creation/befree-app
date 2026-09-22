@@ -152,6 +152,8 @@ model Project {
   targetAxis       String? // 対象課題の軸キー(企業スキルマップの最重要課題から引き継ぐ)
   currentMonthGoal String?
   status           String    @default("active") // active | completed | paused
+  plan             Json? // AI生成の90日プラン {months:[{month,title,items:[{action,hours}]}], kpis:[...]}
+  planGeneratedAt  DateTime?
   createdAt        DateTime  @default(now())
 
   tasks    ProjectTask[]
