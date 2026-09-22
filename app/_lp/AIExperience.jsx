@@ -87,6 +87,25 @@ export default function AIExperience() {
             </div>
           </div>
 
+          {/* 押す前から、この先に何が出てくるのかが読める状態にしておく */}
+          {phase === "idle" && (
+            <div className="lp-ai-preview">
+              {[
+                { n: "01", t: "経営課題を構造化", d: "入力された文章から、どの領域の課題なのかをAIが切り分けます。" },
+                { n: "02", t: "必要な経験を特定", d: "その課題を解くために、どんな実務経験が要るのかを3つに絞り込みます。" },
+                { n: "03", t: "該当する人を提案", d: "その経験を持つ実務経験者を、マッチ度の根拠つきで提案します。" },
+              ].map((x) => (
+                <div key={x.n} className="lp-ai-prev-item">
+                  <span className="lp-num" style={{ fontSize: 12, color: C.orange }}>{x.n}</span>
+                  <div>
+                    <div className="lp-ai-prev-t">{x.t}</div>
+                    <p className="lp-ai-prev-d">{x.d}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {phase !== "idle" && (
             <div className="lp-ai-stage" style={{ marginTop: 34 }}>
               {/* 1. 解析中 */}

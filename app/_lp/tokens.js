@@ -47,8 +47,10 @@ export const LP_TYPE = {
 };
 
 export const LP_SPACE = {
-  section: "clamp(96px, 13vw, 200px)", // セクションの上下余白。詰め込まない
-  sectionTight: "clamp(64px, 8vw, 120px)",
+  // 余白は大きく取るが、v6.0では過剰だった(1セクションで上下400pxに達し、
+  // 中身50文字に対して高さ1944pxという面ができていた)。密度に見合う値まで戻す。
+  section: "clamp(72px, 8.5vw, 132px)",
+  sectionTight: "clamp(56px, 6vw, 88px)",
   gutter: "clamp(20px, 5vw, 80px)", // 画面左右の余白
   container: 1440, // コンテンツ幅は広めに取る
   containerNarrow: 1080,
@@ -64,6 +66,11 @@ export const LP_MOTION = {
 };
 
 export const LP_BREAK = { sm: 640, md: 900, lg: 1200 };
+
+// モバイルの可読性の下限。情報量を増やしても、ここは絶対に下回らせない。
+//   本文 15px / 補助テキスト 13px / ラベル 11px / タップ領域 48px
+// (iOSは16px未満の入力欄でズームするため、input は16px以上にする)
+export const LP_MOBILE_MIN = { body: 15, small: 13, label: 11, tap: 48, input: 16 };
 
 // ---------------------------------------------------------------------------
 // ブランド造形言語 — 野球の「打席」を抽象化し、サイト全体の共通言語にする。

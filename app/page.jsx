@@ -7,6 +7,7 @@ import People from "./_lp/People";
 import HowItWorks from "./_lp/HowItWorks";
 import { Arrow, Btn, Label, Reveal, Wordmark, Wrap } from "./_lp/parts";
 import { EXPERIENCE_MARQUEE, LP_COLOR as C } from "./_lp/tokens";
+import { Facts, Compare, AfterMatch, Faq } from "./_lp/Content";
 
 export const metadata = {
   title: "BATTER BOX — その経験に、次の打席を。",
@@ -47,22 +48,28 @@ function Problem() {
           </h2>
         </Reveal>
 
-        <Reveal delay={120} style={{ marginTop: "clamp(48px, 6vw, 92px)", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "clamp(28px, 4vw, 64px)", maxWidth: 1080 }}>
-          <div>
-            <div
-              style={{
-                fontSize: "clamp(20px, 2.4vw, 30px)", fontWeight: 900, lineHeight: 2, letterSpacing: "-0.02em",
-              }}
-            >
-              新規事業。<br />営業組織。<br />マーケティング。<br />採用。<br />IPO。<br />海外進出。
-            </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "flex-end" }}>
-            <p className="lp-sub" style={{ maxWidth: 460 }}>
-              企業には、その瞬間だけ必要になる経験があります。
-              正社員を一人採るには重すぎて、けれど誰かの経験がなければ前に進まない。
-              その隙間を埋めるのが、BATTER BOXです。
-            </p>
+        <Reveal delay={120} style={{ marginTop: "clamp(40px, 5vw, 72px)" }}>
+          <p className="lp-sub" style={{ maxWidth: 620, marginBottom: "clamp(32px, 4vw, 52px)" }}>
+            企業には、その瞬間だけ必要になる経験があります。正社員を一人採るには重すぎて、
+            けれど誰かの経験がなければ前に進まない。その隙間を埋めるのが、BATTER BOXです。
+          </p>
+
+          {/* 抽象的な単語の羅列で終わらせず、実際に起きている症状まで書く */}
+          <div className="lp-issues">
+            {[
+              { axis: "セールス基盤", w: "営業組織", t: "受注がキーパーソン頼みで、他のメンバーが再現できない" },
+              { axis: "採用・組織", w: "採用", t: "採用基準が定まらず、面接官によって評価がぶれる" },
+              { axis: "財務・管理会計", w: "資金繰り", t: "管理会計が見えておらず、意思決定が後手に回る" },
+              { axis: "プロダクト戦略", w: "新規事業", t: "立ち上げたが、どこに刺さっているのか分からないまま時間が過ぎる" },
+              { axis: "技術基盤", w: "AI・DX", t: "方針が定まらず、手探りのまま投資だけが続く" },
+              { axis: "経営体制", w: "海外進出", t: "拡大のスピードに、組織の意思決定が追いついていない" },
+            ].map((x) => (
+              <div key={x.t} className="lp-issue">
+                <div className="lp-issue-w">{x.w}。</div>
+                <div className="lp-issue-t">{x.t}</div>
+                <div className="lp-issue-axis">{x.axis}</div>
+              </div>
+            ))}
           </div>
         </Reveal>
       </Wrap>
@@ -72,10 +79,10 @@ function Problem() {
 
 // 06｜ORANGE BRAND SECTION — 説明文を置かず、ブランド広告として成立させる
 function BrandSection() {
+  // 決め台詞「その経験に、次の打席を。」は最終CTAで使うため、ここでは重複させない。
   const lines = [
     "経験を、\n眠らせない。",
     "その経験を、\n必要としている会社がある。",
-    "その経験に、\n次の打席を。",
   ];
   return (
     <section className="on-orange" data-tone="orange" style={{ paddingTop: 0, paddingBottom: 0 }}>
@@ -83,14 +90,14 @@ function BrandSection() {
         <div
           key={i}
           style={{
-            minHeight: "72svh", display: "flex", alignItems: "center",
+            minHeight: "min(56svh, 470px)", display: "flex", alignItems: "center",
             borderTop: i === 0 ? "none" : "1px solid rgba(255,255,255,0.22)",
           }}
         >
           <Wrap>
             <Reveal>
               <h2 className="lp-display" style={{ whiteSpace: "pre-line", color: "#fff" }}>{l}</h2>
-              {i === 2 && (
+              {i === lines.length - 1 && (
                 <div style={{ marginTop: 44 }}>
                   <Wordmark size={17} color="rgba(255,255,255,0.78)" />
                 </div>
@@ -191,11 +198,15 @@ export default async function LandingPage() {
       <main className="lp-has-mobile-cta">
         <Hero />
         <Marquee />
-        <AIExperience />
         <Problem />
+        <AIExperience />
+        <Facts />
         <People />
         <BrandSection />
         <HowItWorks />
+        <Compare />
+        <AfterMatch />
+        <Faq />
         <TwoSides />
         <FinalCTA />
         <Footer />

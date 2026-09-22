@@ -80,8 +80,8 @@ export default function LPStyle() {
       .lp-navlink:hover::after { right: 0; }
 
       /* ---- hero ---- */
-      .lp-hero { min-height: min(100svh, 920px); display: flex; flex-direction: column; justify-content: center; padding-top: clamp(132px, 18vh, 200px); padding-bottom: clamp(72px, 9vh, 104px); position: relative; }
-      .lp-hero-grid { display: grid; grid-template-columns: minmax(0, 1.22fr) minmax(0, 0.78fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
+      .lp-hero { min-height: min(100svh, 880px); display: flex; flex-direction: column; justify-content: center; padding-top: clamp(118px, 15vh, 172px); padding-bottom: clamp(56px, 7vh, 88px); position: relative; }
+      .lp-hero-grid { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr); gap: clamp(30px, 4vw, 64px); align-items: center; }
       .lp-hero-cta { display: flex; gap: 14px; flex-wrap: wrap; margin-top: clamp(30px, 3.6vw, 48px); }
       .lp-scrollcue { position: absolute; right: ${S.gutter}; bottom: 34px; display: flex; align-items: center; gap: 12px; color: ${C.inkFaint}; }
       .lp-scrollcue i { display: block; width: 46px; height: 1px; background: ${C.line}; position: relative; overflow: hidden; }
@@ -92,12 +92,76 @@ export default function LPStyle() {
       .lp-rise { opacity: 0; transform: translateY(18px); animation: rise 780ms cubic-bezier(0.22,1,0.36,1) forwards; }
       @keyframes rise { to { opacity: 1; transform: none; } }
 
+      /* ---- growth map preview (Hero右) ---- */
+      .lp-gm { border: 1px solid ${C.line}; border-radius: ${R.sm}px; padding: 20px 22px 22px; background: ${C.white}; }
+      .lp-gm-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+      .lp-gm-badge { font-size: 10.5px; font-weight: 700; color: ${C.orange}; border: 1px solid ${C.orange}; border-radius: ${R.xs}px; padding: 3px 8px; white-space: nowrap; }
+      .lp-gm-score { display: flex; align-items: baseline; gap: 7px; margin-bottom: 6px; }
+      .lp-gm-score-v { font-size: 40px; line-height: 1; color: ${C.ink}; }
+      .lp-gm-score-u { font-size: 13px; color: ${C.inkFaint}; }
+      .lp-gm-score-l { font-size: 12px; color: ${C.inkSoft}; margin-left: auto; }
+      .lp-gm-svg { width: 100%; height: auto; display: block; }
+      .lp-gm-legend { display: flex; gap: 18px; justify-content: center; font-size: 11px; color: ${C.inkSoft}; margin: 2px 0 16px; }
+      .lp-gm-legend span { display: inline-flex; align-items: center; gap: 6px; }
+      .lp-gm-legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+      .lp-gm-issues { border-top: 1px solid ${C.line}; padding-top: 16px; }
+      .lp-gm-issue { display: flex; align-items: center; gap: 9px; padding: 6px 0; }
+      .lp-gm-issue-l { font-size: 12.5px; font-weight: 700; width: 92px; flex-shrink: 0; }
+      .lp-gm-bar { flex: 1; height: 5px; background: ${C.line}; border-radius: 3px; overflow: hidden; min-width: 40px; }
+      .lp-gm-bar i { display: block; height: 100%; background: ${C.orange}; border-radius: 3px; }
+      .lp-gm-issue-s { font-size: 12px; color: ${C.inkSoft}; width: 22px; text-align: right; }
+
       /* ---- marquee ---- */
       .lp-marquee { overflow: hidden; display: flex; user-select: none; }
       .lp-marquee-track { display: flex; flex-shrink: 0; align-items: center; gap: 52px; padding-right: 52px; animation: marquee 46s linear infinite; }
       @keyframes marquee { to { transform: translateX(-100%); } }
       .lp-marquee-item { font-family: ${F.en}; font-weight: 800; font-size: clamp(20px, 2.6vw, 36px); letter-spacing: -0.01em; white-space: nowrap; display: flex; align-items: center; gap: 52px; }
       .lp-marquee-item::after { content: ""; width: 11px; height: 13px; background: currentColor; clip-path: ${HOME_PLATE_CLIP}; opacity: 0.65; flex-shrink: 0; }
+
+      /* ---- problem: 実際に起きている症状 ---- */
+      .lp-issues { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border-top: 1px solid ${C.ink}; }
+      .lp-issue { padding: 22px clamp(16px, 2vw, 30px) 24px 0; border-bottom: 1px solid ${C.line}; }
+      .lp-issue-w { font-size: clamp(18px, 1.9vw, 24px); font-weight: 900; letter-spacing: -0.03em; margin-bottom: 9px; }
+      .lp-issue-t { font-size: 13.5px; color: ${C.inkSoft}; line-height: 1.85; }
+      .lp-issue-axis { font-size: 10.5px; font-family: ${F.en}; letter-spacing: 0.06em; color: ${C.orange}; margin-top: 12px; }
+
+      /* ---- facts(数字の面) ---- */
+      .lp-facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(20px, 3vw, 48px); }
+      .lp-fact-v { display: flex; align-items: baseline; gap: 5px; }
+      .lp-fact-v .lp-num { font-size: clamp(38px, 5vw, 66px); line-height: 1; letter-spacing: -0.04em; }
+      .lp-fact-u { font-size: clamp(13px, 1.2vw, 16px); font-weight: 700; color: ${C.orange}; }
+      .lp-fact-l { font-size: 12.5px; color: ${C.inkSoft}; line-height: 1.75; margin-top: 10px; }
+
+      /* ---- compare(正社員採用との対比) ---- */
+      .lp-cmp { border-top: 1px solid ${C.ink}; }
+      .lp-cmp-row { display: grid; grid-template-columns: 96px 1fr 1fr; gap: clamp(14px, 2.4vw, 40px); padding: 17px 0; border-bottom: 1px solid ${C.line}; align-items: baseline; }
+      .lp-cmp-head { border-bottom-color: ${C.line}; padding-bottom: 12px; }
+      .lp-cmp-head span { font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; }
+      .lp-cmp-k { font-size: 12px; font-weight: 700; color: ${C.inkFaint}; }
+      .lp-cmp-a { font-size: 14px; color: ${C.inkFaint}; line-height: 1.8; }
+      .lp-cmp-b { font-size: 14.5px; color: ${C.ink}; font-weight: 700; line-height: 1.8; }
+      .lp-cmp-head .lp-cmp-b { color: ${C.orange}; }
+
+      /* ---- after matching ---- */
+      .lp-after { display: grid; grid-template-columns: repeat(2, 1fr); gap: clamp(28px, 4vw, 56px) clamp(32px, 5vw, 72px); }
+      .lp-after-item { display: grid; grid-template-columns: 96px 1fr; gap: clamp(14px, 2vw, 26px); align-items: start; }
+      .lp-after-n { display: flex; align-items: baseline; gap: 3px; border-top: 2px solid ${C.orange}; padding-top: 12px; }
+      .lp-after-n .lp-num { font-size: 34px; line-height: 1; letter-spacing: -0.04em; }
+      .lp-after-u { font-size: 12px; font-weight: 700; color: ${C.inkSoft}; }
+      .lp-after-t { font-size: 16.5px; font-weight: 900; letter-spacing: -0.02em; line-height: 1.5; }
+
+      /* ---- faq ---- */
+      .lp-faq-grid { display: grid; grid-template-columns: minmax(0, 0.74fr) minmax(0, 1.26fr); gap: clamp(32px, 5vw, 80px); align-items: start; }
+      .lp-faq details { border-top: 1px solid ${C.line}; }
+      .lp-faq details:last-child { border-bottom: 1px solid ${C.line}; }
+      .lp-faq summary { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 20px 0; cursor: pointer; list-style: none; font-size: 15.5px; font-weight: 700; line-height: 1.7; }
+      .lp-faq summary::-webkit-details-marker { display: none; }
+      .lp-faq summary i { width: 13px; height: 13px; flex-shrink: 0; position: relative; }
+      .lp-faq summary i::before, .lp-faq summary i::after { content: ""; position: absolute; background: ${C.orange}; transition: transform ${M.fast}; }
+      .lp-faq summary i::before { left: 0; right: 0; top: 6px; height: 1.5px; }
+      .lp-faq summary i::after { top: 0; bottom: 0; left: 6px; width: 1.5px; }
+      .lp-faq details[open] summary i::after { transform: scaleY(0); }
+      .lp-faq details > p { padding: 0 0 22px; max-width: 62ch; }
 
       /* ---- scroll reveal ---- */
       .lp-reveal { opacity: 0; transform: translateY(26px); transition: opacity ${M.slow}, transform ${M.slow}; }
@@ -115,6 +179,10 @@ export default function LPStyle() {
       }
       .lp-ai-input input::placeholder { color: rgba(255,255,255,0.4); }
       .lp-ai-input:focus-within { border-color: ${C.orange}; }
+      .lp-ai-preview { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(20px, 3vw, 44px); margin-top: 34px; padding-top: 28px; border-top: 1px solid ${C.lineOnInk}; }
+      .lp-ai-prev-item { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; }
+      .lp-ai-prev-t { font-size: 15px; font-weight: 900; letter-spacing: -0.02em; color: #fff; }
+      .lp-ai-prev-d { font-size: 13px; line-height: 1.85; color: rgba(255,255,255,0.58); margin: 7px 0 0; }
       .lp-ai-stage { border-top: 1px solid ${C.lineOnInk}; }
       .lp-ai-row { display: grid; grid-template-columns: 54px 1fr; gap: 20px; padding: 22px 0; border-bottom: 1px solid ${C.lineOnInk}; align-items: start; }
       .lp-dots span { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${C.orange}; margin-right: 6px; animation: blink 1.25s ease-in-out infinite; }
@@ -135,7 +203,11 @@ export default function LPStyle() {
       .lp-how-rail { position: sticky; top: 132px; }
       .lp-how-step { display: grid; grid-template-columns: 54px 1fr; gap: 18px; padding: 18px 0; border-top: 1px solid ${C.line}; transition: opacity ${M.base}; opacity: 0.34; }
       .lp-how-step[data-active="true"] { opacity: 1; }
-      .lp-how-panel { min-height: 62svh; display: flex; flex-direction: column; justify-content: center; border-top: 1px solid ${C.line}; padding: clamp(36px, 5vw, 64px) 0; }
+      .lp-how-panel { min-height: 0; display: flex; flex-direction: column; justify-content: center; border-top: 1px solid ${C.line}; padding: clamp(30px, 4vw, 52px) 0; }
+
+      .lp-how-out { list-style: none; margin: 20px 0 0; padding: 0; display: flex; flex-direction: column; gap: 9px; max-width: 600px; }
+      .lp-how-out li { font-size: 13.5px; color: ${C.inkSoft}; line-height: 1.8; padding-left: 18px; position: relative; }
+      .lp-how-out li::before { content: ""; position: absolute; left: 0; top: 9px; width: 8px; height: 9px; background: ${C.orange}; clip-path: ${HOME_PLATE_CLIP}; }
 
       /* ---- two sides ---- */
       .lp-two { display: flex; min-height: 78svh; }
@@ -186,6 +258,42 @@ export default function LPStyle() {
         }
         .lp-mobile-cta .lp-btn { flex: 1; justify-content: center; padding: 16px 12px; font-size: 13.5px; }
         .lp-has-mobile-cta { padding-bottom: 82px; }
+      }
+
+      /* ---- モバイルの可読性の下限 ----
+         情報量を増やしても、本文15px・補助13px・ラベル11px・タップ48pxは下回らせない。
+         入力欄はiOSのズームを避けるため16px以上を保つ。 */
+      @media (max-width: 640px) {
+        .lp-body   { font-size: 15px; line-height: 1.95; }
+        .lp-sub    { font-size: 16.5px; line-height: 1.9; }
+        .lp-small  { font-size: 13px; line-height: 1.8; }
+        .lp-label  { font-size: 11px; }
+        .lp-btn    { min-height: 52px; font-size: 15px; }
+        .lp-btn--sm { min-height: 44px; font-size: 13.5px; }
+        .lp-ai-input input { font-size: 16px; }
+        /* タップできるものは48px以上を確保する */
+        .lp-navlink, .lp-footer-links a, .lp-faq summary { min-height: 48px; display: flex; align-items: center; }
+        .lp-two-side { min-height: 0; }
+        /* 自分で決めた下限(11px)を割っていた箇所を、モバイルでは引き上げる */
+        .lp-gm-badge, .lp-issue-axis, .lp-gm .lp-label, .lp-gm-legend { font-size: 11.5px !important; }
+        .lp-gm-issue-s, .lp-gm-issue .lp-num { font-size: 11.5px; }
+        /* ロゴのリンクも指で押せる大きさを確保する */
+        .lp-header-inner > a { min-height: 44px; display: flex; align-items: center; }
+        .lp-figure-fallback .lp-en, .lp-how-step .lp-label { font-size: 11px !important; }
+        .lp-facts { grid-template-columns: repeat(2, 1fr); gap: 26px 20px; }
+        .lp-issues { grid-template-columns: 1fr; }
+        .lp-ai-preview { grid-template-columns: 1fr; gap: 20px; }
+        .lp-ai-prev-d { font-size: 13px; }
+        .lp-issue { padding-right: 0; }
+        .lp-cmp-row { grid-template-columns: 1fr; gap: 4px; padding: 14px 0; }
+        .lp-cmp-head { display: none; }
+        .lp-cmp-a::before { content: "正社員採用: "; color: ${C.inkFaint}; font-weight: 700; }
+        .lp-cmp-b::before { content: "BATTER BOX: "; color: ${C.orange}; font-weight: 700; }
+        .lp-after { grid-template-columns: 1fr; gap: 26px; }
+        .lp-after-item { grid-template-columns: 74px 1fr; gap: 16px; }
+        .lp-faq-grid { grid-template-columns: 1fr; gap: 28px; }
+        .lp-gm { padding: 16px 16px 18px; }
+        .lp-gm-issue-l { width: 78px; font-size: 12px; }
       }
 
       @media (prefers-reduced-motion: reduce) {
