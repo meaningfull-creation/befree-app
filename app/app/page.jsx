@@ -319,7 +319,7 @@ export function Shell({ children, step, steps, headerRight, onStepClick, nav, wi
       <GlobalStyle />
       <header className="app-topbar">
         <div className="app-topbar-inner" style={wide ? { maxWidth: 1180 } : undefined}>
-          <img className="app-topbar-logo" src="/logo.png" alt="BATTER BOX" />
+          <a href="/" aria-label="BATTER BOX トップページへ"><img className="app-topbar-logo" src="/logo.png" alt="BATTER BOX" /></a>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>{headerRight}</div>
         </div>
       </header>
@@ -2199,6 +2199,20 @@ function SwipeTaskRow({ task, onSetStatus, onEditTitle, onDelete }) {
 // ---------------------------------------------------------------------------
 // Messaging — DM between company users and talent users, scoped to a Match
 // ---------------------------------------------------------------------------
+
+function isSameDay(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+// メッセージ一覧の日付区切り。直近2日は「今日」「昨日」と出したほうが読みやすい。
+function formatDayLabel(d) {
+  const today = new Date();
+  const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+  if (isSameDay(d, today)) return "今日";
+  if (isSameDay(d, yesterday)) return "昨日";
+  const sameYear = d.getFullYear() === today.getFullYear();
+  return d.toLocaleDateString("ja-JP", sameYear ? { month: "long", day: "numeric", weekday: "short" } : { year: "numeric", month: "long", day: "numeric" });
+}
 function MessageThread({ matchId, counterpartName: initialName, initialDraft, draftPending, onBack, backLabel }) {
   const [messages, setMessages] = useState(null);
   const [counterpartName, setCounterpartName] = useState(initialName || "");
@@ -2208,7 +2222,7 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, dr
   const [errorMsg, setErrorMsg] = useState(null);
   const [sending, setSending] = useState(false);
   const [context, setContext] = useState(null);
-  const [showContext, setShowContext] = useState(true);
+  const [showContext, setShowContext] = useState(false); // 開いたままだとメッセージ本体が下に押し出されるため既定は閉じる
   const [contractStatus, setContractStatus] = useState(null);
   const [showProposeForm, setShowProposeForm] = useState(false);
   const [proposeForm, setProposeForm] = useState({ monthlyHours: "10", companyAmount: "" });
@@ -2361,8 +2375,19 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, dr
 
   return (
     <div className="fade-in">
-      <button className="btn-ghost" onClick={onBack} style={{ marginBottom: 16 }}>{backLabel || "← 戻る"}</button>
-      <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 600, margin: "0 0 16px" }}>{counterpartName}とのメッセージ</h1>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+        <button className="btn-ghost" onClick={onBack} style={{ fontSize: 12.5, padding: "7px 14px", flexShrink: 0 }}>{backLabel || "← 戻る"}</button>
+        <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 17, fontWeight: 700, margin: 0, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{counterpartName}</h1>
+        {context && (
+          <button
+            className="btn-ghost"
+            onClick={() => setShowContext((v) => !v)}
+            style={{ fontSize: 12, padding: "7px 13px", flexShrink: 0 }}
+          >
+            {showContext ? "詳細を閉じる" : context.role === "company" ? "企業の詳細" : "経歴を見る"}
+          </button>
+        )}
+      </div>
 
       {contractStatus && (() => {
         const eng = contractStatus.engagement;
@@ -2480,17 +2505,13 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, dr
         );
       })()}
 
-      {context && (
-        <div style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "14px 18px", marginBottom: 16 }}>
-          <button
-            onClick={() => setShowContext((v) => !v)}
-            style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", fontSize: 12.5, color: COLORS.muted, fontWeight: 500 }}
-          >
+      {context && showContext && (
+        <div className="fade-in" style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "14px 18px", marginBottom: 16 }}>
+          <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 600, marginBottom: 10 }}>
             {context.role === "company" ? "相手企業の詳細(業種・課題)" : "相手人材の詳細(経歴・強み)"}
-            <ChevronRight size={14} style={{ transform: showContext ? "rotate(90deg)" : "none", transition: "transform 0.15s ease" }} />
-          </button>
-          {showContext && (
-            <div className="fade-in" style={{ marginTop: 12 }}>
+          </div>
+          {true && (
+            <div>
               {context.role === "company" ? (
                 <>
                   <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12.5, color: COLORS.muted, marginBottom: 10 }}>
@@ -2544,20 +2565,57 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, dr
 
       <div
         ref={scrollRef}
-        style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 20, height: 420, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}
+        style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "16px 18px", height: "min(56vh, 560px)", minHeight: 300, overflowY: "auto", display: "flex", flexDirection: "column", gap: 0 }}
       >
         {messages === null && <div style={{ color: COLORS.muted, fontSize: 13 }}>読み込み中…</div>}
         {messages && messages.length === 0 && reviewMode !== "draft" && <div style={{ color: COLORS.muted, fontSize: 13 }}>まだメッセージはありません。最初のメッセージを送ってみましょう。</div>}
-        {messages && messages.map((m) => (
-          <div key={m.id} style={{ display: "flex", justifyContent: m.mine ? "flex-end" : "flex-start" }}>
-            <div style={{ maxWidth: "75%", background: m.mine ? COLORS.teal : COLORS.surfaceRaised, color: m.mine ? COLORS.onAccent : COLORS.text, border: m.mine ? "none" : `1px solid ${COLORS.border}`, borderRadius: m.mine ? "14px 4px 14px 14px" : "4px 14px 14px 14px", padding: "10px 14px", fontSize: 13.5, lineHeight: 1.6 }}>
-              {m.body}
-              <div style={{ fontSize: 10, opacity: 0.6, marginTop: 4, fontFamily: FONT_MONO }}>
-                {new Date(m.createdAt).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+        {messages && messages.map((m, i) => {
+          const prev = i > 0 ? messages[i - 1] : null;
+          const next = i < messages.length - 1 ? messages[i + 1] : null;
+          const at = new Date(m.createdAt);
+          // 日付が変わったところに区切りを入れる
+          const showDate = !prev || !isSameDay(new Date(prev.createdAt), at);
+          // 同じ人の連続発言はひとかたまりに見せる(先頭だけ名前、末尾だけ時刻)
+          const startsGroup = showDate || !prev || prev.mine !== m.mine;
+          const endsGroup = !next || next.mine !== m.mine || !isSameDay(new Date(next.createdAt), at);
+          return (
+            <Fragment key={m.id}>
+              {showDate && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "6px 0 2px" }}>
+                  <span style={{ flex: 1, height: 1, background: COLORS.border }} />
+                  <span style={{ fontSize: 10.5, color: COLORS.faint, fontFamily: FONT_MONO, flexShrink: 0 }}>{formatDayLabel(at)}</span>
+                  <span style={{ flex: 1, height: 1, background: COLORS.border }} />
+                </div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: m.mine ? "flex-end" : "flex-start", marginTop: startsGroup ? 6 : -6 }}>
+                {startsGroup && (
+                  <div style={{ fontSize: 10.5, color: COLORS.faint, margin: "0 4px 4px" }}>{m.mine ? "あなた" : counterpartName}</div>
+                )}
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 7, maxWidth: "85%", flexDirection: m.mine ? "row-reverse" : "row" }}>
+                  <div
+                    style={{
+                      background: m.mine ? COLORS.teal : COLORS.surface,
+                      color: m.mine ? COLORS.onAccent : COLORS.text,
+                      border: m.mine ? "none" : `1px solid ${COLORS.border}`,
+                      // グループの先頭だけ角を尖らせて、発話のまとまりが分かるようにする
+                      borderRadius: m.mine
+                        ? `14px ${startsGroup ? "4px" : "14px"} 14px 14px`
+                        : `${startsGroup ? "4px" : "14px"} 14px 14px 14px`,
+                      padding: "10px 14px", fontSize: 13.5, lineHeight: 1.75, whiteSpace: "pre-wrap", overflowWrap: "anywhere", minWidth: 0,
+                    }}
+                  >
+                    {m.body}
+                  </div>
+                  {endsGroup && (
+                    <span style={{ fontSize: 10, color: COLORS.faint, fontFamily: FONT_MONO, flexShrink: 0, paddingBottom: 3 }}>
+                      {at.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
-        ))}
+            </Fragment>
+          );
+        })}
       </div>
 
       <ErrorNote message={errorMsg} onRetry={() => load(false)} />
@@ -2746,7 +2804,7 @@ function ComparisonView({ onBack }) {
   );
 }
 
-function MyPageTalent({ profile, onProceed, onRediagnose }) {
+function MyPageTalent({ profile, onProceed, onRediagnose, onOpenDashboard }) {
   return (
     <div className="fade-in">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
@@ -2754,7 +2812,12 @@ function MyPageTalent({ profile, onProceed, onRediagnose }) {
           前回の解析結果({new Date(profile.diagnosedAt).toLocaleDateString("ja-JP")})
           {profile.status === "pending" && <span style={{ color: COLORS.amber, marginLeft: 8 }}>審査中</span>}
         </span>
-        <button className="btn-ghost" onClick={onRediagnose} style={{ fontSize: 12, padding: "6px 12px" }}>スキルマップを更新する</button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {onOpenDashboard && (
+            <button className="btn-ghost" onClick={onOpenDashboard} style={{ fontSize: 12, padding: "6px 12px" }}>稼働・評価の状況</button>
+          )}
+          <button className="btn-ghost" onClick={onRediagnose} style={{ fontSize: 12, padding: "6px 12px" }}>スキルマップを更新する</button>
+        </div>
       </div>
       <StepTalentSkillMap
         name={profile.talentForm?.name}
@@ -4445,7 +4508,9 @@ export default function Home() {
   const navItems = [
     ...(profile.data?.hasData ? [{ key: "mypage", label: "マイページ", Icon: UserRound, onClick: goToMyPage }] : []),
     { key: "inbox", label: "メッセージ", Icon: Send, onClick: openInbox, badge: unreadCount },
-    ...(profile.data?.hasData ? [{ key: "dashboard", label: "ダッシュボード", Icon: LayoutDashboard, onClick: openDashboard }] : []),
+    // ダッシュボードは企業側のみナビに出す。人材側はマイページ(スキルマップ)が実質のホームで
+    // 項目が多すぎるとタブが狭くなるため、ナビから外して5項目にしている(マイページから開ける)。
+    ...(profile.data?.hasData && mode === "company" ? [{ key: "dashboard", label: "ダッシュボード", Icon: LayoutDashboard, onClick: openDashboard }] : []),
     { key: "projects", label: "プロジェクト", Icon: ClipboardList, onClick: openProjects },
     // 企業は「いつ支払うか」、人材は「いつ入金されるか」。同じ画面をロール別の見出しで出す。
     { key: "payments", label: mode === "company" ? "お支払い" : "入金予定", Icon: Wallet, onClick: openPayments },
@@ -4487,7 +4552,7 @@ export default function Home() {
         {mode === "company" ? (
           <MyPageCompany profile={profile.data} onProceed={proceedFromMyPageCompany} onRediagnose={rediagnoseCompany} onCompare={openCompare} />
         ) : (
-          <MyPageTalent profile={profile.data} onProceed={proceedFromMyPageTalent} onRediagnose={rediagnoseTalent} />
+          <MyPageTalent profile={profile.data} onProceed={proceedFromMyPageTalent} onRediagnose={rediagnoseTalent} onOpenDashboard={openDashboard} />
         )}
       </Shell>
     );

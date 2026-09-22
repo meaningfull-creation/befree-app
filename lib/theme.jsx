@@ -91,6 +91,40 @@ export function GlobalStyle() {
       *:focus-visible { outline: 2px solid ${COLORS.teal}; outline-offset: 2px; }
       ::selection { background: rgba(244,105,25,0.18); }
       .two-col { grid-template-columns: 1fr 1fr; }
+      /* ---- ランディングページ ---- */
+      /* セクションの余白・見出しの大きさを1箇所で決め、画面幅に応じて連動させる */
+      .lp-section { max-width: 1040px; margin: 0 auto; padding: 64px 24px; }
+      .lp-band { background: ${COLORS.surface}; border-top: 1px solid ${COLORS.border}; border-bottom: 1px solid ${COLORS.border}; }
+      .lp-eyebrow { font-family: ${FONT_MONO}; font-size: 11px; letter-spacing: 0.08em; color: ${COLORS.teal}; margin-bottom: 10px; display: block; }
+      .lp-h2 { font-family: ${FONT_DISPLAY}; font-weight: 800; font-size: clamp(20px, 4.2vw, 27px); line-height: 1.5; margin: 0 0 12px; }
+      .lp-lead { font-size: 14px; color: ${COLORS.muted}; line-height: 1.9; margin: 0; max-width: 620px; }
+      /* ヒーロー: デスクトップは本文とプレビューの2カラム、モバイルは縦積み */
+      .lp-hero-grid { display: grid; grid-template-columns: 1fr 320px; gap: 40px; align-items: center; }
+      .lp-cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+      .lp-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+      .lp-cards-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 18px; }
+      /* モバイルで画面下に固定するCTA。スクロール位置に関係なく次の一歩が押せる状態にする */
+      .lp-sticky-cta { display: none; }
+      @media (max-width: 860px) {
+        .lp-hero-grid { grid-template-columns: 1fr; gap: 28px; }
+        /* 縦積みになると横方向のグラデーションでは文字が読めなくなるため、
+           イラストは下に薄く敷き、上から白のグラデーションをかける */
+        .lp-hero-art { background-position: center 70% !important; opacity: 0.5; }
+        .lp-hero-veil { background: linear-gradient(180deg, ${COLORS.bg} 0%, rgba(247,249,252,0.97) 45%, rgba(247,249,252,0.85) 100%) !important; }
+      }
+      @media (max-width: 620px) {
+        .lp-nav-sub { display: none !important; }
+        .lp-section { padding: 44px 20px; }
+        .lp-cta-row .btn-primary, .lp-cta-row .btn-ghost { width: 100%; justify-content: center; }
+        .lp-sticky-cta {
+          display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; gap: 10px;
+          background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+          border-top: 1px solid ${COLORS.border}; box-shadow: 0 -4px 18px rgba(4,22,45,0.08);
+          padding: 10px max(14px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+        }
+        .lp-sticky-cta > * { flex: 1; justify-content: center; text-align: center; }
+        .lp-has-sticky-cta { padding-bottom: 86px; }
+      }
       /* 新規登録: 左に「登録後に何が起きるか」、右に入力欄を並べる */
       .signup-split { grid-template-columns: 1fr 1fr; }
       .role-card { transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease; }
