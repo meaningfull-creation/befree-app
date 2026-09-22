@@ -1,479 +1,210 @@
-import { ArrowRight, Building2, Users, MessageSquare, TrendingUp, Sparkles, Target, Handshake, Check } from "lucide-react";
-import { AXES } from "@/lib/axes";
-import { COLORS, FONT_DISPLAY, FONT_BODY, FONT_MONO, GlobalStyle } from "@/lib/theme";
 import { getCurrentUser } from "@/lib/auth";
+import LPStyle from "./_lp/LPStyle";
+import Header from "./_lp/Header";
+import Hero from "./_lp/Hero";
+import AIExperience from "./_lp/AIExperience";
+import People from "./_lp/People";
+import HowItWorks from "./_lp/HowItWorks";
+import { Arrow, Btn, Label, Reveal, Wordmark, Wrap } from "./_lp/parts";
+import { EXPERIENCE_MARQUEE, LP_COLOR as C } from "./_lp/tokens";
 
 export const metadata = {
-  title: "BATTER BOX — 会社に足りない経験を、必要な分だけ。",
-  description: "事業フェーズ・組織状況をAIで診断し、会社の成長を止めている課題と今必要な経験を可視化。その経験を持つ実務経験者が月10時間からチームに参加します。",
+  title: "BATTER BOX — その経験に、次の打席を。",
+  description:
+    "企業に足りないのは、人ではなく「経験」かもしれない。AIが経営課題を分析し、いま必要な経験を持つ人と企業をつなぐプラットフォーム、BATTER BOX。",
 };
 
-// ログイン状態に応じてナビの内容を出し分ける(未ログイン/企業/実務経験者/運営者)。
-// クライアント側フェッチではなくサーバー側でセッションを見るため、表示のちらつきが起きない。
-async function Nav() {
-  const user = await getCurrentUser();
-
-  return (
-    <header className="app-topbar">
-      <div className="app-topbar-inner" style={{ maxWidth: 1040 }}>
-        <a href="/" aria-label="BATTER BOX トップページ">
-          <img className="app-topbar-logo" src="/logo.png" alt="BATTER BOX" />
-        </a>
-        <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-          {!user && (
-            <>
-              {/* 副次的なリンクは狭い画面では隠し、フッターから辿れるようにする */}
-              <a className="btn-ghost lp-nav-sub" href="/contact" style={{ fontSize: 12.5, padding: "8px 15px" }}>お問い合わせ</a>
-              <a className="btn-ghost" href="/login" style={{ fontSize: 12.5, padding: "8px 15px" }}>ログイン</a>
-              <a className="btn-primary lp-nav-sub" href="/signup" style={{ fontSize: 13, padding: "10px 18px" }}>無料で始める</a>
-            </>
-          )}
-          {user && user.role === "admin" && <a className="btn-ghost" href="/admin" style={{ fontSize: 12.5, padding: "8px 15px" }}>管理画面</a>}
-          {user && (user.role === "company" || user.role === "talent") && (
-            <>
-              <span className="lp-nav-sub" style={{ fontSize: 12.5, color: COLORS.muted }}>
-                {user.role === "company" ? user.companyName : user.talentName}さん
-              </span>
-              <a className="btn-primary" href="/app" style={{ fontSize: 13, padding: "10px 18px" }}>アプリを開く</a>
-            </>
-          )}
-        </div>
-      </div>
-    </header>
-  );
-}
-
-// セクション見出し。小さなラベル(eyebrow)+見出し+リード文の3点セットで、
-// 同じ形のカードが並ぶだけの単調な画面にならないようにしている。
-function SectionHead({ eyebrow, title, lead, center }) {
-  return (
-    <div style={{ marginBottom: 28, textAlign: center ? "center" : "left" }}>
-      <span className="lp-eyebrow">{eyebrow}</span>
-      <h2 className="lp-h2">{title}</h2>
-      {lead && <p className="lp-lead" style={center ? { marginLeft: "auto", marginRight: "auto" } : undefined}>{lead}</p>}
+// 02｜EXPERIENCE MARQUEE
+// 装飾ではなく「世の中には様々な経験がある」という思想を伝える要素。
+function Marquee() {
+  const row = (
+    <div className="lp-marquee-track" aria-hidden="true">
+      {EXPERIENCE_MARQUEE.map((t) => (
+        <span key={t} className="lp-marquee-item">{t}</span>
+      ))}
     </div>
   );
-}
-
-// ヒーロー用の静的ミニレーダーチャート。実際の診断結果画面(StepSkillMap)と同じ見た目に、
-// 「現状」と「理想の状態」を重ねて見せる比較表示を加えたプレビュー。
-// (企業スキルマップ側でも同じ考え方を使える — 診断結果と目標プロファイルの比較)
-function HeroRadarPreview() {
-  const current = { product: 68, sales: 34, marketing: 48, hr: 29, finance_raise: 58, finance_mgmt: 24, cs: 52, ops: 42, tech: 64, leadership: 55 };
-  const ideal = { product: 82, sales: 78, marketing: 80, hr: 80, finance_raise: 82, finance_mgmt: 78, cs: 80, ops: 80, tech: 85, leadership: 82 };
-  const cx = 140, cy = 138, R = 92;
-  const n = AXES.length;
-  const pt = (i, r) => {
-    const ang = (Math.PI * 2 * i) / n - Math.PI / 2;
-    return [cx + r * Math.cos(ang), cy + r * Math.sin(ang)];
-  };
-  const toPoints = (scores) => AXES.map((a, i) => pt(i, (R * scores[a.key]) / 100).join(",")).join(" ");
-  const ringPts = (f) => AXES.map((_, i) => pt(i, R * f).join(",")).join(" ");
-
-  // 優先度の高いボトルネック(最もスコアが低い軸)をスコア円で強調
-  const worst = AXES.map((a) => ({ ...a, score: current[a.key] })).sort((a, b) => a.score - b.score)[0];
-  const gaugeR = 26;
-  const circumference = 2 * Math.PI * gaugeR;
-  const gaugeOffset = circumference * (1 - worst.score / 100);
-
   return (
-    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 20, padding: "18px 16px 16px", boxShadow: "0 14px 34px rgba(4,22,45,0.10)" }}>
-      <div style={{ fontSize: 10.5, color: COLORS.faint, fontFamily: FONT_MONO, marginBottom: 8 }}>BATTER BOX GROWTH MAP</div>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
-        <svg viewBox="0 0 64 64" width="52" height="52" role="img" aria-label={`最優先の課題「${worst.label}」のスコア`}>
-          <circle cx="32" cy="32" r={gaugeR} fill="none" stroke={COLORS.border} strokeWidth="6" />
-          <circle
-            cx="32" cy="32" r={gaugeR} fill="none" stroke={COLORS.amber} strokeWidth="6" strokeLinecap="round"
-            strokeDasharray={circumference} strokeDashoffset={gaugeOffset} transform="rotate(-90 32 32)"
-          />
-          <text x="32" y="36" textAnchor="middle" fontSize="16" fontWeight="700" fill={COLORS.text} fontFamily={FONT_MONO}>{worst.score}</text>
-        </svg>
-        <div>
-          <div style={{ fontSize: 11, color: COLORS.muted }}>最優先の課題</div>
-          <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14 }}>{worst.label}</div>
-        </div>
-      </div>
-
-      <svg viewBox="0 0 280 265" width="100%" height="auto" role="img" aria-label="10軸スキルマップで現状と理想の状態を比較したイメージ">
-        {[0.25, 0.5, 0.75, 1].map((f) => (
-          <polygon key={f} points={ringPts(f)} fill="none" stroke={COLORS.border} strokeWidth="1" />
-        ))}
-        {AXES.map((_, i) => {
-          const [x, y] = pt(i, R);
-          return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke={COLORS.border} strokeWidth="1" />;
-        })}
-        <polygon points={toPoints(ideal)} fill="none" stroke={COLORS.amber} strokeWidth="1.5" strokeDasharray="4 3" />
-        <polygon points={toPoints(current)} fill={COLORS.teal} fillOpacity="0.28" stroke={COLORS.teal} strokeWidth="2" />
-      </svg>
-
-      <div style={{ display: "flex", justifyContent: "center", gap: 16, fontSize: 11, color: COLORS.muted, marginTop: 2 }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ width: 10, height: 10, borderRadius: 3, background: COLORS.teal, display: "inline-block" }} /> 現状
-        </span>
-        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ width: 10, height: 2, background: COLORS.amber, display: "inline-block" }} /> 目標とする状態
-        </span>
-      </div>
-    </div>
-  );
-}
-
-
-// 実務経験者のプロフィールプレビュー。実在の人物写真は使わず、アプリ内の候補一覧と同じ
-// 「イニシャル入りの丸いアバター」で表現する。中身はprisma/seed.jsのサンプル人材と同じもの。
-function TalentPreviewCard({ name, title, years, tags, gradientFrom, gradientTo }) {
-  return (
-    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 22, flex: 1, minWidth: 240 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-        <div
-          style={{
-            width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
-            background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 16, color: COLORS.onAccent,
-          }}
-        >
-          {name[0]}
-        </div>
-        <div>
-          <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14.5 }}>{name}</div>
-          <div style={{ fontSize: 11.5, color: COLORS.muted }}>{title}</div>
-        </div>
-      </div>
-      <div style={{ fontSize: 11.5, color: COLORS.muted, marginBottom: 12 }}>実務経験年数: {years}</div>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {tags.map((t) => (
-          <span key={t} style={{ fontSize: 11, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "2px 8px", color: COLORS.muted }}>
-            {t}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-function StatsBand() {
-  const stats = [
-    { value: "10軸", label: "課題を構造的に可視化" },
-    { value: "月10h〜", label: "業務委託で身軽に伴走" },
-    { value: "無料", label: "AI課題診断・スキルマップ生成" },
-  ];
-  return (
-    <section style={{ background: COLORS.tealDim, padding: "34px 24px" }}>
-      <div style={{ maxWidth: 1040, margin: "0 auto", display: "flex", gap: 24, flexWrap: "wrap", justifyContent: "center" }}>
-        {stats.map((s) => (
-          <div key={s.label} style={{ textAlign: "center", minWidth: 160 }}>
-            <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 30, color: COLORS.onAccent }}>{s.value}</div>
-            <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.75)", marginTop: 4 }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
+    <section className="on-orange" data-tone="orange" style={{ padding: "clamp(22px, 2.6vw, 34px) 0" }}>
+      <div className="lp-marquee">{row}{row}</div>
+      <span className="lp-sr">
+        新規事業・営業・IPO・マーケティング・海外展開・採用・財務・プロダクト・経営・DXなど、様々な経験が登録されています。
+      </span>
     </section>
   );
 }
 
-export default function LandingPage() {
+// 04｜THE PROBLEM — カードを並べず、文字と余白だけで成立させる
+function Problem() {
   return (
-    <div className="app-root">
-      <GlobalStyle />
-      <div className="lp-has-sticky-cta" style={{ position: "relative" }}>
-        <Nav />
-
-        {/* Hero — モバイルでは縦積み。以前は背景イラストの上に220pxの余白を作り、
-            診断プレビューを負のマージンで右上に重ねていたため、狭い画面では
-            「巨大な空白 → 右に寄った小さなカード」という崩れ方をしていた。
-            イラストは右側にだけ薄く敷き、本文とプレビューはグリッドで並べる。 */}
-        <section style={{ position: "relative", overflow: "hidden", borderBottom: `1px solid ${COLORS.border}` }}>
-          <div
-            aria-hidden="true"
-            className="lp-hero-art"
-            style={{
-              position: "absolute", inset: 0,
-              backgroundImage: "url(/hero-illustration.jpg)",
-              backgroundSize: "cover", backgroundPosition: "center 30%", backgroundRepeat: "no-repeat",
-              pointerEvents: "none",
-            }}
-          />
-          <div
-            aria-hidden="true"
-            className="lp-hero-veil"
-            style={{
-              position: "absolute", inset: 0,
-              background: `linear-gradient(100deg, ${COLORS.bg} 0%, rgba(247,249,252,0.96) 46%, rgba(247,249,252,0.62) 68%, rgba(247,249,252,0.15) 88%)`,
-              pointerEvents: "none",
-            }}
-          />
-          <div className="lp-section" style={{ position: "relative", paddingTop: 52, paddingBottom: 52 }}>
-            <div className="lp-hero-grid">
-              <div>
-                <span className="lp-eyebrow">AI課題診断 × 実行伴走人材</span>
-                <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: "clamp(27px, 6.4vw, 40px)", fontWeight: 800, lineHeight: 1.4, margin: "0 0 16px", letterSpacing: "-0.01em" }}>
-                  会社に足りない経験を、<br />必要な分だけ。
-                </h1>
-                <p style={{ fontSize: 14.5, color: COLORS.muted, lineHeight: 1.95, maxWidth: 480, margin: "0 0 20px" }}>
-                  事業フェーズと組織の状況をAIが診断し、成長を止めている課題を10軸で可視化。
-                  その課題を解決できる実務経験者が、<strong style={{ color: COLORS.text }}>月10時間から</strong>チームに加わります。
-                </p>
-                <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 24, fontSize: 12.5, color: COLORS.muted }}>
-                  {["診断は無料", "3分・5問", "カード登録不要"].map((t) => (
-                    <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                      <Check size={13} color={COLORS.teal} strokeWidth={3} /> {t}
-                    </span>
-                  ))}
-                </div>
-                <div className="lp-cta-row">
-                  <a className="btn-primary" href="/diagnose" style={{ fontSize: 15, padding: "14px 26px" }}>
-                    無料で会社を診断する <ArrowRight size={15} />
-                  </a>
-                  <a className="btn-ghost" href="/join" style={{ fontSize: 15, padding: "14px 26px" }}>
-                    人材として登録する
-                  </a>
-                </div>
-              </div>
-
-              <HeroRadarPreview />
-            </div>
-          </div>
-        </section>
-
-        <StatsBand />
-
-        {/* 3ステップ(番号つき) */}
-        <section className="lp-band">
-          <div className="lp-section">
-            <SectionHead
-              eyebrow="HOW IT WORKS"
-              title="診断から伴走開始まで、3ステップ。"
-              lead="登録してから人材の提案が出るまで、最短でその日のうちに進みます。"
-            />
-            <div className="lp-cards">
-              {[
-                { n: "01", icon: Sparkles, t: "AIとの対話で課題を診断", b: "会社の基本情報を入力し、5つの質問に答えるだけ。AIが業種と成長段階に即した質問を重ね、本質的なボトルネックを10軸で可視化します。" },
-                { n: "02", icon: Target, t: "根拠付きで人材を提案", b: "診断結果と実務経験者のスキルマップを照合。なぜその人が合うのか、マッチ度の内訳まで示したうえで複数名を提案します。" },
-                { n: "03", icon: Handshake, t: "月10時間から伴走開始", b: "採用ではなく業務委託。必要なタイミングで必要な経験だけを取り入れられます。契約後はプロジェクト画面で進捗を共有します。" },
-              ].map((st) => {
-                const Icon = st.icon;
-                return (
-                  <div key={st.n} style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 24 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                      <span style={{ fontFamily: FONT_MONO, fontSize: 12, fontWeight: 600, color: COLORS.teal, letterSpacing: "0.06em" }}>{st.n}</span>
-                      <span style={{ flex: 1, height: 1, background: COLORS.border }} />
-                      <Icon size={17} color={COLORS.teal} />
-                    </div>
-                    <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 15.5, marginBottom: 8, lineHeight: 1.5 }}>{st.t}</div>
-                    <div style={{ fontSize: 13, color: COLORS.muted, lineHeight: 1.85 }}>{st.b}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* よくある経営課題(問題提起を、解決策の前に置く) */}
-        <section className="lp-section">
-          <SectionHead
-            eyebrow="ISSUES"
-            title="こんな課題に、心当たりはありませんか。"
-            lead="どれも「もう1人の社員」ではなく、「今その領域に強い実務経験者」で解ける課題です。"
-          />
-          <div className="lp-cards">
-            {[
-              { axis: "セールス基盤", t: "営業が属人化していて、キーパーソン頼みの受注から抜け出せない" },
-              { axis: "採用・組織", t: "採用基準が定まらず、面接官によって評価がぶれる" },
-              { axis: "財務・管理会計", t: "資金繰り・管理会計が見えておらず、意思決定が後手に回る" },
-              { axis: "技術基盤", t: "AI・DX活用の方針が定まらず、手探りのまま時間だけが過ぎる" },
-              { axis: "経営体制", t: "事業拡大のスピードに、組織体制が追いついていない" },
-              { axis: "カスタマーサクセス", t: "カスタマーサクセスが属人的で、解約の予兆に気づけない" },
-            ].map((item) => (
-              <div key={item.t} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderLeft: `4px solid ${COLORS.teal}`, borderRadius: 12, padding: "15px 18px" }}>
-                <div style={{ fontSize: 10.5, color: COLORS.tealDim, fontFamily: FONT_MONO, marginBottom: 6 }}>{item.axis}</div>
-                <div style={{ fontSize: 13, color: COLORS.text, lineHeight: 1.8 }}>{item.t}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* 伴走中もAIが並走する(プロジェクト管理・90日プラン・月次レビュー等、診断以降の機能を紹介) */}
-        <section className="lp-band">
-          <div className="lp-section">
-          <SectionHead
-            eyebrow="AFTER MATCHING"
-            title="マッチングして終わりではありません。"
-            lead="伴走が始まった後も、進捗と成果をAIが並走して可視化します。"
-          />
-          <div className="lp-cards">
-            {[
-              { title: "90日の実行プランを自動生成", body: "課題が特定できたら、AIが最初の90日でやるべきことを月ごとに提案します。" },
-              { title: "タスク・KPI・稼働ログを共有", body: "プロジェクト画面で、企業と実務経験者が同じ進捗を見ながら伴走できます。" },
-              { title: "AIによる月次進捗レビュー", body: "溜まったタスク・KPI・稼働ログから、AIが進捗の要点を毎月まとめます。" },
-              { title: "3ヶ月ごとの再診断で変化を確認", body: "スコアがどう変わったか、Before/Afterで振り返ることができます。" },
-            ].map((f) => (
-              <div key={f.title} style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 22 }}>
-                <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14.5, marginBottom: 8 }}>{f.title}</div>
-                <div style={{ fontSize: 12.5, color: COLORS.muted, lineHeight: 1.85 }}>{f.body}</div>
-              </div>
-            ))}
-          </div>
-          </div>
-        </section>
-
-        {/* 月10時間の価値 */}
-        <section className="lp-section">
-          <SectionHead eyebrow="VS. FULL-TIME HIRE" title="正社員採用と、何が違うのか。" />
-          <div className="lp-cards-2">
-            <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 26 }}>
-              <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 500, marginBottom: 10 }}>正社員採用の場合</div>
-              <ul style={{ margin: 0, padding: 0, listStyle: "none", fontSize: 13.5, color: COLORS.text, lineHeight: 2.1 }}>
-                <li>月60〜100万円ほどの人件費(目安)</li>
-                <li>週40時間の稼働が前提</li>
-                <li>長期の雇用契約</li>
-                <li>採用まで2〜6ヶ月程度</li>
-                <li>ミスマッチ時のリスクが大きい</li>
-              </ul>
-            </div>
-            <div style={{ background: COLORS.text, border: `1px solid ${COLORS.text}`, borderRadius: 16, padding: 26 }}>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: 500, marginBottom: 10 }}>BATTER BOXの場合</div>
-              <ul style={{ margin: 0, padding: 0, listStyle: "none", fontSize: 13.5, color: COLORS.onAccent, lineHeight: 2.1 }}>
-                <li>月10時間〜、必要な分だけ</li>
-                <li>今必要な経験だけをピンポイントで</li>
-                <li>業務委託、3ヶ月単位でも利用可能</li>
-                <li>診断からスピーディに提案</li>
-                <li>正社員採用の前段階としても</li>
-              </ul>
-            </div>
-          </div>
-          <p style={{ fontSize: 11, color: COLORS.faint, marginTop: 12 }}>
-            ※ 上記の金額・期間は目安の一例です。実際の条件は個別の契約により異なります。
-          </p>
-        </section>
-
-        {/* For companies / For talent */}
-        <section className="lp-band">
-          <div className="lp-section lp-cards-2">
-          <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 28 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 13, background: "rgba(244,105,25,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Building2 size={21} color={COLORS.teal} />
-            </div>
-            <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 500, margin: "16px 0 6px" }}>企業の方へ</div>
-            <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 800, lineHeight: 1.5, margin: "0 0 12px", color: COLORS.tealDim }}>
-              顧問でも、社員でも、アルバイトでもない。<br />現場を本気で動かす実務経験者を。
-            </h2>
-            <p style={{ fontSize: 13.5, color: COLORS.muted, lineHeight: 1.8, marginBottom: 16 }}>
-              「あと少しの実行経験があれば前に進むのに」——資金やプロダクトが揃っていても、実務を巻き取れる人材の不在で成長が止まっていませんか。AI課題診断は無料で、診断だけで終えることもできます。
-            </p>
-            <a href="/diagnose" style={{ color: COLORS.teal, fontSize: 13.5, display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 500 }}>
-              無料でAI課題診断を受ける <ArrowRight size={13} />
-            </a>
-          </div>
-          <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 28 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 13, background: "rgba(27,58,99,0.14)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Users size={21} color={COLORS.amber} />
-            </div>
-            <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 500, margin: "16px 0 6px" }}>実務経験者の方へ</div>
-            <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 800, lineHeight: 1.5, margin: "0 0 12px", color: "#1B3A63" }}>
-              スキルマップで、<br />あなたの強みを可視化する。
-            </h2>
-            <p style={{ fontSize: 13.5, color: COLORS.muted, lineHeight: 1.8, marginBottom: 16 }}>
-              豊富な経験を持ちながら、活躍の場が限られていませんか。職務経歴を入力するだけで、AIがあなた専用のスキルマップを無料で生成。副業ではなく、経験を価値として再定義する場です。
-            </p>
-            <a href="/join" style={{ color: COLORS.amber, fontSize: 13.5, display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 500 }}>
-              無料でスキルマップを作る <ArrowRight size={13} />
-            </a>
-          </div>
-          </div>
-        </section>
-
-        {/* Talent preview(必要な経験を持つ人材の例) */}
-        <section className="lp-section">
-          <SectionHead
-            eyebrow="TALENT"
-            title="こんな経験を持つ人材が登録しています"
-            lead="プラットフォーム上のプロフィールの一例です。"
-          />
-          <div className="lp-cards">
-            <TalentPreviewCard
-              name="宮崎 大輔" title="元人事責任者 / シリーズA〜B 3社経験" years="15年以上"
-              tags={["採用・組織", "経営体制", "オペレーション"]}
-              gradientFrom={COLORS.tealDim} gradientTo={COLORS.teal}
-            />
-            <TalentPreviewCard
-              name="小池 美咲" title="元CFO室 / 管理会計・資金調達支援" years="15年以上"
-              tags={["財務・管理会計", "資金調達", "経営体制"]}
-              gradientFrom="#0B2647" gradientTo={COLORS.amber}
-            />
-            <TalentPreviewCard
-              name="遠藤 慧" title="元セールスイネーブルメント責任者" years="10〜15年"
-              tags={["セールス基盤", "マーケティング", "カスタマーサクセス"]}
-              gradientFrom={COLORS.tealDim} gradientTo={COLORS.teal}
-            />
-          </div>
-        </section>
-
-        {/* FAQ */}
-        <section className="lp-band">
-          <div className="lp-section" style={{ maxWidth: 780 }}>
-          <SectionHead eyebrow="FAQ" title="よくある質問" center />
-          <div style={{ display: "flex", gap: 20, justifyContent: "center", flexWrap: "wrap", fontSize: 12.5, color: COLORS.muted, marginBottom: 28 }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><TrendingUp size={13} color={COLORS.teal} /> 知見の共有ではなく、実行力の提供</span>
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><MessageSquare size={13} color={COLORS.teal} /> マッチング後はそのままメッセージで連絡可能</span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {[
-              { q: "診断だけ受けて、そのまま利用しなくても大丈夫ですか?", a: "はい。AI企業診断・Growth Mapの作成まではすべて無料で、そこで終えていただいても構いません。提案された人材と話してみるかどうかは、診断結果を見てから判断できます。" },
-              { q: "料金はどのくらいかかりますか?", a: "月10時間からの業務委託が基本単価です。稼働時間・期間は案件ごとに個別見積もりになります(β版のため、金額の目安は今後公開予定です)。" },
-              { q: "採用ではなく業務委託なのはなぜですか?", a: "正社員採用は、採用コスト・給与・社会保険・採用期間・ミスマッチリスクが伴います。BATTER BOXは「今必要な経験だけ」を、月10時間という小さな単位から始められる業務委託の形にしています。" },
-              { q: "どんな人が登録しているのですか?", a: "事業責任者・CFO・CMO・人事責任者など、特定領域で実務の意思決定を担ってきた実務経験者です。登録時にAIがスキルマップを生成し、審査を経てから企業への提案対象になります。" },
-              { q: "診断結果はどのくらい正確ですか?", a: "AIとの対話内容と、業種・フェーズ等の情報をもとにスコアリングしています。対話で直接触れた領域は具体的な根拠を、触れていない領域は推定である旨を明記して表示しています。" },
-              { q: "支援が始まった後の進捗はどう管理しますか?", a: "マッチング後はプロジェクト画面でタスク・KPI・稼働ログを共有できます。3ヶ月ごとの再診断で、スコアがどう変化したかも確認できます。" },
-            ].map((item) => (
-              <div key={item.q} style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "16px 20px" }}>
-                <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14, marginBottom: 6 }}>{item.q}</div>
-                <div style={{ fontSize: 13, color: COLORS.muted, lineHeight: 1.85 }}>{item.a}</div>
-              </div>
-            ))}
-          </div>
-          </div>
-        </section>
-
-        {/* 最終CTA */}
-        <section style={{ background: COLORS.text, padding: "60px 24px", textAlign: "center" }}>
-          <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 800, color: COLORS.onAccent, margin: "0 0 12px" }}>
-            会社に足りない経験を、必要な分だけ。
+    <section className="lp-sec">
+      <Wrap>
+        <Reveal>
+          <Label style={{ marginBottom: 26 }}>The Problem</Label>
+          <h2 className="lp-giant">
+            採用するほどじゃない。<br />
+            でも、<span style={{ color: C.orange }}>その経験</span>が必要だ。
           </h2>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.65)", margin: "0 0 28px" }}>
-            まずは無料のAI企業診断から。5分ほどで、御社のGrowth Mapが見えてきます。
-          </p>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <a className="btn-primary" href="/diagnose" style={{ fontSize: 15, padding: "13px 26px" }}>
-              無料で会社を診断する <ArrowRight size={15} />
-            </a>
-            <a className="btn-ghost" href="/join" style={{ fontSize: 15, padding: "13px 26px", background: "transparent", color: COLORS.onAccent, borderColor: "rgba(255,255,255,0.3)" }}>
-              人材として登録する
-            </a>
-          </div>
-        </section>
+        </Reveal>
 
-        {/* Footer */}
-        <footer style={{ borderTop: `1px solid ${COLORS.border}`, padding: "28px 24px 32px", background: COLORS.surface }}>
-          <div style={{ maxWidth: 1040, margin: "0 auto", display: "flex", gap: 20, flexWrap: "wrap", alignItems: "center" }}>
-            <img src="/logo.png" alt="BATTER BOX" style={{ height: 34, width: "auto" }} />
-            <div style={{ display: "flex", gap: 18, fontSize: 12, color: COLORS.muted, fontFamily: FONT_BODY, flexWrap: "wrap", marginLeft: "auto" }}>
-              <a href="/legal/terms" style={{ color: COLORS.muted }}>利用規約</a>
-              <a href="/legal/privacy" style={{ color: COLORS.muted }}>プライバシーポリシー</a>
-              <a href="/security" style={{ color: COLORS.muted }}>セキュリティについて</a>
-              <a href="/company" style={{ color: COLORS.muted }}>会社概要</a>
-              <a href="/contact" style={{ color: COLORS.muted }}>お問い合わせ</a>
+        <Reveal delay={120} style={{ marginTop: "clamp(48px, 6vw, 92px)", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "clamp(28px, 4vw, 64px)", maxWidth: 1080 }}>
+          <div>
+            <div
+              style={{
+                fontSize: "clamp(20px, 2.4vw, 30px)", fontWeight: 900, lineHeight: 2, letterSpacing: "-0.02em",
+              }}
+            >
+              新規事業。<br />営業組織。<br />マーケティング。<br />採用。<br />IPO。<br />海外進出。
             </div>
           </div>
-          <div style={{ maxWidth: 1040, margin: "18px auto 0", fontSize: 11, color: COLORS.faint }}>
-            © 株式会社BeFree
+          <div style={{ display: "flex", alignItems: "flex-end" }}>
+            <p className="lp-sub" style={{ maxWidth: 460 }}>
+              企業には、その瞬間だけ必要になる経験があります。
+              正社員を一人採るには重すぎて、けれど誰かの経験がなければ前に進まない。
+              その隙間を埋めるのが、BATTER BOXです。
+            </p>
           </div>
-        </footer>
-      </div>
+        </Reveal>
+      </Wrap>
+    </section>
+  );
+}
 
-      {/* モバイルのみ: スクロール位置に関係なく次の一歩を押せるようにする固定CTA */}
-      <div className="lp-sticky-cta">
-        <a className="btn-primary" href="/diagnose" style={{ fontSize: 13.5, padding: "12px 16px" }}>無料で会社を診断</a>
-        <a className="btn-ghost" href="/join" style={{ fontSize: 13.5, padding: "12px 16px" }}>人材として登録</a>
+// 06｜ORANGE BRAND SECTION — 説明文を置かず、ブランド広告として成立させる
+function BrandSection() {
+  const lines = [
+    "経験を、\n眠らせない。",
+    "その経験を、\n必要としている会社がある。",
+    "その経験に、\n次の打席を。",
+  ];
+  return (
+    <section className="on-orange" data-tone="orange" style={{ paddingTop: 0, paddingBottom: 0 }}>
+      {lines.map((l, i) => (
+        <div
+          key={i}
+          style={{
+            minHeight: "72svh", display: "flex", alignItems: "center",
+            borderTop: i === 0 ? "none" : "1px solid rgba(255,255,255,0.22)",
+          }}
+        >
+          <Wrap>
+            <Reveal>
+              <h2 className="lp-display" style={{ whiteSpace: "pre-line", color: "#fff" }}>{l}</h2>
+              {i === 2 && (
+                <div style={{ marginTop: 44 }}>
+                  <Wordmark size={17} color="rgba(255,255,255,0.78)" />
+                </div>
+              )}
+            </Reveal>
+          </Wrap>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+// 08｜TWO SIDES — ホバーでそれぞれの領域が少し広がる
+function TwoSides() {
+  const sides = [
+    { en: "For Companies", jp: "会社に足りない\n経験を。", cta: "経験を探す", href: "/diagnose" },
+    { en: "For Professionals", jp: "あなたの経験に、\n次の打席を。", cta: "経験を登録する", href: "/join" },
+  ];
+  return (
+    <section className="on-ink lp-two" data-tone="dark">
+      {sides.map((s) => (
+        <a key={s.en} href={s.href} className="lp-two-side">
+          <Label tone="plain" style={{ color: C.orange, marginBottom: 26 }}>{s.en}</Label>
+          <h2 className="lp-head" style={{ whiteSpace: "pre-line", color: "#fff", fontSize: "clamp(27px, 3.6vw, 52px)", lineHeight: 1.3 }}>
+            {s.jp}
+          </h2>
+          <span
+            className="lp-btn lp-btn--onInk"
+            style={{ marginTop: 40, alignSelf: "flex-start", pointerEvents: "none" }}
+          >
+            {s.cta}<Arrow />
+          </span>
+        </a>
+      ))}
+    </section>
+  );
+}
+
+// 09｜FINAL CTA — もう一度ブランドメッセージへ戻る。余計な説明は置かない
+function FinalCTA() {
+  return (
+    <section className="on-orange lp-sec" data-tone="orange" style={{ textAlign: "center" }}>
+      <Wrap>
+        <Reveal>
+          <h2 className="lp-display" style={{ color: "#fff", whiteSpace: "pre-line" }}>
+            {"その経験に、\n次の打席を。"}
+          </h2>
+          <div style={{ marginTop: 34 }}>
+            <Wordmark size={19} color="rgba(255,255,255,0.8)" />
+          </div>
+          <div style={{ marginTop: 52, display: "flex", justifyContent: "center" }}>
+            <Btn href="/signup" variant="onOrange">BATTER BOXを始める</Btn>
+          </div>
+        </Reveal>
+      </Wrap>
+    </section>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="lp-sec lp-sec--tight" style={{ paddingBottom: "clamp(40px, 5vw, 64px)" }}>
+      <Wrap>
+        <div style={{ display: "flex", gap: 32, flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between" }}>
+          <div>
+            <img src="/logo.png" alt="BATTER BOX" style={{ height: 38, width: "auto", display: "block" }} />
+            <p className="lp-small" style={{ marginTop: 16, maxWidth: 320 }}>
+              AIが経営課題を分析し、いま必要な経験を持つ人と企業をつなぐプラットフォーム。
+            </p>
+          </div>
+          <div className="lp-footer-links">
+            <a href="/diagnose">企業の方</a>
+            <a href="/join">経験を活かしたい方</a>
+            <a href="/company">会社概要</a>
+            <a href="/legal/terms">利用規約</a>
+            <a href="/legal/privacy">プライバシーポリシー</a>
+            <a href="/security">セキュリティ</a>
+            <a href="/contact">お問い合わせ</a>
+          </div>
+        </div>
+        <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 36, paddingTop: 20, display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <span className="lp-small">© 株式会社BeFree</span>
+          <span className="lp-label" style={{ color: C.inkFaint }}>Experience moves business.</span>
+        </div>
+      </Wrap>
+    </footer>
+  );
+}
+
+export default async function LandingPage() {
+  const user = await getCurrentUser();
+
+  return (
+    <div className="lp">
+      <LPStyle />
+      <Header user={user} />
+
+      <main className="lp-has-mobile-cta">
+        <Hero />
+        <Marquee />
+        <AIExperience />
+        <Problem />
+        <People />
+        <BrandSection />
+        <HowItWorks />
+        <TwoSides />
+        <FinalCTA />
+        <Footer />
+      </main>
+
+      {/* モバイルのみ: 親指で押せる位置に常時CTAを置く */}
+      <div className="lp-mobile-cta">
+        <a className="lp-btn lp-btn--primary" href="/diagnose">経験を探す<Arrow size={14} /></a>
+        <a className="lp-btn lp-btn--ghost" href="/join">経験を登録<Arrow size={14} /></a>
       </div>
     </div>
   );

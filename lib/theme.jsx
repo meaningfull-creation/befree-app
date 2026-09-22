@@ -60,8 +60,9 @@ export const FONT_BODY = "'Zen Kaku Gothic New', sans-serif";
 export const FONT_MONO = "'IBM Plex Mono', monospace";
 
 export function GlobalStyle() {
-  return (
-    <style>{`
+  // CSSはテキストの子として渡すと React が ' を &#x27; にエスケープし、
+  // ハイドレーション時に「Text content did not match」になる。HTMLとして渡す。
+  const css = `
       @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
       * { box-sizing: border-box; }
       .app-root { font-family: ${FONT_BODY}; background: ${COLORS.bg}; color: ${COLORS.text}; min-height: 100vh; width: 100%; position: relative;
@@ -207,6 +208,6 @@ export function GlobalStyle() {
         .fade-in, .pulse-dot { animation: none !important; }
         .btn-primary, .btn-ghost { transition: none !important; }
       }
-    `}</style>
-  );
+  `;
+  return <style dangerouslySetInnerHTML={{ __html: css }} />;
 }
