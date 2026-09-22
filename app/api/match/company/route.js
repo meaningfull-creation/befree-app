@@ -50,9 +50,18 @@ export async function POST(req) {
         };
       });
 
-    const candidates = rankCandidates(pool, (t) =>
+    // まず全員をスコア順に並べ、通常はマッチ度30%以上のみ提案する。
+    // 登録人材がまだ少ない時期は全員が30%未満になり「候補ゼロ」となり得るため、
+    // その場合は上位3名を「参考(適合度は低め)」として返す(lowMatchFallback: true)。
+    // UI側でその旨を正直に表示する — 高く見せかけるのではなく、少ない中での相対順位だと伝える。
+    const ranked = rankCandidates(pool, (t) =>
       scoreMatch(companyScores, t.axisScores, companyPhase, t.phaseTags, 6, axisWeightMultipliers)
-    ).map((c) => ({
+    , 0);
+    const above = ranked.filter((c) => c.match >= 30);
+    const lowMatchFallback = above.length === 0 && ranked.length > 0;
+    const picked = above.length > 0 ? above : ranked.slice(0, 3);
+
+    const candidates = picked.map((c) => ({
       ...c,
       breakdown: computeMatchBreakdown({
         companyScores,
@@ -65,7 +74,7 @@ export async function POST(req) {
       }).breakdown,
     }));
 
-    return NextResponse.json({ candidates });
+    return NextResponse.json({ candidates, lowMatchFallback });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

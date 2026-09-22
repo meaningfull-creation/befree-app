@@ -715,6 +715,7 @@ export function StepSkillMap({ scores, summary, axisNotes, topIssueDetails, comp
 // ---------------------------------------------------------------------------
 function StepTalentProposal({ companyScores, companyPhase, companyIndustry, onRestart, onOpenThread }) {
   const [candidates, setCandidates] = useState(null);
+  const [lowMatch, setLowMatch] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
   const [connectingId, setConnectingId] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
@@ -724,6 +725,7 @@ function StepTalentProposal({ companyScores, companyPhase, companyIndustry, onRe
     setCandidates(null);
     try {
       const result = await postJSON("/api/match/company", { companyScores, companyPhase, companyIndustry });
+      setLowMatch(!!result.lowMatchFallback);
       setCandidates(result.candidates);
     } catch (e) {
       setErrorMsg("マッチング結果の取得に失敗しました。");
@@ -829,6 +831,11 @@ function StepTalentProposal({ companyScores, companyPhase, companyIndustry, onRe
       {!candidates && !errorMsg && <div style={{ color: COLORS.muted, fontSize: 13 }}>マッチングを計算中…</div>}
       {candidates && candidates.length === 0 && (
         <div style={{ color: COLORS.muted, fontSize: 13 }}>現在提案できる候補がいません(稼働上限に達している、または登録人材がまだいません)。</div>
+      )}
+      {lowMatch && candidates && candidates.length > 0 && (
+        <div style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "12px 16px", marginBottom: 16, fontSize: 13, color: COLORS.muted, lineHeight: 1.7 }}>
+          適合度30%以上の人材はまだ登録されていません。現在登録されている人材の中から、近い順に<strong>参考として</strong>表示しています。各カードのMATCH%と注意点を確認のうえご判断ください。
+        </div>
       )}
 
       {candidates && candidates.length > 0 && (
@@ -1534,6 +1541,7 @@ export function StepTalentSkillMap({ name, scores, fit, talentForm, talentSkillM
 // ---------------------------------------------------------------------------
 function StepTalentMatches({ talentScores, talentPhases, onRestart, onOpenThread }) {
   const [candidates, setCandidates] = useState(null);
+  const [lowMatch, setLowMatch] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
   const [connectingId, setConnectingId] = useState(null);
 
@@ -1542,6 +1550,7 @@ function StepTalentMatches({ talentScores, talentPhases, onRestart, onOpenThread
     setCandidates(null);
     try {
       const result = await postJSON("/api/match/talent", { talentScores, talentPhases });
+      setLowMatch(!!result.lowMatchFallback);
       setCandidates(result.candidates);
     } catch (e) {
       setErrorMsg("マッチング結果の取得に失敗しました。");
@@ -1569,6 +1578,14 @@ function StepTalentMatches({ talentScores, talentPhases, onRestart, onOpenThread
 
       {errorMsg && <ErrorNote message={errorMsg} onRetry={load} />}
       {!candidates && !errorMsg && <div style={{ color: COLORS.muted, fontSize: 13 }}>マッチングを計算中…</div>}
+      {candidates && candidates.length === 0 && (
+        <div style={{ color: COLORS.muted, fontSize: 13 }}>現在マッチする企業がいません(登録企業がまだ少ない可能性があります)。</div>
+      )}
+      {lowMatch && candidates && candidates.length > 0 && (
+        <div style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "12px 16px", marginBottom: 16, fontSize: 13, color: COLORS.muted, lineHeight: 1.7 }}>
+          適合度30%以上の企業はまだ登録されていません。現在登録されている企業の中から、近い順に<strong>参考として</strong>表示しています。
+        </div>
+      )}
 
       {candidates && (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>

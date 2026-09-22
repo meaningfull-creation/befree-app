@@ -47,11 +47,16 @@ export async function POST(req) {
         };
       });
 
-    const candidates = rankCandidates(pool, (c) =>
+    // 通常はマッチ度30%以上のみ。登録企業がまだ少なく全滅する場合は
+    // 上位3社を「参考(適合度は低め)」として返す(lowMatchFallback: true)。
+    const ranked = rankCandidates(pool, (c) =>
       scoreMatch(c.companyScores, talentScores, c.phase, talentPhases || [], 6, axisWeightMultipliers)
-    );
+    , 0);
+    const above = ranked.filter((c) => c.match >= 30);
+    const lowMatchFallback = above.length === 0 && ranked.length > 0;
+    const candidates = above.length > 0 ? above : ranked.slice(0, 3);
 
-    return NextResponse.json({ candidates });
+    return NextResponse.json({ candidates, lowMatchFallback });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
