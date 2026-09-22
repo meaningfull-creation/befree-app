@@ -33,10 +33,21 @@ export async function GET() {
       });
     }
 
+    // 各スレッドの未読数(相手から届いた readAt=null のメッセージ数)をまとめて集計する
+    const unreadGroups = matches.length
+      ? await prisma.message.groupBy({
+          by: ["matchId"],
+          where: { matchId: { in: matches.map((m) => m.id) }, readAt: null, NOT: { senderId: user.id } },
+          _count: { _all: true },
+        })
+      : [];
+    const unreadByMatch = Object.fromEntries(unreadGroups.map((g) => [g.matchId, g._count._all]));
+
     const threads = matches.map((m) => ({
       matchId: m.id,
       counterpartName: user.role === "company" ? m.talentSkillMap.talent.name : m.companySkillMap.company.name,
       lastMessage: m.messages[0] ? { body: m.messages[0].body, createdAt: m.messages[0].createdAt } : null,
+      unreadCount: unreadByMatch[m.id] || 0,
     }));
 
     return NextResponse.json({ threads });

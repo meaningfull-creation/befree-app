@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import { logError } from "@/lib/errorLog";
-import { sendEmail } from "@/lib/mailer";
+import { sendEmail, renderBrandEmail } from "@/lib/mailer";
 import { getSiteUrl } from "@/lib/siteUrl";
 
 // POST /api/inquiries
@@ -45,6 +45,17 @@ export async function POST(req) {
               to: a.email,
               subject: `【BATTER BOX】新しいお問い合わせが届いています(${name.trim()}様)`,
               text: `新しいお問い合わせが届きました。\n\nお名前: ${name.trim()}\nメールアドレス: ${email.trim()}\n会社名: ${companyName?.trim() || "(未記入)"}\n\n内容:\n${preview}\n\n管理画面で確認する:\n${getSiteUrl()}/admin/inquiries`,
+              html: renderBrandEmail({
+                heading: "新しいお問い合わせが届きました",
+                infoRows: [
+                  ["お名前", name.trim()],
+                  ["メールアドレス", email.trim()],
+                  ["会社名", companyName?.trim() || "(未記入)"],
+                ],
+                quote: preview,
+                ctaLabel: "管理画面で確認する",
+                ctaUrl: `${getSiteUrl()}/admin/inquiries`,
+              }),
             })
           )
         );

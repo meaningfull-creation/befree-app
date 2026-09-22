@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getMatchIfAuthorized } from "@/lib/matchAccess";
 import { standardTalentAmount } from "@/lib/pricing";
 import { logAudit } from "@/lib/auditLog";
-import { sendEmail } from "@/lib/mailer";
+import { sendEmail, renderBrandEmail } from "@/lib/mailer";
 import { getSiteUrl } from "@/lib/siteUrl";
 
 // POST /api/matches/[matchId]/propose-contract
@@ -57,10 +57,25 @@ export async function POST(req, { params }) {
   try {
     const talentUser = authorized.match.talentSkillMap.talent.user;
     if (talentUser?.email) {
+      const companyName = authorized.match.companySkillMap.company.name;
       await sendEmail({
         to: talentUser.email,
-        subject: `【BATTER BOX】${authorized.match.companySkillMap.company.name}さんから契約条件の提案が届いています`,
-        text: `${authorized.match.companySkillMap.company.name}さんから、以下の条件で契約の提案が届いています。\n\n月間稼働時間: ${hours}時間\n月額報酬(目安): ¥${tAmount.toLocaleString()}\n\nBATTER BOXにログインして内容を確認する:\n${getSiteUrl()}/app`,
+        subject: `【BATTER BOX】${companyName}さんから契約条件の提案が届いています`,
+        text: `${companyName}さんから、以下の条件で契約の提案が届いています。\n\n月間稼働時間: ${hours}時間\n月額報酬(目安): ¥${tAmount.toLocaleString()}\n\nBATTER BOXにログインして内容を確認する:\n${getSiteUrl()}/app`,
+        html: renderBrandEmail({
+          heading: "契約条件の提案が届きました",
+          paragraphs: [
+            `${companyName}さんから、あなたに契約条件の提案が届いています。`,
+            "内容を確認のうえ、承諾または辞退の回答をお願いします。",
+          ],
+          infoRows: [
+            ["提案元", companyName],
+            ["月間稼働時間", `${hours}時間`],
+            ["月額報酬(目安)", `¥${tAmount.toLocaleString()}`],
+          ],
+          ctaLabel: "内容を確認して回答する",
+          ctaUrl: `${getSiteUrl()}/app`,
+        }),
       });
     }
   } catch (mailErr) {

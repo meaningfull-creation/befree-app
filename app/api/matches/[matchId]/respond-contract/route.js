@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getMatchIfAuthorized } from "@/lib/matchAccess";
 import { logAudit } from "@/lib/auditLog";
-import { sendEmail } from "@/lib/mailer";
+import { sendEmail, renderBrandEmail } from "@/lib/mailer";
 import { getSiteUrl } from "@/lib/siteUrl";
 
 // POST /api/matches/[matchId]/respond-contract
@@ -85,12 +85,30 @@ async function notifyCompany(authorized, result) {
         to: companyUser.email,
         subject: `【BATTER BOX】${talentName}さんが契約を承諾しました`,
         text: `${talentName}さんが契約条件を承諾し、契約が成立しました。プロジェクト画面から進捗を共有できます。\n\nBATTER BOXにログインする:\n${getSiteUrl()}/app`,
+        html: renderBrandEmail({
+          heading: "契約が成立しました",
+          paragraphs: [
+            `${talentName}さんが契約条件を承諾し、契約が成立しました。`,
+            "プロジェクトが自動で作成されています。90日プランの作成や、タスク・KPIの共有を始めましょう。",
+          ],
+          ctaLabel: "プロジェクトを開く",
+          ctaUrl: `${getSiteUrl()}/app`,
+        }),
       });
     } else {
       await sendEmail({
         to: companyUser.email,
         subject: `【BATTER BOX】${talentName}さんが契約提案を辞退しました`,
         text: `${talentName}さんが、ご提案いただいた契約条件を辞退されました。条件を見直して再度提案することができます。\n\nBATTER BOXにログインする:\n${getSiteUrl()}/app`,
+        html: renderBrandEmail({
+          heading: "契約提案への回答が届きました",
+          paragraphs: [
+            `${talentName}さんは、今回のご提案を辞退されました。`,
+            "稼働時間や報酬などの条件を見直して再提案するか、他の候補者への提案をご検討ください。",
+          ],
+          ctaLabel: "BATTER BOXを開く",
+          ctaUrl: `${getSiteUrl()}/app`,
+        }),
       });
     }
   } catch (mailErr) {

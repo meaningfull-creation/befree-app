@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { logError } from "@/lib/errorLog";
-import { sendEmail } from "@/lib/mailer";
+import { sendEmail, renderBrandEmail } from "@/lib/mailer";
 import { getSiteUrl } from "@/lib/siteUrl";
 
 const TOKEN_TTL_MS = 1000 * 60 * 60; // 1時間
@@ -33,6 +33,16 @@ export async function POST(req) {
           to: email.trim(),
           subject: "【BATTER BOX】パスワード再設定のご案内",
           text: `パスワード再設定のリクエストを受け付けました。\n\n以下のリンクから、新しいパスワードを設定してください(1時間有効です)。\n${resetUrl}\n\n心当たりがない場合は、このメールを無視してください。`,
+          html: renderBrandEmail({
+            heading: "パスワード再設定のご案内",
+            paragraphs: [
+              "パスワード再設定のリクエストを受け付けました。",
+              "下のボタンから新しいパスワードを設定してください。リンクの有効期限は1時間です。",
+            ],
+            ctaLabel: "新しいパスワードを設定する",
+            ctaUrl: resetUrl,
+            footNote: "このメールに心当たりがない場合は、操作は不要です。そのまま破棄してください。",
+          }),
         });
       } catch (mailErr) {
         console.error("failed to send password reset email:", mailErr.message);

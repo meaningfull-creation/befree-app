@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getMatchIfAuthorized } from "@/lib/matchAccess";
-import { sendEmail } from "@/lib/mailer";
+import { sendEmail, renderBrandEmail } from "@/lib/mailer";
 import { getSiteUrl } from "@/lib/siteUrl";
 
 // GET /api/messages?matchId=...
@@ -17,6 +17,12 @@ export async function GET(req) {
 
     const authorized = await getMatchIfAuthorized(matchId, user);
     if (!authorized) return NextResponse.json({ error: "このメッセージへのアクセス権がありません" }, { status: 403 });
+
+    // スレッドを開いた時点で、相手からの未読メッセージを既読にする
+    await prisma.message.updateMany({
+      where: { matchId, readAt: null, NOT: { senderId: user.id } },
+      data: { readAt: new Date() },
+    });
 
     const messages = await prisma.message.findMany({
       where: { matchId },
@@ -71,6 +77,13 @@ export async function POST(req) {
           to: recipientUser.email,
           subject: `【BATTER BOX】${senderName}さんから新しいメッセージが届いています`,
           text: `${senderName}さんから新しいメッセージが届いています。\n\n「${preview}」\n\nBATTER BOXにログインして返信する:\n${getSiteUrl()}/app`,
+          html: renderBrandEmail({
+            heading: "新しいメッセージが届いています",
+            paragraphs: [`${senderName}さんからメッセージが届きました。`],
+            quote: preview,
+            ctaLabel: "ログインして返信する",
+            ctaUrl: `${getSiteUrl()}/app`,
+          }),
         });
       }
     } catch (mailErr) {

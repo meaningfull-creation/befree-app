@@ -21,6 +21,9 @@ import {
   ChevronRight,
   Settings,
   ClipboardList,
+  UserRound,
+  LayoutDashboard,
+  LogOut,
 } from "lucide-react";
 import { AXES, TALENT_SCORE_RUBRIC } from "@/lib/axes";
 import { computeScoreDelta } from "@/lib/scoreDelta";
@@ -113,21 +116,31 @@ export function ProgressRail({ step, steps, onStepClick }) {
   );
 }
 
-export function Shell({ children, step, steps, headerRight, onStepClick }) {
+export function Shell({ children, step, steps, headerRight, onStepClick, nav }) {
   return (
     <div className="app-root">
       <GlobalStyle />
-      <div style={{ position: "relative", maxWidth: 880, margin: "0 auto", padding: "48px 24px 80px" }}>
+      <div className="shell-container" style={{ position: "relative", maxWidth: 880, margin: "0 auto", padding: "48px 24px 80px" }}>
         <header style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 36 }}>
           <img src="/logo.png" alt="BATTER BOX" style={{ height: 34, width: "auto" }} />
-          <span style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: COLORS.faint, border: `1px solid ${COLORS.border}`, borderRadius: 5, padding: "2px 7px", marginLeft: 4 }}>
-            v1.3
-          </span>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>{headerRight}</div>
         </header>
         {steps && <ProgressRail step={step} steps={steps} onStepClick={onStepClick} />}
         {children}
       </div>
+      {nav && nav.length > 0 && (
+        <nav className="bottom-nav" aria-label="メインメニュー">
+          {nav.map(({ key, label, Icon, onClick, active, badge }) => (
+            <button key={key} className={active ? "active" : ""} onClick={onClick} aria-current={active ? "page" : undefined}>
+              <span style={{ position: "relative", display: "inline-flex" }}>
+                <Icon size={21} strokeWidth={active ? 2.4 : 1.8} />
+                {badge > 0 && <span className="nav-badge nav-badge-float">{badge > 9 ? "9+" : badge}</span>}
+              </span>
+              <span>{label}</span>
+            </button>
+          ))}
+        </nav>
+      )}
     </div>
   );
 }
@@ -1625,7 +1638,7 @@ function StepTalentMatches({ talentScores, talentPhases, onRestart, onOpenThread
 // ---------------------------------------------------------------------------
 // Messaging — DM between company users and talent users, scoped to a Match
 // ---------------------------------------------------------------------------
-function MessageThread({ matchId, counterpartName: initialName, initialDraft, onBack }) {
+function MessageThread({ matchId, counterpartName: initialName, initialDraft, onBack, backLabel }) {
   const [messages, setMessages] = useState(null);
   const [counterpartName, setCounterpartName] = useState(initialName || "");
   const [text, setText] = useState(initialDraft || "");
@@ -1756,7 +1769,7 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
 
   return (
     <div className="fade-in">
-      <button className="btn-ghost" onClick={onBack} style={{ marginBottom: 16 }}>← 戻る</button>
+      <button className="btn-ghost" onClick={onBack} style={{ marginBottom: 16 }}>{backLabel || "← 戻る"}</button>
       <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 600, margin: "0 0 16px" }}>{counterpartName}とのメッセージ</h1>
 
       {contractStatus && (() => {
@@ -2016,10 +2029,17 @@ function Inbox({ onOpenThread, onBack }) {
             <button
               key={t.matchId}
               onClick={() => onOpenThread(t.matchId, t.counterpartName)}
-              style={{ textAlign: "left", background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 16, cursor: "pointer", color: COLORS.text }}
+              style={{ textAlign: "left", background: COLORS.surface, border: `1.5px solid ${t.unreadCount > 0 ? COLORS.teal : COLORS.border}`, borderRadius: 12, padding: 16, cursor: "pointer", color: COLORS.text }}
             >
-              <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 14.5, marginBottom: 4 }}>{t.counterpartName}</div>
-              {t.lastMessage && <div style={{ fontSize: 12.5, color: COLORS.muted }}>{t.lastMessage.body}</div>}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 14.5 }}>{t.counterpartName}</span>
+                {t.unreadCount > 0 && <span className="nav-badge">{t.unreadCount > 9 ? "9+" : t.unreadCount}件の新着</span>}
+              </div>
+              {t.lastMessage && (
+                <div style={{ fontSize: 12.5, color: t.unreadCount > 0 ? COLORS.text : COLORS.muted, fontWeight: t.unreadCount > 0 ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {t.lastMessage.body}
+                </div>
+              )}
             </button>
           ))}
         </div>
@@ -2144,27 +2164,7 @@ function MyPageTalent({ profile, onProceed, onRediagnose }) {
 export const COMPANY_STEPS = ["企業情報", "AI課題診断", "Growth Map", "人材提案"];
 export const TALENT_STEPS = ["経歴入力", "AI自己分析", "スキルマップ", "企業マッチング"];
 
-function HeaderActions({ onOpenInbox, onOpenSettings, onOpenProjects }) {
-  return (
-    <>
-      <button className="btn-ghost" onClick={onOpenProjects} style={{ padding: "6px 12px" }}>
-        <ClipboardList size={13} style={{ verticalAlign: -2, marginRight: 5 }} />
-        プロジェクト
-      </button>
-      <button className="btn-ghost" onClick={onOpenSettings} style={{ padding: "6px 12px" }}>
-        <Settings size={13} style={{ verticalAlign: -2, marginRight: 5 }} />
-        設定
-      </button>
-      <button className="btn-ghost" onClick={onOpenInbox} style={{ padding: "6px 12px" }}>
-        <Send size={13} style={{ verticalAlign: -2, marginRight: 5 }} />
-        メッセージ
-      </button>
-      <form action="/api/auth/logout" method="POST" onSubmit={async (e) => { e.preventDefault(); await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/login"; }}>
-        <button type="submit" className="btn-ghost" style={{ padding: "6px 12px" }}>ログアウト</button>
-      </form>
-    </>
-  );
-}
+
 
 // ---------------------------------------------------------------------------
 // 設定画面 — AI診断/解析を経由せず、基本情報・パスワードを直接更新する
@@ -3009,6 +3009,7 @@ export default function Home() {
   const [activeThread, setActiveThread] = useState(null); // { matchId, counterpartName, draftMessage }
   const [activeProjectId, setActiveProjectId] = useState(null);
   const [profile, setProfile] = useState({ loading: true, data: null });
+  const [unreadCount, setUnreadCount] = useState(0);
   const initializedViewRef = useRef(false);
 
   useEffect(() => {
@@ -3032,6 +3033,21 @@ export default function Home() {
       .catch(() => setProfile({ loading: false, data: null }));
   }, [authState.user]);
 
+  // 未読メッセージ数を取得してナビの「メッセージ」バッジに表示する。
+  // 画面遷移のたび+60秒ごとに再取得する(スレッドを開くとサーバー側で既読になり、次の取得で消える)。
+  useEffect(() => {
+    if (!authState.user || authState.user.role === "admin") return;
+    let alive = true;
+    const fetchUnread = () =>
+      fetch("/api/messages/unread-count")
+        .then((r) => r.json())
+        .then((d) => { if (alive && typeof d.count === "number") setUnreadCount(d.count); })
+        .catch(() => {});
+    fetchUnread();
+    const timer = setInterval(fetchUnread, 60000);
+    return () => { alive = false; clearInterval(timer); };
+  }, [authState.user, view]);
+
   // 既存のスキルマップがあるアカウントは、初回表示時だけ自動的にマイページを開く
   // (以降、ユーザー自身が「もう一度診断する」等で明示的に画面遷移した場合は上書きしない)
   useEffect(() => {
@@ -3044,14 +3060,22 @@ export default function Home() {
   }, [profile]);
 
   const reset = () => { setStep(1); setView("flow"); };
-  const openThread = (matchId, counterpartName, draftMessage) => { setActiveThread({ matchId, counterpartName, draftMessage }); setView("thread"); };
-  const openInbox = () => setView("inbox");
-  const backToFlow = () => setView("flow");
+  // メッセージ画面から「戻る」で開いた元の画面(マイページ/一覧/マッチング等)に正しく戻すための記録。
+  // 以前は一律で診断フロー(view="flow")に戻していたため、「戻ったら診断画面だった」という混乱があった。
+  const [inboxOrigin, setInboxOrigin] = useState(null);
+  const [threadOrigin, setThreadOrigin] = useState(null);
+  const openThread = (matchId, counterpartName, draftMessage) => { setThreadOrigin(view); setActiveThread({ matchId, counterpartName, draftMessage }); setView("thread"); };
+  const openInbox = () => { setInboxOrigin(view); setView("inbox"); };
   // 上部のステップ表示(企業情報/AI課題診断/Growth Map/人材提案)をクリックして、
   // 完了済みのステップに戻れるようにする。データは各stepでstateに保持済みのため再取得は不要。
   const goToStep = (idx) => { setStep(idx); setView("flow"); };
 
   const goToMyPage = () => setView("mypage");
+  // スキルマップ作成済みのユーザーの「ホーム」はマイページ。未作成なら診断フロー。
+  const homeView = profile.data?.hasData ? "mypage" : "flow";
+  const backHome = () => setView(homeView);
+  const backFromInbox = () => setView(inboxOrigin && !["inbox", "thread"].includes(inboxOrigin) ? inboxOrigin : homeView);
+  const backFromThread = () => setView(threadOrigin === "inbox" ? "inbox" : threadOrigin && threadOrigin !== "thread" ? threadOrigin : homeView);
   const openDashboard = () => setView("dashboard");
   const openSettings = () => setView("settings");
   const openCompare = () => setView("compare");
@@ -3099,25 +3123,41 @@ export default function Home() {
 
   const mode = authState.user.role; // "company" | "talent"
   const steps = mode === "company" ? COMPANY_STEPS : TALENT_STEPS;
+  // メインメニュー。デスクトップではヘッダーのボタン列、モバイルでは画面下部の固定タブとして表示する。
+  const activeNavKey =
+    view === "thread" ? "inbox" : view === "projectDetail" ? "projects" : view;
+  const navItems = [
+    ...(profile.data?.hasData ? [{ key: "mypage", label: "マイページ", Icon: UserRound, onClick: goToMyPage }] : []),
+    { key: "inbox", label: "メッセージ", Icon: Send, onClick: openInbox, badge: unreadCount },
+    ...(profile.data?.hasData ? [{ key: "dashboard", label: "ダッシュボード", Icon: LayoutDashboard, onClick: openDashboard }] : []),
+    { key: "projects", label: "プロジェクト", Icon: ClipboardList, onClick: openProjects },
+    { key: "settings", label: "設定", Icon: Settings, onClick: openSettings },
+  ].map((item) => ({ ...item, active: item.key === activeNavKey }));
+  const logout = async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/login"; };
   const headerRight = (
     <>
-      {profile.data?.hasData && view !== "mypage" && (
-        <button className="btn-ghost" onClick={goToMyPage} style={{ padding: "6px 12px" }}>マイページ</button>
-      )}
-      {profile.data?.hasData && view !== "dashboard" && (
-        <button className="btn-ghost" onClick={openDashboard} style={{ padding: "6px 12px" }}>ダッシュボード</button>
-      )}
-      <HeaderActions onOpenInbox={openInbox} onOpenSettings={openSettings} onOpenProjects={openProjects} />
+      <div className="top-nav">
+        {navItems.map(({ key, label, Icon, onClick, active, badge }) => (
+          <button key={key} className={`btn-ghost${active ? " nav-active" : ""}`} onClick={onClick} style={{ padding: "8px 14px", fontSize: 13 }}>
+            <Icon size={14} style={{ verticalAlign: -2, marginRight: 6 }} />
+            {label}
+            {badge > 0 && <span className="nav-badge">{badge > 9 ? "9+" : badge}</span>}
+          </button>
+        ))}
+      </div>
+      <button className="btn-ghost" onClick={logout} title="ログアウト" aria-label="ログアウト" style={{ padding: "8px 11px" }}>
+        <LogOut size={15} />
+      </button>
     </>
   );
 
   if (view === "dashboard" && profile.data?.hasData) {
     return (
-      <Shell step={step} steps={null} headerRight={headerRight}>
+      <Shell step={step} steps={null} headerRight={headerRight} nav={navItems}>
         {mode === "company" ? (
-          <CompanyDashboard onOpenProjects={openProjects} onOpenProjectDetail={openProjectDetail} onBack={backToFlow} />
+          <CompanyDashboard onOpenProjects={openProjects} onOpenProjectDetail={openProjectDetail} onBack={backHome} />
         ) : (
-          <TalentDashboard onOpenProjects={openProjects} onOpenProjectDetail={openProjectDetail} onBack={backToFlow} />
+          <TalentDashboard onOpenProjects={openProjects} onOpenProjectDetail={openProjectDetail} onBack={backHome} />
         )}
       </Shell>
     );
@@ -3125,7 +3165,7 @@ export default function Home() {
 
   if (view === "mypage" && profile.data?.hasData) {
     return (
-      <Shell step={step} steps={null} headerRight={headerRight}>
+      <Shell step={step} steps={null} headerRight={headerRight} nav={navItems}>
         {mode === "company" ? (
           <MyPageCompany profile={profile.data} onProceed={proceedFromMyPageCompany} onRediagnose={rediagnoseCompany} onCompare={openCompare} />
         ) : (
@@ -3137,31 +3177,31 @@ export default function Home() {
 
   if (view === "settings") {
     return (
-      <Shell step={step} steps={null} headerRight={headerRight}>
-        <SettingsView mode={mode} user={authState.user} profile={profile} onBack={backToFlow} onProfileSaved={handleProfileSaved} />
+      <Shell step={step} steps={null} headerRight={headerRight} nav={navItems}>
+        <SettingsView mode={mode} user={authState.user} profile={profile} onBack={backHome} onProfileSaved={handleProfileSaved} />
       </Shell>
     );
   }
 
   if (view === "compare") {
     return (
-      <Shell step={step} steps={null} headerRight={headerRight}>
-        <ComparisonView onBack={backToFlow} />
+      <Shell step={step} steps={null} headerRight={headerRight} nav={navItems}>
+        <ComparisonView onBack={backHome} />
       </Shell>
     );
   }
 
   if (view === "projects") {
     return (
-      <Shell step={step} steps={null} headerRight={headerRight}>
-        <ProjectsListView onOpenProject={openProjectDetail} onBack={backToFlow} />
+      <Shell step={step} steps={null} headerRight={headerRight} nav={navItems}>
+        <ProjectsListView onOpenProject={openProjectDetail} onBack={backHome} />
       </Shell>
     );
   }
 
   if (view === "projectDetail" && activeProjectId) {
     return (
-      <Shell step={step} steps={null} headerRight={headerRight}>
+      <Shell step={step} steps={null} headerRight={headerRight} nav={navItems}>
         <ProjectDetailView projectId={activeProjectId} onBack={openProjects} />
       </Shell>
     );
@@ -3169,22 +3209,22 @@ export default function Home() {
 
   if (view === "inbox") {
     return (
-      <Shell step={step} steps={steps} headerRight={headerRight} onStepClick={goToStep}>
-        <Inbox onOpenThread={openThread} onBack={backToFlow} />
+      <Shell step={step} steps={steps} headerRight={headerRight} onStepClick={goToStep} nav={navItems}>
+        <Inbox onOpenThread={openThread} onBack={backFromInbox} />
       </Shell>
     );
   }
   if (view === "thread" && activeThread) {
     return (
-      <Shell step={step} steps={steps} headerRight={headerRight} onStepClick={goToStep}>
-        <MessageThread matchId={activeThread.matchId} counterpartName={activeThread.counterpartName} initialDraft={activeThread.draftMessage} onBack={backToFlow} />
+      <Shell step={step} steps={steps} headerRight={headerRight} onStepClick={goToStep} nav={navItems}>
+        <MessageThread matchId={activeThread.matchId} counterpartName={activeThread.counterpartName} initialDraft={activeThread.draftMessage} onBack={backFromThread} backLabel={threadOrigin === "inbox" ? "← メッセージ一覧に戻る" : threadOrigin === "mypage" ? "← マイページに戻る" : "← 戻る"} />
       </Shell>
     );
   }
 
   if (mode === "company") {
     return (
-      <Shell step={step} steps={COMPANY_STEPS} headerRight={headerRight} onStepClick={goToStep}>
+      <Shell step={step} steps={COMPANY_STEPS} headerRight={headerRight} onStepClick={goToStep} nav={navItems}>
         {step === 1 && <StepCompany onNext={(form) => { setCompany(form); setStep(2); }} initialForm={company} />}
         {step === 2 && (
           <StepDialog
@@ -3201,7 +3241,7 @@ export default function Home() {
   }
 
   return (
-    <Shell step={step} steps={TALENT_STEPS} headerRight={headerRight} onStepClick={goToStep}>
+    <Shell step={step} steps={TALENT_STEPS} headerRight={headerRight} onStepClick={goToStep} nav={navItems}>
       {step === 1 && <StepTalentInput onNext={(form) => { setTalent(form); setStep(2); }} initialForm={talent} />}
       {step === 2 && (
         <StepTalentDialogue
