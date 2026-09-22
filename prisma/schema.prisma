@@ -192,7 +192,24 @@ model WorkLog {
   hours       Float
   loggedAt    DateTime @default(now())
 
+  attachments WorkLogAttachment[]
+
   @@index([projectId])
+}
+
+// 稼働ログに添付する成果物ファイル。外部ストレージを使わず、ベータ規模では
+// DB(bytea)に直接保存する(1ファイル5MBまで・1ログ3ファイルまでのガードをAPI側で行う)。
+model WorkLogAttachment {
+  id          String   @id @default(uuid())
+  workLogId   String
+  workLog     WorkLog  @relation(fields: [workLogId], references: [id])
+  filename    String
+  contentType String
+  size        Int
+  data        Bytes
+  createdAt   DateTime @default(now())
+
+  @@index([workLogId])
 }
 
 // プロジェクト内の進捗コメント・議事メモ(DMのMessageとは別。企業⇄人材が共有する作業ログ的なやり取り)
