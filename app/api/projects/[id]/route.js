@@ -23,8 +23,24 @@ export async function GET(req, { params }) {
   ]);
 
   const { project, myRole } = authorized;
-  const company = project.engagement.match.companySkillMap.company;
+  const companySkillMap = project.engagement.match.companySkillMap;
+  const company = companySkillMap.company;
   const talent = project.engagement.match.talentSkillMap.talent;
+
+  // クライアント企業の概要(人材側がプロジェクト画面で事業規模・課題を確認するための情報)
+  const companyInfo = {
+    name: company.name,
+    industry: company.industry,
+    headcount: company.headcount,
+    revenue: company.revenue,
+    phase: company.phase,
+    summary: companySkillMap.summary,
+    topIssues: (companySkillMap.topIssueDetails || []).map((i) => ({
+      axisLabel: AXIS_LABEL_BY_KEY[i.axisKey] || i.axisKey,
+      currentState: i.currentState,
+      priority: i.priority,
+    })),
+  };
 
   return NextResponse.json({
     project: {
@@ -42,6 +58,7 @@ export async function GET(req, { params }) {
       createdAt: project.createdAt,
     },
     myRole,
+    companyInfo,
     tasks,
     kpis,
     workLogs,

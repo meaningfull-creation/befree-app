@@ -40,8 +40,17 @@ export async function POST(req) {
           id: c.id,
           name: c.name,
           phase: c.phase,
+          industry: c.industry,
+          headcount: c.headcount,
+          revenue: c.revenue,
           bottleneck: worst ? AXIS_LABEL_BY_KEY[worst[0]] || worst[0] : "",
           reason: sm.summary,
+          // メッセージを送る前に企業の課題を確認できるよう、診断結果の課題TOP3も返す
+          topIssues: (sm.topIssueDetails || []).map((i) => ({
+            axisLabel: AXIS_LABEL_BY_KEY[i.axisKey] || i.axisKey,
+            currentState: i.currentState,
+            priority: i.priority,
+          })),
           companyScores: sm.axisScores,
           companySkillMapId: sm.id,
         };

@@ -58,6 +58,7 @@ export async function GET() {
         industry: talent.industry,
         years: talent.years,
         summary: talent.bio,
+        careerHistory: talent.careerHistory,
         experiencedFunctions: talent.experiencedFunctions || [],
         workStyleTags: talent.workStyleTags || [],
         valueTags: talent.valueTags || [],

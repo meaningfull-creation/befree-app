@@ -120,11 +120,13 @@ export function Shell({ children, step, steps, headerRight, onStepClick, nav }) 
   return (
     <div className="app-root">
       <GlobalStyle />
-      <div className="shell-container" style={{ position: "relative", maxWidth: 880, margin: "0 auto", padding: "48px 24px 80px" }}>
-        <header style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 36 }}>
-          <img src="/logo.png" alt="BATTER BOX" style={{ height: 34, width: "auto" }} />
+      <header className="app-topbar">
+        <div className="app-topbar-inner">
+          <img src="/logo.png" alt="BATTER BOX" style={{ height: 42, width: "auto" }} />
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>{headerRight}</div>
-        </header>
+        </div>
+      </header>
+      <div className="shell-container" style={{ position: "relative", maxWidth: 880, margin: "0 auto", padding: "28px 24px 80px" }}>
         {steps && <ProgressRail step={step} steps={steps} onStepClick={onStepClick} />}
         {children}
       </div>
@@ -602,12 +604,12 @@ export function StepSkillMap({ scores, summary, axisNotes, topIssueDetails, comp
       </div>
 
       {chartView === "radar" ? (
-        <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "18px 8px", height: 360 }}>
+        <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "18px 4px", height: 420 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <RadarChart data={data} outerRadius="72%">
+            <RadarChart data={data} outerRadius="64%" margin={{ top: 24, right: 40, bottom: 24, left: 40 }}>
               <PolarGrid stroke={COLORS.border} />
-              <PolarAngleAxis dataKey="axis" tick={{ fill: COLORS.muted, fontSize: 11, fontFamily: FONT_BODY }} />
-              <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} tickCount={5} />
+              <PolarAngleAxis dataKey="axis" tick={{ fill: COLORS.text, fontSize: 12, fontFamily: FONT_BODY, fontWeight: 500 }} />
+              <PolarRadiusAxis domain={[0, 100]} tick={{ fill: COLORS.faint, fontSize: 9, fontFamily: FONT_MONO }} axisLine={false} tickCount={5} />
               <Radar dataKey="ideal" stroke={COLORS.amber} fill="none" strokeWidth={1.5} strokeDasharray="4 3" isAnimationActive={false} />
               <Radar dataKey="score" stroke={COLORS.teal} fill={COLORS.teal} fillOpacity={0.28} strokeWidth={2} isAnimationActive={false} />
             </RadarChart>
@@ -1402,6 +1404,7 @@ export function StepTalentSkillMap({ name, scores, fit, talentForm, talentSkillM
   const [showAll, setShowAll] = useState(true);
   const [localScores, setLocalScores] = useState(scores);
   const [deepDiveAxis, setDeepDiveAxis] = useState(null);
+  const [talentChartView, setTalentChartView] = useState("radar"); // "radar" | "bar"
 
   useEffect(() => {
     let raf;
@@ -1457,16 +1460,38 @@ export function StepTalentSkillMap({ name, scores, fit, talentForm, talentSkillM
         ))}
       </div>
 
-      <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "18px 8px", height: 360 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <RadarChart data={data} outerRadius="72%">
-            <PolarGrid stroke={COLORS.border} />
-            <PolarAngleAxis dataKey="axis" tick={{ fill: COLORS.muted, fontSize: 11, fontFamily: FONT_BODY }} />
-            <PolarRadiusAxis domain={[0, 30]} tick={false} axisLine={false} tickCount={4} />
-            <Radar dataKey="score" stroke={COLORS.amber} fill={COLORS.amber} fillOpacity={0.28} strokeWidth={2} isAnimationActive={false} />
-          </RadarChart>
-        </ResponsiveContainer>
+      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+        <button className={talentChartView === "radar" ? "btn-primary" : "btn-ghost"} onClick={() => setTalentChartView("radar")} style={{ fontSize: 12, padding: "6px 14px" }}>レーダー</button>
+        <button className={talentChartView === "bar" ? "btn-primary" : "btn-ghost"} onClick={() => setTalentChartView("bar")} style={{ fontSize: 12, padding: "6px 14px" }}>棒グラフ</button>
       </div>
+
+      {talentChartView === "radar" ? (
+        <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "18px 4px", height: 420 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <RadarChart data={data} outerRadius="64%" margin={{ top: 24, right: 40, bottom: 24, left: 40 }}>
+              <PolarGrid stroke={COLORS.border} />
+              <PolarAngleAxis dataKey="axis" tick={{ fill: COLORS.text, fontSize: 12, fontFamily: FONT_BODY, fontWeight: 500 }} />
+              <PolarRadiusAxis domain={[0, 30]} tick={{ fill: COLORS.faint, fontSize: 9, fontFamily: FONT_MONO }} axisLine={false} tickCount={4} />
+              <Radar dataKey="score" stroke={COLORS.amber} fill={COLORS.amber} fillOpacity={0.28} strokeWidth={2} isAnimationActive={false} />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "20px 22px", display: "flex", flexDirection: "column", gap: 10 }}>
+          {AXES.map((a) => {
+            const score = Math.round((localScores[a.key] || 0) * progress);
+            return (
+              <div key={a.key} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 96, fontSize: 12, color: COLORS.muted, flexShrink: 0 }}>{a.label}</div>
+                <div style={{ flex: 1, height: 10, background: COLORS.surfaceRaised, borderRadius: 5, overflow: "hidden" }}>
+                  <div style={{ width: `${Math.round((score / 30) * 100)}%`, height: "100%", background: COLORS.amber, borderRadius: 5, transition: "width 0.3s ease" }} />
+                </div>
+                <div style={{ width: 44, textAlign: "right", fontFamily: FONT_MONO, fontSize: 12.5, color: COLORS.text }}>{score}<span style={{ fontSize: 10, color: COLORS.faint }}>/30</span></div>
+              </div>
+            );
+          })}
+        </div>
+      )}
       {revealed && (
         <div className="fade-in" style={{ marginTop: 24 }}>
           <div style={{ fontSize: 12, color: COLORS.muted, letterSpacing: "0.04em", marginBottom: 10 }}>強みとして特に高いスコアの軸</div>
@@ -1557,6 +1582,7 @@ function StepTalentMatches({ talentScores, talentPhases, onRestart, onOpenThread
   const [lowMatch, setLowMatch] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
   const [connectingId, setConnectingId] = useState(null);
+  const [selectedId, setSelectedId] = useState(null); // 詳細確認中の企業(メッセージ前のワンクッション)
 
   const load = async () => {
     setErrorMsg(null);
@@ -1584,6 +1610,60 @@ function StepTalentMatches({ talentScores, talentPhases, onRestart, onOpenThread
     }
   };
 
+  const selected = candidates?.find((c) => c.id === selectedId) || null;
+
+  // 企業の詳細確認画面(いきなりメッセージを送らず、事業規模・課題を確認してから判断する)
+  if (selected) {
+    return (
+      <div className="fade-in">
+        <button className="btn-ghost" onClick={() => setSelectedId(null)} style={{ marginBottom: 20 }}>← 候補一覧に戻る</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 6 }}>
+          <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 600, margin: 0 }}>{selected.name}</h1>
+          <span style={{ fontSize: 12, background: "rgba(27,58,99,0.12)", color: COLORS.amber, border: "1px solid rgba(27,58,99,0.35)", borderRadius: 6, padding: "3px 10px", fontFamily: FONT_MONO }}>適合度 {selected.match}%</span>
+        </div>
+        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 12.5, color: COLORS.muted, marginBottom: 18 }}>
+          {selected.phase && <span>成長段階: <span style={{ color: COLORS.text }}>{selected.phase}</span></span>}
+          {selected.industry && <span>業種: <span style={{ color: COLORS.text }}>{selected.industry}</span></span>}
+          {selected.headcount && <span>従業員数: <span style={{ color: COLORS.text }}>{selected.headcount}</span></span>}
+          {selected.revenue && <span>年商: <span style={{ color: COLORS.text }}>{selected.revenue}</span></span>}
+        </div>
+        {selected.reason && (
+          <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "14px 18px", fontSize: 13.5, lineHeight: 1.8, color: COLORS.text, marginBottom: 18 }}>
+            {selected.reason}
+          </div>
+        )}
+        {selected.topIssues?.length > 0 && (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 8 }}>この企業の課題TOP3(AI診断より) — あなたの経験が活きる領域か確認してください</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {selected.topIssues.map((issue, i) => (
+                <div key={i} style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "12px 16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, fontFamily: FONT_DISPLAY }}>{issue.axisLabel}</span>
+                    {issue.priority && <span style={{ fontSize: 10.5, color: COLORS.tealDim }}>優先度: {issue.priority}</span>}
+                  </div>
+                  {issue.currentState && <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 4, lineHeight: 1.7 }}>{issue.currentState}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {selected.bottleneck && (
+          <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.muted, width: "fit-content", marginBottom: 20 }}>
+            <BadgeCheck size={14} color={COLORS.teal} /> 最優先課題: {selected.bottleneck}
+          </span>
+        )}
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <button className="btn-primary" disabled={connectingId === selected.id} onClick={() => connect(selected)}>
+            <Send size={14} style={{ verticalAlign: -2, marginRight: 6 }} />
+            {connectingId === selected.id ? "接続中…" : "この企業にメッセージを送る"}
+          </button>
+          <span style={{ fontSize: 11.5, color: COLORS.faint }}>AIが挨拶文の下書きを用意します。送信前に内容を確認できます。</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fade-in">
       <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 600, margin: "0 0 6px" }}>スキルマップに基づく企業マッチング</h1>
@@ -1603,27 +1683,25 @@ function StepTalentMatches({ talentScores, talentPhases, onRestart, onOpenThread
       {candidates && (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {candidates.map((c) => (
-            <div key={c.id} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 22, display: "flex", gap: 18, alignItems: "flex-start" }}>
+            <button
+              key={c.id}
+              onClick={() => setSelectedId(c.id)}
+              style={{ textAlign: "left", background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 22, display: "flex", gap: 18, alignItems: "flex-start", cursor: "pointer", width: "100%", color: COLORS.text }}
+            >
               <div style={{ width: 46, height: 46, borderRadius: 10, background: `linear-gradient(135deg, ${COLORS.tealDim}, ${COLORS.surfaceRaised})`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 15, flexShrink: 0, border: `1px solid ${COLORS.border}` }}>
                 {c.name[3]}
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                   <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 15.5 }}>{c.name}</span>
                   <span style={{ fontSize: 11, background: "rgba(27,58,99,0.12)", color: COLORS.amber, border: "1px solid rgba(27,58,99,0.35)", borderRadius: 6, padding: "2px 8px", fontFamily: FONT_MONO }}>適合度 {c.match}%</span>
                 </div>
-                <div style={{ fontSize: 13, color: COLORS.muted, margin: "3px 0 12px" }}>{c.phase}</div>
-                <div style={{ fontSize: 13.5, lineHeight: 1.7, color: COLORS.text, background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "10px 13px", marginBottom: 12 }}>{c.reason}</div>
-                <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: COLORS.muted, width: "fit-content", marginBottom: 12 }}><BadgeCheck size={13} color={COLORS.teal} /> 優先課題: {c.bottleneck}</span>
-                <div>
-                  <button className="btn-ghost" disabled={connectingId === c.id} onClick={() => connect(c)}>
-                    <Send size={13} style={{ verticalAlign: -2, marginRight: 5 }} />
-                    {connectingId === c.id ? "接続中…" : "メッセージを送る"}
-                  </button>
-                </div>
+                <div style={{ fontSize: 13, color: COLORS.muted, margin: "3px 0 10px" }}>{c.phase}{c.industry ? ` ・ ${c.industry}` : ""}</div>
+                <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: COLORS.muted, width: "fit-content", marginBottom: 10 }}><BadgeCheck size={13} color={COLORS.teal} /> 優先課題: {c.bottleneck}</span>
+                <span style={{ fontSize: 12.5, color: COLORS.tealDim, fontWeight: 600 }}>詳しく見る →</span>
               </div>
               <ChevronRight size={18} color={COLORS.faint} style={{ marginTop: 6, flexShrink: 0 }} />
-            </div>
+            </button>
           ))}
         </div>
       )}
@@ -2004,6 +2082,12 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, dr
                     <span>実務経験年数: <span style={{ color: COLORS.text }}>{context.years || "—"}</span></span>
                   </div>
                   {context.bio && <p style={{ fontSize: 12.5, color: COLORS.text, lineHeight: 1.7, margin: "0 0 10px" }}>{context.bio}</p>}
+                  {context.careerHistory && (
+                    <div style={{ margin: "0 0 10px" }}>
+                      <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 4 }}>職歴</div>
+                      <p style={{ fontSize: 12.5, color: COLORS.text, lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>{context.careerHistory}</p>
+                    </div>
+                  )}
                   {context.bottlenecks && context.bottlenecks.length > 0 && (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {context.bottlenecks.map((tag) => (
@@ -2337,7 +2421,7 @@ function ProfileFieldsCompany({ initial, onSaved }) {
 }
 
 function ProfileFieldsTalent({ initial, onSaved }) {
-  const [form, setForm] = useState(initial || { name: "", title: "", industry: "", years: "", bio: "", experiencedFunctions: [], workStyleTags: [], valueTags: [], values: "" });
+  const [form, setForm] = useState(initial || { name: "", title: "", industry: "", years: "", bio: "", careerHistory: "", experiencedFunctions: [], workStyleTags: [], valueTags: [], values: "" });
   const [status, setStatus] = useState("idle");
   const [errorMsg, setErrorMsg] = useState(null);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -2372,6 +2456,18 @@ function ProfileFieldsTalent({ initial, onSaved }) {
       <div style={{ marginBottom: 16 }}>
         <label className="field-label">直近の役職</label>
         <input className="field-input" value={form.title || ""} onChange={set("title")} />
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <label className="field-label">職歴(会社名・役職・期間・担当内容など)</label>
+        <textarea
+          className="field-input"
+          rows={5}
+          placeholder={"例:\n2018-2023 株式会社〇〇 営業マネージャー — 新規開拓チーム立ち上げ、年間売上2億円達成\n2015-2018 △△株式会社 法人営業 — SaaSのフィールドセールス"}
+          value={form.careerHistory || ""}
+          onChange={set("careerHistory")}
+          style={{ resize: "vertical", lineHeight: 1.7 }}
+        />
+        <p style={{ fontSize: 11, color: COLORS.faint, margin: "6px 0 0" }}>マッチング後、メッセージ画面の「相手人材の詳細」で企業側に表示されます。</p>
       </div>
       <div className="two-col" style={{ display: "grid", gap: 14, marginBottom: 16 }}>
         <div>
@@ -2596,7 +2692,7 @@ function ProjectDetailView({ projectId, onBack }) {
       viewCache[`project:${projectId}`] = d;
       setData(d);
     } catch (e) {
-      setErrorMsg("プロジェクトの取得に失敗しました。");
+      setErrorMsg(`プロジェクトの取得に失敗しました。${e.message ? `(${e.message})` : ""}`);
     }
   };
 
@@ -2759,7 +2855,7 @@ function ProjectDetailView({ projectId, onBack }) {
   if (errorMsg) return <ErrorNote message={errorMsg} onRetry={load} />;
   if (!data) return <div style={{ color: COLORS.muted, fontSize: 13 }}>読み込み中…</div>;
 
-  const { project, tasks, kpis, workLogs, comments } = data;
+  const { project, tasks, kpis, workLogs, comments, companyInfo } = data;
   // プランはDBに保存されるようになった。手元で生成した直後はplan、それ以外は保存済みのものを表示する。
   const shownPlan = plan || project.plan;
   const taskStatusLabel = { todo: "未着手", in_progress: "進行中", done: "完了" };
@@ -2774,6 +2870,34 @@ function ProjectDetailView({ projectId, onBack }) {
         対象課題: {project.targetAxisLabel || "未設定"} ・ 月間稼働: {project.monthlyHours ?? "—"}時間
         {project.currentMonthGoal && <> ・ 今月の目標: {project.currentMonthGoal}</>}
       </div>
+
+      {data.myRole === "talent" && companyInfo && (
+        <div style={sectionStyle}>
+          <div style={sectionTitleStyle}>クライアント企業について</div>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12.5, color: COLORS.muted, marginBottom: 10 }}>
+            <span>企業名: <span style={{ color: COLORS.text, fontWeight: 600 }}>{companyInfo.name}</span></span>
+            {companyInfo.industry && <span>業種: <span style={{ color: COLORS.text }}>{companyInfo.industry}</span></span>}
+            {companyInfo.headcount && <span>従業員数: <span style={{ color: COLORS.text }}>{companyInfo.headcount}</span></span>}
+            {companyInfo.revenue && <span>年商: <span style={{ color: COLORS.text }}>{companyInfo.revenue}</span></span>}
+            {companyInfo.phase && <span>成長段階: <span style={{ color: COLORS.text }}>{companyInfo.phase}</span></span>}
+          </div>
+          {companyInfo.summary && <p style={{ fontSize: 12.5, color: COLORS.text, lineHeight: 1.7, margin: "0 0 10px" }}>{companyInfo.summary}</p>}
+          {companyInfo.topIssues?.length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 6 }}>この企業の課題TOP3(診断結果より)</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {companyInfo.topIssues.map((issue, i) => (
+                  <div key={i} style={{ fontSize: 12.5, color: COLORS.text, background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "8px 12px" }}>
+                    <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 600 }}>{issue.axisLabel}</span>
+                    {issue.priority && <span style={{ fontSize: 10.5, color: COLORS.tealDim, marginLeft: 8 }}>優先度: {issue.priority}</span>}
+                    {issue.currentState && <div style={{ color: COLORS.muted, marginTop: 2, fontSize: 12 }}>{issue.currentState}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={sectionStyle}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -3496,14 +3620,14 @@ export default function Home() {
 
   if (view === "inbox") {
     return (
-      <Shell step={step} steps={steps} headerRight={headerRight} onStepClick={goToStep} nav={navItems}>
+      <Shell step={step} steps={null} headerRight={headerRight} nav={navItems}>
         <Inbox onOpenThread={openThread} onBack={backFromInbox} />
       </Shell>
     );
   }
   if (view === "thread" && activeThread) {
     return (
-      <Shell step={step} steps={steps} headerRight={headerRight} onStepClick={goToStep} nav={navItems}>
+      <Shell step={step} steps={null} headerRight={headerRight} nav={navItems}>
         <MessageThread matchId={activeThread.matchId} counterpartName={activeThread.counterpartName} initialDraft={activeThread.draftMessage} draftPending={activeThread.draftPending} onBack={backFromThread} backLabel={threadOrigin === "inbox" ? "← メッセージ一覧に戻る" : threadOrigin === "mypage" ? "← マイページに戻る" : "← 戻る"} />
       </Shell>
     );

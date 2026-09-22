@@ -48,6 +48,7 @@ export async function GET(req, { params }) {
       industry: talent.industry,
       years: talent.years,
       bio: talent.bio,
+      careerHistory: talent.careerHistory,
       scores: sm.axisScores,
       bottlenecks: sm.bottlenecks,
       phases: sm.phases,

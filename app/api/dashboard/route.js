@@ -101,7 +101,7 @@ export async function GET() {
   if (user.role === "talent") {
     if (!user.talentId) return NextResponse.json({ role: "talent", hasData: false });
 
-    const [talent, latestSkillMap, projects, axisWeightMultipliers] = await Promise.all([
+    const [talent, latestSkillMap, projects, axisWeightMultipliers, ratings, companies] = await Promise.all([
       prisma.talent.findUnique({ where: { id: user.talentId } }),
       prisma.talentSkillMap.findFirst({ where: { talentId: user.talentId }, orderBy: { createdAt: "desc" } }),
       prisma.project.findMany({
@@ -115,16 +115,15 @@ export async function GET() {
         orderBy: { createdAt: "desc" },
       }),
       getAxisWeightMultipliers(),
+      prisma.talentRating.findMany({
+        where: { project: { engagement: { match: { talentSkillMap: { talentId: user.talentId } } } } },
+      }),
+      prisma.company.findMany({ include: { skillMaps: { orderBy: { createdAt: "desc" }, take: 1 } } }),
     ]);
 
     if (!latestSkillMap) return NextResponse.json({ role: "talent", hasData: false });
 
-    const ratings = await prisma.talentRating.findMany({
-      where: { project: { engagement: { match: { talentSkillMap: { talentId: user.talentId } } } } },
-    });
     const avgRating = ratings.length > 0 ? Math.round((ratings.reduce((s, r) => s + r.rating, 0) / ratings.length) * 10) / 10 : null;
-
-    const companies = await prisma.company.findMany({ include: { skillMaps: { orderBy: { createdAt: "desc" }, take: 1 } } });
     const pool = companies
       .filter((c) => c.skillMaps.length > 0)
       .map((c) => ({ id: c.id, name: c.name, phase: c.phase, axisScores: c.skillMaps[0].axisScores }));

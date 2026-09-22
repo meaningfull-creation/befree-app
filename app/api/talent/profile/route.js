@@ -16,7 +16,7 @@ export async function PATCH(req) {
       return NextResponse.json({ error: "先にプロフィールを作成してください" }, { status: 400 });
     }
 
-    const { name, title, industry, years, bio, experiencedFunctions, workStyleTags, valueTags, values } = await req.json();
+    const { name, title, industry, years, bio, careerHistory, experiencedFunctions, workStyleTags, valueTags, values } = await req.json();
     if (!name?.trim()) {
       return NextResponse.json({ error: "お名前は必須です" }, { status: 400 });
     }
@@ -25,6 +25,7 @@ export async function PATCH(req) {
       where: { id: user.talentId },
       data: {
         name: name.trim(), title, industry, years, bio,
+        ...(careerHistory !== undefined ? { careerHistory } : {}),
         ...(experiencedFunctions !== undefined ? { experiencedFunctions } : {}),
         ...(workStyleTags !== undefined ? { workStyleTags } : {}),
         ...(valueTags !== undefined ? { valueTags } : {}),
