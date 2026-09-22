@@ -56,6 +56,33 @@ describe("scoreMatch", () => {
     const boosted = scoreMatch(company, talent, null, [], 6, { hr: 1.3 });
     assert.ok(boosted > base, "hr軸の学習係数を上げるとhrが強い人材の適合度が上がるはず");
   });
+
+  // v4.4の再設計を固定するテスト: 専門家型がまともなスコアになること
+  test("課題TOP3に強い専門家は、無関係な軸が弱くても高スコアになる", () => {
+    // sales(20)とmarketing(30)が深刻、他はそこそこ(60)の企業
+    const company = Object.fromEntries(AXIS_KEYS.map((k) => [k, 60]));
+    company.sales = 20;
+    company.marketing = 30;
+    // 営業・マーケの専門家(他の軸はほぼ経験なし)
+    const specialist = { ...ZERO_TALENT, sales: 28, marketing: 20 };
+    // 全軸そこそこのジェネラリスト
+    const generalist = Object.fromEntries(AXIS_KEYS.map((k) => [k, 15]));
+
+    const sSpec = scoreMatch(company, specialist, null, []);
+    const sGen = scoreMatch(company, generalist, null, []);
+    assert.ok(sSpec >= 40, `課題に合った専門家は40%以上になるはず(実際: ${sSpec})`);
+    assert.ok(sSpec > sGen, "課題に合った専門家はジェネラリストより高スコアのはず");
+  });
+
+  test("課題と無関係な軸だけが強い人材は低スコアになる", () => {
+    const company = Object.fromEntries(AXIS_KEYS.map((k) => [k, 60]));
+    company.sales = 20;
+    company.marketing = 30;
+    // 課題(sales/marketing)とは無関係のtechだけ強い人材
+    const mismatch = { ...ZERO_TALENT, tech: 28 };
+    const s = scoreMatch(company, mismatch, null, []);
+    assert.ok(s < 30, `課題と噛み合わない人材は足切り(30%)未満のはず(実際: ${s})`);
+  });
 });
 
 describe("topMatchingAxes", () => {
