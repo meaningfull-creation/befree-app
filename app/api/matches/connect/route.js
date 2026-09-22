@@ -65,14 +65,21 @@ export async function POST(req) {
 
     const counterpartName = user.role === "company" ? talentSkillMap.talent.name : companySkillMap.company.name;
 
-    // 既にやり取りが始まっているスレッドには下書きを差し込まない(初回接続時のみ生成する)
+    // 既にやり取りが始まっているスレッドには下書きを差し込まない(初回接続時のみ生成する)。
+    // deferDraft=true の場合はここではAI下書きを生成せず即座に画面遷移させ、
+    // 下書きは /api/matches/[matchId]/draft-message で非同期に取得させる(体感速度の改善)。
     let draftMessage = null;
+    let draftPending = false;
     const existingMessageCount = await prisma.message.count({ where: { matchId: match.id } });
     if (existingMessageCount === 0) {
-      draftMessage = await generateOutreachMessage({ companySkillMap, talentSkillMap, senderRole: user.role });
+      if (body.deferDraft) {
+        draftPending = true;
+      } else {
+        draftMessage = await generateOutreachMessage({ companySkillMap, talentSkillMap, senderRole: user.role });
+      }
     }
 
-    return NextResponse.json({ matchId: match.id, counterpartName, draftMessage });
+    return NextResponse.json({ matchId: match.id, counterpartName, draftMessage, draftPending });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

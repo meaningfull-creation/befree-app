@@ -48,7 +48,7 @@ export async function POST(req) {
 
     // 最終スコアリング。10軸のscores・phases・bottlenecks・growthAreas・summaryを一度に
     // 出力させるため応答が大きくなる。対話ターンが多いほど入力も長くなるため余裕を持たせる。
-    const result = await callClaudeJSON(buildTalentDialogSystemPrompt(), buildTalentDialogScorePrompt(talentForm, history), 3500);
+    const result = await callClaudeJSON(buildTalentDialogSystemPrompt(), buildTalentDialogScorePrompt(talentForm, history), 3500, { fast: true }); // モバイル利用が中心の人材側は速度を優先
     const scores = clampAxisScores(result.scores, 30);
     const phases = Array.isArray(result.phases) ? result.phases : [];
     const bottlenecks = Array.isArray(result.bottlenecks) ? result.bottlenecks : [];

@@ -132,11 +132,11 @@ export function Shell({ children, step, steps, headerRight, onStepClick, nav }) 
         <nav className="bottom-nav" aria-label="メインメニュー">
           {nav.map(({ key, label, Icon, onClick, active, badge }) => (
             <button key={key} className={active ? "active" : ""} onClick={onClick} aria-current={active ? "page" : undefined}>
-              <span style={{ position: "relative", display: "inline-flex" }}>
+              <span style={{ position: "relative", display: "inline-flex", overflow: "visible" }}>
                 <Icon size={21} strokeWidth={active ? 2.4 : 1.8} />
                 {badge > 0 && <span className="nav-badge nav-badge-float">{badge > 9 ? "9+" : badge}</span>}
               </span>
-              <span>{label}</span>
+              <span className="bn-label">{label}</span>
             </button>
           ))}
         </nav>
@@ -750,8 +750,8 @@ function StepTalentProposal({ companyScores, companyPhase, companyIndustry, onRe
   const connect = async (t) => {
     setConnectingId(t.id);
     try {
-      const result = await postJSON("/api/matches/connect", { talentSkillMapId: t.talentSkillMapId });
-      onOpenThread(result.matchId, result.counterpartName, result.draftMessage);
+      const result = await postJSON("/api/matches/connect", { talentSkillMapId: t.talentSkillMapId, deferDraft: true });
+      onOpenThread(result.matchId, result.counterpartName, result.draftMessage, result.draftPending);
     } catch (e) {
       setErrorMsg("メッセージの開始に失敗しました。");
     } finally {
@@ -1575,8 +1575,8 @@ function StepTalentMatches({ talentScores, talentPhases, onRestart, onOpenThread
   const connect = async (c) => {
     setConnectingId(c.id);
     try {
-      const result = await postJSON("/api/matches/connect", { companySkillMapId: c.companySkillMapId });
-      onOpenThread(result.matchId, result.counterpartName, result.draftMessage);
+      const result = await postJSON("/api/matches/connect", { companySkillMapId: c.companySkillMapId, deferDraft: true });
+      onOpenThread(result.matchId, result.counterpartName, result.draftMessage, result.draftPending);
     } catch (e) {
       setErrorMsg("メッセージの開始に失敗しました。");
     } finally {
@@ -1638,7 +1638,7 @@ function StepTalentMatches({ talentScores, talentPhases, onRestart, onOpenThread
 // ---------------------------------------------------------------------------
 // Messaging — DM between company users and talent users, scoped to a Match
 // ---------------------------------------------------------------------------
-function MessageThread({ matchId, counterpartName: initialName, initialDraft, onBack, backLabel }) {
+function MessageThread({ matchId, counterpartName: initialName, initialDraft, draftPending, onBack, backLabel }) {
   const [messages, setMessages] = useState(null);
   const [counterpartName, setCounterpartName] = useState(initialName || "");
   const [text, setText] = useState(initialDraft || "");
@@ -1655,8 +1655,32 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
   const [responding, setResponding] = useState(false);
   const [suggestedPatterns, setSuggestedPatterns] = useState(null);
   const [suggesting, setSuggesting] = useState(false);
+  const [selectedPattern, setSelectedPattern] = useState(null);
+  const [draftLoading, setDraftLoading] = useState(!!draftPending);
   const scrollRef = useRef(null);
   const pollRef = useRef(null);
+  const textRef = useRef(text);
+  useEffect(() => { textRef.current = text; }, [text]);
+
+  // 「メッセージを送る」の画面遷移をブロックしないよう、AI下書きはこの画面に来てから
+  // 非同期で取得する(deferDraft方式)。ユーザーが既に入力を始めていたら上書きしない。
+  useEffect(() => {
+    if (!draftPending) return;
+    let alive = true;
+    fetch(`/api/matches/${matchId}/draft-message`, { method: "POST" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!alive) return;
+        setDraftLoading(false);
+        if (d.draftMessage && !textRef.current.trim()) {
+          setText(d.draftMessage);
+          setReviewMode("draft");
+        }
+      })
+      .catch(() => { if (alive) setDraftLoading(false); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchId, draftPending]);
 
   const loadContractStatus = async () => {
     try {
@@ -1688,6 +1712,12 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId]);
 
+  // 提案フォームを開いたら、AIによる3パターンを自動で生成する(初回のみ)
+  useEffect(() => {
+    if (showProposeForm && !suggestedPatterns && !suggesting) suggestPatterns();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showProposeForm]);
+
   const suggestPatterns = async () => {
     setSuggesting(true);
     setErrorMsg(null);
@@ -1704,6 +1734,7 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
   };
 
   const applyPattern = (p) => {
+    setSelectedPattern(p.label);
     setProposeForm({ monthlyHours: String(p.monthlyHours), companyAmount: String(p.companyAmount) });
   };
 
@@ -1779,7 +1810,7 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
           return (
             <div style={{ background: "rgba(27,58,99,0.08)", border: `1px solid ${COLORS.teal}`, borderRadius: 10, padding: "12px 16px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
               <span style={{ fontSize: 12.5, color: COLORS.text }}>
-                契約が成立しています(月{eng.monthlyHours}時間 / 月額¥{eng.companyAmount?.toLocaleString()})。プロジェクト画面で進捗を共有できます。
+                契約が成立しています(月{eng.monthlyHours}時間 / 月額{contractStatus.myRole === "talent" ? "報酬" : ""}¥{(contractStatus.myRole === "talent" ? eng.talentAmount : eng.companyAmount)?.toLocaleString()})。プロジェクト画面で進捗を共有できます。
               </span>
               <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                 <a href={`/app/contracts/${eng.id}`} className="btn-ghost" style={{ fontSize: 12, padding: "6px 14px" }}>契約内容確認書</a>
@@ -1796,8 +1827,7 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
             return (
               <div style={{ background: "rgba(27,58,99,0.08)", border: `1px solid ${COLORS.teal}`, borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
                 <div style={{ fontSize: 12.5, color: COLORS.text, marginBottom: 10 }}>
-                  {counterpartName}さんから契約条件が届いています。月間稼働 <b>{eng.monthlyHours}時間</b> / 月額 <b>¥{eng.companyAmount?.toLocaleString()}</b>
-                  {eng.talentAmount ? <>(あなたの受取額の目安: ¥{eng.talentAmount.toLocaleString()})</> : null}
+                  {counterpartName}さんから契約条件が届いています。月間稼働 <b>{eng.monthlyHours}時間</b> / 月額報酬(あなたの受取額) <b>¥{eng.talentAmount?.toLocaleString()}</b>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="btn-primary" onClick={() => respondContract(true)} disabled={responding} style={{ fontSize: 12.5, padding: "8px 16px" }}>
@@ -1831,20 +1861,26 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
                     <div style={{ fontSize: 12.5, color: COLORS.text, fontWeight: 500 }}>契約条件を提案する</div>
                     <button className="btn-ghost" onClick={suggestPatterns} disabled={suggesting} style={{ fontSize: 11.5, padding: "5px 12px" }}>
                       <Sparkles size={12} style={{ verticalAlign: -2, marginRight: 4 }} />
-                      {suggesting ? "生成中…" : "AIに提案してもらう"}
+                      {suggesting ? "生成中…" : "別のパターンを出す"}
                     </button>
                   </div>
+                  {suggesting && !suggestedPatterns && (
+                    <div className="fade-in" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: COLORS.muted, marginBottom: 14 }}>
+                      <Sparkles size={13} className="pulse-dot" />
+                      AIが発注額と稼働時間の3パターンを作成しています…
+                    </div>
+                  )}
                   {suggestedPatterns && (
                     <div className="fade-in" style={{ marginBottom: 14 }}>
                       <p style={{ fontSize: 10.5, color: COLORS.faint, margin: "0 0 8px" }}>
-                        ※ このプラットフォームにはまだ実際の成約相場データがなく、AIによる一般的な感覚に基づく「たたき台」です。参考程度にご覧のうえ、自由に調整してください。
+                        ※ AIによる一般的な相場感に基づく「たたき台」です。パターンを選んだ後も、下の入力欄で数値を自由に調整できます。
                       </p>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
                         {suggestedPatterns.map((p) => (
                           <button
                             key={p.label}
                             onClick={() => applyPattern(p)}
-                            style={{ textAlign: "left", background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "10px 12px", cursor: "pointer" }}
+                            style={{ textAlign: "left", background: selectedPattern === p.label ? "rgba(244,105,25,0.08)" : COLORS.surface, border: `1.5px solid ${selectedPattern === p.label ? COLORS.teal : COLORS.border}`, borderRadius: 8, padding: "10px 12px", cursor: "pointer" }}
                           >
                             <div style={{ fontSize: 11.5, fontWeight: 600, color: COLORS.teal, marginBottom: 4 }}>{p.label}</div>
                             <div style={{ fontSize: 12, fontFamily: FONT_MONO, marginBottom: 4 }}>{p.monthlyHours}h ・ ¥{p.companyAmount.toLocaleString()}</div>
@@ -1958,6 +1994,13 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, on
       </div>
 
       <ErrorNote message={errorMsg} onRetry={() => load(false)} />
+
+      {draftLoading && (
+        <div className="fade-in" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12, fontSize: 12, color: COLORS.tealDim }}>
+          <Sparkles size={13} className="pulse-dot" />
+          AIが最初のメッセージの下書きを作成しています…(待たずに自分で入力してもOKです)
+        </div>
+      )}
 
       {reviewMode === "draft" ? (
         <div className="fade-in" style={{ marginTop: 14 }}>
@@ -2568,12 +2611,12 @@ function ProjectDetailView({ projectId, onBack }) {
   const generatePlan = async () => {
     setPlanLoading(true);
     setPlanError(null);
-    setPlan(null);
     try {
       const res = await fetch(`/api/projects/${projectId}/plan`, { method: "POST" });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error);
       setPlan(d.plan);
+      await load(); // 自動登録されたタスク・KPIを一覧に反映する
     } catch (e) {
       setPlanError("プランの生成に失敗しました。");
     } finally {
@@ -2585,6 +2628,8 @@ function ProjectDetailView({ projectId, onBack }) {
   if (!data) return <div style={{ color: COLORS.muted, fontSize: 13 }}>読み込み中…</div>;
 
   const { project, tasks, kpis, workLogs, comments } = data;
+  // プランはDBに保存されるようになった。手元で生成した直後はplan、それ以外は保存済みのものを表示する。
+  const shownPlan = plan || project.plan;
   const taskStatusLabel = { todo: "未着手", in_progress: "進行中", done: "完了" };
   const sectionStyle = { background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 20, marginBottom: 16 };
   const sectionTitleStyle = { fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14.5, marginBottom: 12 };
@@ -2602,24 +2647,34 @@ function ProjectDetailView({ projectId, onBack }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div style={sectionTitleStyle}>BATTER BOX 90 DAYS PLAN</div>
           <button className="btn-ghost" onClick={generatePlan} disabled={planLoading} style={{ fontSize: 12, padding: "6px 14px" }}>
-            {planLoading ? "生成中…" : plan ? "再生成する" : "プランを生成"}
+            {planLoading ? "生成中…" : shownPlan ? "再生成する" : "プランを生成"}
           </button>
         </div>
         <ErrorNote message={planError} onRetry={generatePlan} />
-        {plan && (
-          <div className="fade-in" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-            {[{ key: "month1", label: "Month 1｜現状整理・設計" }, { key: "month2", label: "Month 2｜実行" }, { key: "month3", label: "Month 3｜定着・改善" }].map((m) => (
-              <div key={m.key} style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 14 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>{m.label}</div>
+        {shownPlan && (
+          <div className="fade-in" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+            {(shownPlan.months || []).map((m) => (
+              <div key={m.month} style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>{m.month}｜{m.title}</div>
                 <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: COLORS.text, lineHeight: 1.8 }}>
-                  {(plan[m.key] || []).map((item, i) => <li key={i}>{item}</li>)}
+                  {(m.items || []).map((it, i) => (
+                    <li key={i}>
+                      {it.action}
+                      {it.hours ? <span style={{ color: COLORS.faint }}>(目安 {it.hours}h)</span> : null}
+                    </li>
+                  ))}
                 </ul>
               </div>
             ))}
           </div>
         )}
-        {!plan && !planLoading && !planError && (
-          <div style={{ fontSize: 12.5, color: COLORS.faint }}>対象課題をもとに、3ヶ月分の実行プランをAIが提案します。</div>
+        {shownPlan && project.monthlyHours && (
+          <p style={{ fontSize: 11, color: COLORS.faint, margin: "10px 0 0" }}>
+            ※ 契約上の月間稼働{project.monthlyHours}時間に収まるよう設計されています。Month 1の項目はタスクに、KPIはKPI欄に自動登録されます(既に入力がある場合は上書きしません)。
+          </p>
+        )}
+        {!shownPlan && !planLoading && !planError && (
+          <div style={{ fontSize: 12.5, color: COLORS.faint }}>契約した月間稼働時間に収まる3ヶ月分の実行プランと、進捗を測るKPIをAIが設計します。</div>
         )}
       </div>
 
@@ -3064,7 +3119,7 @@ export default function Home() {
   // 以前は一律で診断フロー(view="flow")に戻していたため、「戻ったら診断画面だった」という混乱があった。
   const [inboxOrigin, setInboxOrigin] = useState(null);
   const [threadOrigin, setThreadOrigin] = useState(null);
-  const openThread = (matchId, counterpartName, draftMessage) => { setThreadOrigin(view); setActiveThread({ matchId, counterpartName, draftMessage }); setView("thread"); };
+  const openThread = (matchId, counterpartName, draftMessage, draftPending) => { setThreadOrigin(view); setActiveThread({ matchId, counterpartName, draftMessage, draftPending }); setView("thread"); };
   const openInbox = () => { setInboxOrigin(view); setView("inbox"); };
   // 上部のステップ表示(企業情報/AI課題診断/Growth Map/人材提案)をクリックして、
   // 完了済みのステップに戻れるようにする。データは各stepでstateに保持済みのため再取得は不要。
@@ -3217,7 +3272,7 @@ export default function Home() {
   if (view === "thread" && activeThread) {
     return (
       <Shell step={step} steps={steps} headerRight={headerRight} onStepClick={goToStep} nav={navItems}>
-        <MessageThread matchId={activeThread.matchId} counterpartName={activeThread.counterpartName} initialDraft={activeThread.draftMessage} onBack={backFromThread} backLabel={threadOrigin === "inbox" ? "← メッセージ一覧に戻る" : threadOrigin === "mypage" ? "← マイページに戻る" : "← 戻る"} />
+        <MessageThread matchId={activeThread.matchId} counterpartName={activeThread.counterpartName} initialDraft={activeThread.draftMessage} draftPending={activeThread.draftPending} onBack={backFromThread} backLabel={threadOrigin === "inbox" ? "← メッセージ一覧に戻る" : threadOrigin === "mypage" ? "← マイページに戻る" : "← 戻る"} />
       </Shell>
     );
   }

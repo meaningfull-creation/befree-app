@@ -43,7 +43,8 @@ export async function POST(req, { params }) {
         talentTitle: talent.title,
         talentYears: talent.years,
       }),
-      800
+      800, // 3パターン分のJSONのみ。小さく絞って応答を速くする
+      { fast: true } // 提案フォームを開いた直後に自動生成されるため速度を優先
     );
 
     const patterns = Array.isArray(result.patterns)

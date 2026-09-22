@@ -27,7 +27,9 @@ export async function GET(req, { params }) {
           id: engagement.id,
           status: engagement.status,
           monthlyHours: engagement.monthlyHours,
-          companyAmount: engagement.companyAmount,
+          // 人材側には企業のBATTER BOXへの支払額(手数料込みの金額)は見せない。
+          // 人材に関係する金額は自身の受取額(talentAmount)のみ。
+          companyAmount: authorized.myRole === "talent" ? null : engagement.companyAmount,
           talentAmount: engagement.talentAmount,
           startDate: engagement.startDate,
         }

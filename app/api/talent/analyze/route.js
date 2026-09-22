@@ -25,7 +25,7 @@ export async function POST(req) {
       return NextResponse.json({ error: "talentForm.name is required" }, { status: 400 });
     }
 
-    const result = await callClaudeJSON(buildTalentSystemPrompt(), buildTalentAnalysisPrompt(talentForm));
+    const result = await callClaudeJSON(buildTalentSystemPrompt(), buildTalentAnalysisPrompt(talentForm), 3500, { fast: true }); // モバイル利用が中心の人材側は速度を優先
     const scores = clampAxisScores(result.scores, 30);
     const phases = Array.isArray(result.phases) ? result.phases : [];
     const bottlenecks = Array.isArray(result.bottlenecks) ? result.bottlenecks : [];

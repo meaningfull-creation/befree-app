@@ -37,6 +37,8 @@ export async function GET(req, { params }) {
       companyName: company.name,
       talentName: talent.name,
       monthlyHours: project.engagement.monthlyHours,
+      plan: project.plan || null,
+      planGeneratedAt: project.planGeneratedAt,
       createdAt: project.createdAt,
     },
     myRole,

@@ -43,6 +43,10 @@ export default async function ContractConfirmationPage({ params }) {
 
   const targetAxisLabel = engagement.project?.targetAxis ? AXIS_LABEL_BY_KEY[engagement.project.targetAxis] : null;
 
+  // 人材(乙)には自身の受取額のみを表示する。企業がBATTER BOXに支払う金額(手数料込み)は
+  // 乙側の契約条件ではないため、乙の確認書には記載しない。
+  const viewerIsTalent = user.role === "talent";
+
   return (
     <div className="app-root">
       <GlobalStyle />
@@ -80,8 +84,8 @@ export default async function ContractConfirmationPage({ params }) {
                 ["対象課題", targetAxisLabel || "—"],
                 ["契約開始日", engagement.startDate ? new Date(engagement.startDate).toLocaleDateString("ja-JP") : "—"],
                 ["月間稼働時間", engagement.monthlyHours ? `${engagement.monthlyHours}時間 / 月` : "—"],
-                ["月額報酬(甲が乙に支払う額の目安)", engagement.talentAmount != null ? `¥${engagement.talentAmount.toLocaleString()}` : "—"],
-                ["月額(甲がBATTER BOXに支払う額)", engagement.companyAmount != null ? `¥${engagement.companyAmount.toLocaleString()}` : "—"],
+                ["月額報酬(乙の受取額)", engagement.talentAmount != null ? `¥${engagement.talentAmount.toLocaleString()}` : "—"],
+                ...(viewerIsTalent ? [] : [["月額(甲がBATTER BOXに支払う額)", engagement.companyAmount != null ? `¥${engagement.companyAmount.toLocaleString()}` : "—"]]),
                 ["支払方法", "請求書ベースでの月次精算(BATTER BOX経由)"],
                 ["契約ステータス", engagement.status === "active" ? "成立・進行中" : engagement.status === "completed" ? "完了" : engagement.status],
               ].map(([label, value]) => (

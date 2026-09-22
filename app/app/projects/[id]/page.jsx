@@ -140,6 +140,7 @@ export default function ProjectDetailPage() {
       const d = await res.json();
       if (!res.ok) throw new Error(d.error);
       setPlan(d.plan);
+      await load(); // 自動登録されたタスク・KPIを一覧に反映する
     } catch (e) {
       setErrorMsg("プランの生成に失敗しました。");
     } finally {
@@ -189,22 +190,32 @@ export default function ProjectDetailPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <div style={sectionTitleStyle}>BATTER BOX 90 DAYS PLAN</div>
                 <button className="btn-ghost" onClick={generatePlan} disabled={planLoading} style={{ fontSize: 12, padding: "6px 14px" }}>
-                  {planLoading ? "生成中…" : plan ? "再生成する" : "プランを生成"}
+                  {planLoading ? "生成中…" : (plan || data.project.plan) ? "再生成する" : "プランを生成"}
                 </button>
               </div>
-              {plan ? (
+              {(plan || data.project.plan) ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {plan.map((m) => (
+                  {((plan || data.project.plan).months || []).map((m) => (
                     <div key={m.month}>
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{m.month}｜{m.title}</div>
                       <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: COLORS.muted, lineHeight: 1.8 }}>
-                        {m.items.map((it, i) => <li key={i}>{it}</li>)}
+                        {(m.items || []).map((it, i) => (
+                          <li key={i}>
+                            {it.action}
+                            {it.hours ? <span style={{ color: COLORS.faint }}>(目安 {it.hours}h)</span> : null}
+                          </li>
+                        ))}
                       </ul>
                     </div>
                   ))}
+                  {data.project.monthlyHours && (
+                    <p style={{ fontSize: 11, color: COLORS.faint, margin: 0 }}>
+                      ※ 契約上の月間稼働{data.project.monthlyHours}時間に収まるよう設計されています。Month 1の項目はタスクに、KPIはKPI欄に自動登録されます(既に入力がある場合は上書きしません)。
+                    </p>
+                  )}
                 </div>
               ) : (
-                <div style={{ fontSize: 12.5, color: COLORS.faint }}>まだ生成していません。</div>
+                <div style={{ fontSize: 12.5, color: COLORS.faint }}>契約した月間稼働時間に収まる3ヶ月分の実行プランと、進捗を測るKPIをAIが設計します。</div>
               )}
             </div>
 
