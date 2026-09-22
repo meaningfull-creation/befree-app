@@ -2,6 +2,8 @@
 // ユーザー向け画面(app/page.jsx)と同じカラーパレットを流用しつつ、
 // 情報密度の高いテーブル表示に合わせて簡素にしている。
 
+import { prisma } from "@/lib/prisma";
+
 export const COLORS = {
   bg: "#0B1220",
   surface: "#131B2E",
@@ -38,11 +40,53 @@ export function AdminGlobalStyle() {
       .admin-btn-muted { font-family: ${FONT_BODY}; font-size: 12.5px; background: transparent; color: ${COLORS.muted}; border: 1px solid ${COLORS.border}; border-radius: 6px; padding: 5px 11px; cursor: pointer; }
       .admin-btn-muted:hover { border-color: ${COLORS.muted}; }
       .admin-input { font-family: ${FONT_BODY}; font-size: 12.5px; background: ${COLORS.surfaceRaised}; border: 1px solid ${COLORS.border}; color: ${COLORS.text}; border-radius: 6px; padding: 5px 8px; width: 80px; }
+      .admin-notify-dot {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 17px; height: 17px; padding: 0 4px; margin-left: 6px;
+        background: #ff4d4f; color: #fff; border-radius: 999px;
+        font-family: ${FONT_MONO}; font-size: 10px; line-height: 1;
+        box-shadow: 0 0 0 rgba(255,77,79,0.6);
+        animation: admin-notify-pulse 1.6s infinite;
+      }
+      @keyframes admin-notify-pulse {
+        0%   { box-shadow: 0 0 0 0 rgba(255,77,79,0.6); }
+        70%  { box-shadow: 0 0 0 6px rgba(255,77,79,0); }
+        100% { box-shadow: 0 0 0 0 rgba(255,77,79,0); }
+      }
     `}</style>
   );
 }
 
-export function AdminNav({ current }) {
+// ナビゲーションに表示する「新着」件数。厳密な既読管理はまだ実装していないため、
+// メッセージは「直近24時間以内」を新着とみなす簡易な基準にしている。
+// 問い合わせ・契約提案は、そもそも対応するまで残り続けるステータスなのでそのまま件数を使う。
+async function getNotificationCounts() {
+  try {
+    const [newInquiries, pendingContracts, recentMessages] = await Promise.all([
+      prisma.inquiry.count({ where: { status: "new" } }),
+      prisma.engagement.count({ where: { status: "proposed" } }),
+      prisma.message.count({ where: { createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } } }),
+    ]);
+    return { newInquiries, pendingContracts, recentMessages };
+  } catch (e) {
+    // DB未接続等でナビ自体が表示できなくなるのは避け、通知なしとして扱う
+    console.error("failed to load admin notification counts:", e.message);
+    return { newInquiries: 0, pendingContracts: 0, recentMessages: 0 };
+  }
+}
+
+function NotifyDot({ count }) {
+  if (!count) return null;
+  return <span className="admin-notify-dot">{count > 99 ? "99+" : count}</span>;
+}
+
+export async function AdminNav({ current }) {
+  const counts = await getNotificationCounts();
+  const badgeByKey = {
+    inquiries: counts.newInquiries,
+    matches: counts.pendingContracts,
+    messages: counts.recentMessages,
+  };
   const items = [
     { href: "/admin", label: "ダッシュボード", key: "dashboard" },
     { href: "/admin/companies", label: "企業", key: "companies" },
@@ -72,9 +116,12 @@ export function AdminNav({ current }) {
             color: current === it.key ? COLORS.text : COLORS.muted,
             background: current === it.key ? COLORS.surfaceRaised : "transparent",
             textDecoration: "none",
+            display: "inline-flex",
+            alignItems: "center",
           }}
         >
           {it.label}
+          <NotifyDot count={badgeByKey[it.key]} />
         </a>
       ))}
     </div>
