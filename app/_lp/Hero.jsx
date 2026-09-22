@@ -1,6 +1,6 @@
 "use client";
 
-import { Btn, Label, Wrap } from "./parts";
+import { Btn, Wrap } from "./parts";
 import { LP_COLOR as C } from "./tokens";
 import GrowthMap from "./GrowthMap";
 
@@ -10,10 +10,6 @@ export default function Hero() {
       <Wrap>
         <div className="lp-hero-grid">
           <div>
-            <div className="lp-rise" style={{ animationDelay: "60ms" }}>
-              <Label style={{ marginBottom: 26 }}>Experience moves business.</Label>
-            </div>
-
             {/* 画面の30〜50%をコピーが占める。1行ずつ短く出す */}
             <h1 className="lp-display">
               <span className="lp-rise" style={{ display: "block", animationDelay: "180ms" }}>その経験に、</span>

@@ -118,6 +118,12 @@ export default function LPStyle() {
       .lp-marquee-item { font-family: ${F.en}; font-weight: 800; font-size: clamp(20px, 2.6vw, 36px); letter-spacing: -0.01em; white-space: nowrap; display: flex; align-items: center; gap: 52px; }
       .lp-marquee-item::after { content: ""; width: 11px; height: 13px; background: currentColor; clip-path: ${HOME_PLATE_CLIP}; opacity: 0.65; flex-shrink: 0; }
 
+      /* ---- 写真 ---- */
+      .lp-photo { width: 100%; height: auto; display: block; border-radius: ${R.sm}px; }
+      /* 全幅のバンド。横長の写真を帯として使い、セクション間の転換点にする */
+      .lp-band-photo { width: 100%; display: block; height: clamp(200px, 30vw, 460px); object-fit: cover; object-position: center; }
+      .lp-problem-split { display: grid; grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr); gap: clamp(24px, 4vw, 56px); align-items: center; margin-bottom: clamp(36px, 5vw, 64px); }
+
       /* ---- problem: 実際に起きている症状 ---- */
       .lp-issues { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border-top: 1px solid ${C.ink}; }
       .lp-issue { padding: 22px clamp(16px, 2vw, 30px) 24px 0; border-bottom: 1px solid ${C.line}; }
@@ -217,7 +223,8 @@ export default function LPStyle() {
       .lp-two .lp-two-side:hover { flex-grow: 1.28; background: rgba(255,255,255,0.04); }
 
       /* ---- footer ---- */
-      .lp-footer-links { display: flex; gap: 26px; flex-wrap: wrap; font-size: 13px; color: ${C.inkSoft}; }
+      /* 7つのリンクを横1列に流さず、2行にまとめる */
+      .lp-footer-links { display: grid; grid-template-columns: repeat(4, max-content); gap: 10px clamp(18px, 2.4vw, 34px); font-size: 13px; color: ${C.inkSoft}; }
       .lp-footer-links a:hover { color: ${C.orange}; }
 
       /* ---- mobile ---- */
@@ -282,6 +289,9 @@ export default function LPStyle() {
         .lp-figure-fallback .lp-en, .lp-how-step .lp-label { font-size: 11px !important; }
         .lp-facts { grid-template-columns: repeat(2, 1fr); gap: 26px 20px; }
         .lp-issues { grid-template-columns: 1fr; }
+        .lp-problem-split { grid-template-columns: 1fr; gap: 22px; }
+        .lp-footer-links { grid-template-columns: repeat(2, 1fr); gap: 4px 16px; }
+        .lp-band-photo { height: clamp(190px, 52vw, 260px); }
         .lp-ai-preview { grid-template-columns: 1fr; gap: 20px; }
         .lp-ai-prev-d { font-size: 13px; }
         .lp-issue { padding-right: 0; }

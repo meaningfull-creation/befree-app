@@ -37,8 +37,10 @@ export const LP_FONT = {
 
 // タイポグラフィのジャンプ率を大きく取る。最大と最小で10倍以上の差をつける。
 export const LP_TYPE = {
-  display: "clamp(40px, 7.0vw, 100px)", // Heroのブランドコピー。「その経験に、」が必ず1行に収まる上限
-  giant: "clamp(34px, 6.2vw, 88px)", // セクションの主役コピー
+  display: "clamp(34px, 6.6vw, 94px)", // Heroのブランドコピー
+  // giantの下限は、最も長い行「でも、その経験が必要だ。」(12文字)が
+  // iPhone(幅393px・左右余白40px)で折り返さない値から逆算している
+  giant: "clamp(26px, 5.6vw, 74px)", // セクションの主役コピー
   head: "clamp(24px, 3.4vw, 46px)", // セクション見出し
   sub: "clamp(17px, 1.6vw, 22px)", // リード文
   body: "15.5px",

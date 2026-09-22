@@ -7,7 +7,7 @@ import People from "./_lp/People";
 import HowItWorks from "./_lp/HowItWorks";
 import { Arrow, Btn, Label, Reveal, Wordmark, Wrap } from "./_lp/parts";
 import { EXPERIENCE_MARQUEE, LP_COLOR as C } from "./_lp/tokens";
-import { Facts, Compare, AfterMatch, Faq } from "./_lp/Content";
+import { Compare, AfterMatch, Faq } from "./_lp/Content";
 
 export const metadata = {
   title: "BATTER BOX — その経験に、次の打席を。",
@@ -48,11 +48,17 @@ function Problem() {
           </h2>
         </Reveal>
 
-        <Reveal delay={120} style={{ marginTop: "clamp(40px, 5vw, 72px)" }}>
-          <p className="lp-sub" style={{ maxWidth: 620, marginBottom: "clamp(32px, 4vw, 52px)" }}>
-            企業には、その瞬間だけ必要になる経験があります。正社員を一人採るには重すぎて、
-            けれど誰かの経験がなければ前に進まない。その隙間を埋めるのが、BATTER BOXです。
-          </p>
+        <Reveal delay={120} style={{ marginTop: "clamp(32px, 4vw, 56px)" }}>
+          <div className="lp-problem-split">
+            <p className="lp-sub">
+              企業には、その瞬間だけ必要になる経験があります。正社員を一人採るには重すぎて、
+              けれど誰かの経験がなければ前に進まない。その隙間を埋めるのが、BATTER BOXです。
+            </p>
+            <picture>
+              <source media="(max-width: 640px)" srcSet="/lp/problem-sm.jpg" />
+              <img src="/lp/problem.jpg" alt="必要な経験を思い浮かべる経営者" className="lp-photo" width="878" height="446" loading="lazy" />
+            </picture>
+          </div>
 
           {/* 抽象的な単語の羅列で終わらせず、実際に起きている症状まで書く */}
           <div className="lp-issues">
@@ -77,12 +83,24 @@ function Problem() {
   );
 }
 
+// 企業とAIと実務経験者がつながる全体像。AI EXPERIENCEへの導入として全幅で置く。
+function ConnectBand() {
+  return (
+    <section aria-label="企業の課題をAIが分析し、経験を持つ人材とつなぐイメージ">
+      <picture>
+        <source media="(max-width: 640px)" srcSet="/lp/connect-sm.jpg" />
+        <img src="/lp/connect.jpg" alt="" className="lp-band-photo" width="1875" height="839" loading="lazy" />
+      </picture>
+    </section>
+  );
+}
+
 // 06｜ORANGE BRAND SECTION — 説明文を置かず、ブランド広告として成立させる
 function BrandSection() {
   // 決め台詞「その経験に、次の打席を。」は最終CTAで使うため、ここでは重複させない。
   const lines = [
     "経験を、\n眠らせない。",
-    "その経験を、\n必要としている会社がある。",
+    "その経験を、\n必要としている\n会社がある。",
   ];
   return (
     <section className="on-orange" data-tone="orange" style={{ paddingTop: 0, paddingBottom: 0 }}>
@@ -180,7 +198,6 @@ function Footer() {
         </div>
         <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 36, paddingTop: 20, display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
           <span className="lp-small">© 株式会社BeFree</span>
-          <span className="lp-label" style={{ color: C.inkFaint }}>Experience moves business.</span>
         </div>
       </Wrap>
     </footer>
@@ -199,8 +216,8 @@ export default async function LandingPage() {
         <Hero />
         <Marquee />
         <Problem />
+        <ConnectBand />
         <AIExperience />
-        <Facts />
         <People />
         <BrandSection />
         <HowItWorks />

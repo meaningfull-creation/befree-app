@@ -7,36 +7,6 @@ import { LP_COLOR as C } from "./tokens";
 // 「余白の中に入れる中身」がないままだったのが未完成感の主因だった。
 
 // ---------------------------------------------------------------------------
-// 数字の面。架空の実績は使わず、プロダクトの事実だけで構成する。
-// ---------------------------------------------------------------------------
-const FACTS = [
-  { v: "10", u: "軸", l: "経営課題を構造化して可視化" },
-  { v: "87", u: "領域", l: "登録できる具体的な経験業務" },
-  { v: "5", u: "問", l: "診断にかかる質問数。約3分" },
-  { v: "10", u: "h/月", l: "依頼できる最小の稼働時間" },
-];
-
-export function Facts() {
-  return (
-    <section className="lp-sec lp-sec--tight" data-tone="light" style={{ borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
-      <Wrap>
-        <div className="lp-facts">
-          {FACTS.map((f, i) => (
-            <Reveal key={f.l} delay={i * 70} className="lp-fact">
-              <div className="lp-fact-v">
-                <span className="lp-num">{f.v}</span>
-                <span className="lp-fact-u">{f.u}</span>
-              </div>
-              <div className="lp-fact-l">{f.l}</div>
-            </Reveal>
-          ))}
-        </div>
-      </Wrap>
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // 正社員採用との比較。カードを2枚並べるのではなく、行で対比させる。
 // ---------------------------------------------------------------------------
 const COMPARE = [
