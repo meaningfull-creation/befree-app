@@ -83,6 +83,8 @@ export default function JoinPage() {
           phases: result.phases,
           bottlenecks: result.bottlenecks,
           growthAreas: result.growthAreas,
+          industryFit: result.industryFit,
+          axisEvidence: result.axisEvidence,
           summary: result.summary,
         }),
       });

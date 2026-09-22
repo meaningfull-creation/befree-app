@@ -60,8 +60,11 @@ export async function GET() {
         industry: talent.industry,
         years: talent.years,
         summary: talent.bio,
-        careerHistory: talent.careerHistory,
+        // v5.4で自由記述をcareerHistoryに一本化。それ以前のデータはbioにしか入っていないため、
+        // 未設定の場合はbioを初期値として見せる(保存時に両方へ書き込まれて揃う)。
+        careerHistory: talent.careerHistory || talent.bio || "",
         experiencedFunctions: talent.experiencedFunctions || [],
+        experiencedSubAreas: talent.experiencedSubAreas || [],
         workStyleTags: talent.workStyleTags || [],
         valueTags: talent.valueTags || [],
         values: talent.values,
@@ -71,6 +74,8 @@ export async function GET() {
       phases: latest.phases,
       bottlenecks: latest.bottlenecks,
       growthAreas: latest.growthAreas,
+      industryFit: latest.industryFit || [], // 経験を活かせる業界の候補
+      axisEvidence: latest.axisEvidence || {}, // 軸ごとの採点根拠
       summary: latest.summary,
       diagnosedAt: latest.createdAt,
       talentSkillMapId: latest.id,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Fragment } from "react";
 import {
   Radar,
   RadarChart,
@@ -27,7 +27,8 @@ import {
   LayoutDashboard,
   LogOut,
 } from "lucide-react";
-import { AXES, TALENT_SCORE_RUBRIC } from "@/lib/axes";
+import { AXES, TALENT_SCORE_RUBRIC, FUNCTION_SUBAREA_OPTIONS, WORK_STYLE_OPTIONS, VALUE_OPTIONS } from "@/lib/axes";
+import { INDUSTRY_OPTIONS } from "@/lib/industries";
 import { computeScoreDelta } from "@/lib/scoreDelta";
 import { DEFAULT_SCHEDULE } from "@/lib/paymentSchedule";
 import { COLORS, FONT_DISPLAY, FONT_BODY, FONT_MONO, GlobalStyle, TASK_STATUS_META, TASK_STATUS_ORDER } from "@/lib/theme";
@@ -157,31 +158,40 @@ export function MultiSelectDropdown({ label, hint, options, selected, onChange, 
         <ChevronDown size={16} style={{ flexShrink: 0, color: COLORS.muted, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s ease" }} />
       </button>
       {open && (
-        <div className="fade-in" style={{ border: `1.5px solid ${color}`, borderTop: "none", borderRadius: "0 0 14px 14px", background: COLORS.surface, maxHeight: 260, overflowY: "auto" }}>
-          {options.map((o) => {
+        <div className="fade-in" style={{ border: `1.5px solid ${color}`, borderTop: "none", borderRadius: "0 0 14px 14px", background: COLORS.surface, maxHeight: 300, overflowY: "auto" }}>
+          {options.map((o, i) => {
             const v = valueOf(o);
             const active = values.includes(v);
+            // group が指定されている場合は、切り替わり目に見出し行を挟む(選択肢が多いときの迷子防止)
+            const group = typeof o === "object" ? o.group : null;
+            const prevGroup = i > 0 && typeof options[i - 1] === "object" ? options[i - 1].group : null;
             return (
-              <button
-                key={v}
-                type="button"
-                onClick={() => toggle(v)}
-                style={{
-                  width: "100%", display: "flex", alignItems: "center", gap: 10, textAlign: "left",
-                  background: active ? "rgba(244,105,25,0.07)" : "transparent", border: "none",
-                  borderBottom: `1px solid ${COLORS.border}`, padding: "11px 14px", cursor: "pointer",
-                  fontFamily: FONT_BODY, fontSize: 13.5, color: active ? COLORS.text : COLORS.muted,
-                }}
-              >
-                <span style={{
-                  width: 18, height: 18, borderRadius: 5, flexShrink: 0,
-                  border: `1.5px solid ${active ? color : COLORS.border}`, background: active ? color : COLORS.surface,
-                  color: COLORS.onAccent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700,
-                }}>
-                  {active ? "✓" : ""}
-                </span>
-                <span style={{ flex: 1 }}>{labelOf(o)}</span>
-              </button>
+              <Fragment key={v}>
+                {group && group !== prevGroup && (
+                  <div style={{ position: "sticky", top: 0, background: COLORS.surfaceRaised, borderBottom: `1px solid ${COLORS.border}`, padding: "7px 14px", fontSize: 11, fontWeight: 700, color: COLORS.muted, fontFamily: FONT_DISPLAY, letterSpacing: "0.03em" }}>
+                    {group}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => toggle(v)}
+                  style={{
+                    width: "100%", display: "flex", alignItems: "center", gap: 10, textAlign: "left",
+                    background: active ? "rgba(244,105,25,0.07)" : "transparent", border: "none",
+                    borderBottom: `1px solid ${COLORS.border}`, padding: "11px 14px", cursor: "pointer",
+                    fontFamily: FONT_BODY, fontSize: 13.5, color: active ? COLORS.text : COLORS.muted,
+                  }}
+                >
+                  <span style={{
+                    width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                    border: `1.5px solid ${active ? color : COLORS.border}`, background: active ? color : COLORS.surface,
+                    color: COLORS.onAccent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700,
+                  }}>
+                    {active ? "✓" : ""}
+                  </span>
+                  <span style={{ flex: 1 }}>{labelOf(o)}</span>
+                </button>
+              </Fragment>
             );
           })}
         </div>
@@ -376,44 +386,6 @@ function LoadingScreen() {
 // Company flow — Step 1: company info
 // ---------------------------------------------------------------------------
 // 企業・人材フォーム共通の選択肢(共有の単一ソース)。「よくある形」に合わせて広めに用意している。
-const INDUSTRY_OPTIONS = [
-  "IT・インターネット・通信",
-  "ソフトウェア・SaaS・システム受託開発",
-  "フィンテック・金融",
-  "保険・保険代理店",
-  "ヘルスケア・医療",
-  "介護・福祉",
-  "バイオ・製薬",
-  "D2C・EC・通販",
-  "小売・店舗運営",
-  "卸売・商社",
-  "製造業・メーカー",
-  "化学・素材",
-  "自動車・輸送機器",
-  "電機・電子部品",
-  "建設・工務店",
-  "不動産",
-  "設備工事・電気工事",
-  "運輸・物流・倉庫",
-  "エネルギー・インフラ",
-  "農林水産・食品",
-  "人材紹介・人材派遣",
-  "人材・HRテック",
-  "教育・EdTech・スクール運営",
-  "メディア・出版・印刷",
-  "広告代理店・PR",
-  "エンタメ・イベント",
-  "コンサルティング・専門サービス",
-  "士業(会計・税務・法律等)",
-  "官公庁・自治体・公共",
-  "非営利・NPO・社団法人",
-  "旅行・宿泊",
-  "飲食店経営",
-  "美容・理容・エステ",
-  "冠婚葬祭",
-  "スポーツ・フィットネス",
-  "その他(自由入力)",
-];
 const HEADCOUNT_OPTIONS = ["1〜5名", "6〜10名", "11〜30名", "31〜50名", "51〜100名", "101〜300名", "301〜1000名", "1001名以上"];
 // 外部資本(VC・エンジェル投資等)の有無で、成長段階の語彙を分けている。
 // 創業者100%・自己資金の企業にとって「シリーズA」等のVC用語はイメージしづらいため。
@@ -1152,32 +1124,11 @@ const TALENT_TITLE_GROUPS = [
 ];
 const TALENT_INDUSTRY_OPTIONS = INDUSTRY_OPTIONS;
 
-const WORK_STYLE_OPTIONS = [
-  "0→1の立ち上げ",
-  "型化・仕組み化",
-  "既存事業の立て直し",
-  "現場実行・マネジメント",
-  "対外折衝・パートナーシップ構築",
-  "データ分析・意思決定支援",
-];
-// 「大切にしている価値観」は自由記述だけだと思い浮かびにくいため、選択式の候補も用意する。
-const VALUE_OPTIONS = [
-  "スピード重視",
-  "着実な積み上げ",
-  "現場主義",
-  "データドリブンな意思決定",
-  "対話・合意形成を重視",
-  "自律性・裁量を重視",
-  "チームワーク重視",
-  "挑戦・変化を好む",
-  "安定・再現性を好む",
-  "顧客最優先",
-];
 
 export function StepTalentInput({ onNext, initialForm }) {
   const [form, setForm] = useState(
     initialForm?.name
-      ? { titleOther: "", industryOther: "", summary: "", experiencedFunctions: [], workStyleTags: [], valueTags: [], values: "", ...initialForm }
+      ? { titleOther: "", industryOther: "", summary: "", experiencedFunctions: [], experiencedSubAreas: [], workStyleTags: [], valueTags: [], values: "", ...initialForm }
       : {
           name: "",
           title: TALENT_TITLE_GROUPS[0].options[0],
@@ -1187,6 +1138,7 @@ export function StepTalentInput({ onNext, initialForm }) {
           years: "15〜20年",
           summary: "",
           experiencedFunctions: [],
+          experiencedSubAreas: [],
           workStyleTags: [],
           valueTags: [],
           values: "",
@@ -1257,6 +1209,13 @@ export function StepTalentInput({ onNext, initialForm }) {
           onChange={(v) => setForm({ ...form, experiencedFunctions: v })}
         />
         <MultiSelectDropdown
+          label="具体的に経験した業務"
+          hint="複数選択可・スコアの精度が上がります"
+          options={FUNCTION_SUBAREA_OPTIONS}
+          selected={form.experiencedSubAreas || []}
+          onChange={(v) => setForm({ ...form, experiencedSubAreas: v })}
+        />
+        <MultiSelectDropdown
           label="得意な働き方"
           hint="複数選択可"
           options={WORK_STYLE_OPTIONS}
@@ -1292,6 +1251,7 @@ export function StepTalentInput({ onNext, initialForm }) {
               years: form.years,
               summary: form.summary,
               experiencedFunctions: form.experiencedFunctions || [],
+              experiencedSubAreas: form.experiencedSubAreas || [],
               workStyleTags: form.workStyleTags || [],
               valueTags: form.valueTags || [],
               values: form.values,
@@ -1597,34 +1557,17 @@ export function StepTalentSkillMap({ name, scores, fit, talentForm, talentSkillM
 
   return (
     <div className="fade-in">
-      <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 600, margin: "0 0 6px" }}>{name || "あなた"}のスキルマップ</h1>
-      <p style={{ color: COLORS.muted, fontSize: 14, margin: "0 0 28px" }}>
-        10軸・各30点満点でスコア化しています。今回の対話で直接お聞きしたのは一部の軸のみです。気になる項目は、下部の「項目ごとに深掘り」からいつでも詳しく確認・更新できます。
-        {fit.fallback && <span style={{ color: COLORS.amber, display: "block", marginTop: 6, fontSize: 12.5 }}>※ AIとの通信に失敗したため、参考値で表示しています</span>}
-      </p>
+      <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 600, margin: "0 0 14px" }}>{name || "あなた"}のスキルマップ</h1>
+
+      {fit.fallback && (
+        <p style={{ color: COLORS.amber, fontSize: 12.5, margin: "0 0 12px" }}>※ AIとの通信に失敗したため、参考値で表示しています</p>
+      )}
 
       {fit.talentStatus === "pending" && (
         <div style={{ background: "rgba(27,58,99,0.08)", border: `1px solid ${COLORS.amber}`, borderRadius: 10, padding: "12px 16px", fontSize: 12.5, color: COLORS.text, marginBottom: 20 }}>
           現在、運営による審査中です。承認されるまでは企業への提案候補には表示されません。
         </div>
       )}
-
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
-        {TALENT_SCORE_RUBRIC.map((r) => (
-          <span
-            key={r.range}
-            style={{
-              fontSize: 11.5,
-              color: COLORS.muted,
-              border: `1px solid ${COLORS.border}`,
-              borderRadius: 8,
-              padding: "5px 10px",
-            }}
-          >
-            <span style={{ fontFamily: FONT_MONO, color: COLORS.teal }}>{r.range}点</span> — {r.label}
-          </span>
-        ))}
-      </div>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
         <button className={talentChartView === "radar" ? "btn-primary" : "btn-ghost"} onClick={() => setTalentChartView("radar")} style={{ fontSize: 12, padding: "6px 14px" }}>レーダー</button>
@@ -1658,6 +1601,24 @@ export function StepTalentSkillMap({ name, scores, fit, talentForm, talentSkillM
           })}
         </div>
       )}
+      {/* スコアの見方は、点数を見たあとに確認するものなのでチャートの下に置く */}
+      <div style={{ marginTop: 14, marginBottom: 4 }}>
+        <div style={{ fontSize: 11.5, color: COLORS.faint, marginBottom: 8 }}>スコアの見方(10軸・各30点満点)</div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {TALENT_SCORE_RUBRIC.map((r) => (
+            <span
+              key={r.range}
+              style={{ fontSize: 11.5, color: COLORS.muted, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "5px 10px" }}
+            >
+              <span style={{ fontFamily: FONT_MONO, color: COLORS.teal }}>{r.range}点</span> — {r.label}
+            </span>
+          ))}
+        </div>
+        <p style={{ fontSize: 11.5, color: COLORS.faint, margin: "10px 0 0", lineHeight: 1.7 }}>
+          今回の解析で直接お聞きしたのは一部の軸のみです。気になる項目は、下部の「項目ごとに深掘り」からいつでも詳しく確認・更新できます。
+        </p>
+      </div>
+
       {revealed && (
         <div className="fade-in" style={{ marginTop: 24 }}>
           <div style={{ fontSize: 12, color: COLORS.muted, letterSpacing: "0.04em", marginBottom: 10 }}>強みとして特に高いスコアの軸</div>
@@ -1678,6 +1639,40 @@ export function StepTalentSkillMap({ name, scores, fit, talentForm, talentSkillM
                   <div key={g.axisKey} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "14px 16px" }}>
                     <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 6 }}>{AXIS_LABEL_BY_KEY[g.axisKey] || g.axisKey}</div>
                     <div style={{ fontSize: 12, color: COLORS.muted, lineHeight: 1.6 }}>{g.note}</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {fit.industryFit && fit.industryFit.length > 0 && (
+            <>
+              <div style={{ fontSize: 12, color: COLORS.muted, letterSpacing: "0.04em", marginBottom: 4 }}>経験を活かせる可能性がある業界</div>
+              <p style={{ fontSize: 11.5, color: COLORS.faint, margin: "0 0 10px", lineHeight: 1.7 }}>
+                これまでの経験がある業界だけでなく、培ったスキルが横展開できそうな隣接業界もAIが候補として挙げています。確度の高い順です。
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
+                {fit.industryFit.map((f) => (
+                  <div key={f.industry} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderLeft: `4px solid ${COLORS.teal}`, borderRadius: 10, padding: "12px 16px" }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, fontFamily: FONT_DISPLAY, marginBottom: f.reason ? 4 : 0 }}>{f.industry}</div>
+                    {f.reason && <div style={{ fontSize: 12, color: COLORS.muted, lineHeight: 1.7 }}>{f.reason}</div>}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {fit.axisEvidence && Object.keys(fit.axisEvidence).length > 0 && (
+            <>
+              <div style={{ fontSize: 12, color: COLORS.muted, letterSpacing: "0.04em", marginBottom: 4 }}>このスコアの根拠</div>
+              <p style={{ fontSize: 11.5, color: COLORS.faint, margin: "0 0 10px", lineHeight: 1.7 }}>
+                入力内容のどこを根拠に点数をつけたかです。実態と違う場合は、職歴の記述を具体的にしてスキルマップを更新すると精度が上がります。
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 24 }}>
+                {Object.entries(fit.axisEvidence).map(([axisKey, note]) => (
+                  <div key={axisKey} style={{ display: "flex", gap: 10, alignItems: "flex-start", background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "10px 14px" }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, minWidth: 96, flexShrink: 0 }}>{AXIS_LABEL_BY_KEY[axisKey] || axisKey}</span>
+                    <span style={{ fontSize: 12, color: COLORS.muted, lineHeight: 1.7, flex: 1 }}>{note}</span>
                   </div>
                 ))}
               </div>
@@ -2753,7 +2748,7 @@ function MyPageTalent({ profile, onProceed, onRediagnose }) {
       <StepTalentSkillMap
         name={profile.talentForm?.name}
         scores={profile.scores}
-        fit={{ phases: profile.phases, bottlenecks: profile.bottlenecks, growthAreas: profile.growthAreas, summary: profile.summary }}
+        fit={{ phases: profile.phases, bottlenecks: profile.bottlenecks, growthAreas: profile.growthAreas, industryFit: profile.industryFit, axisEvidence: profile.axisEvidence, summary: profile.summary }}
         talentForm={profile.talentForm}
         talentSkillMapId={profile.talentSkillMapId}
         onNext={onProceed}
@@ -2854,7 +2849,7 @@ function ProfileFieldsCompany({ initial, onSaved }) {
 }
 
 function ProfileFieldsTalent({ initial, onSaved }) {
-  const [form, setForm] = useState(initial || { name: "", title: "", industry: "", years: "", bio: "", careerHistory: "", experiencedFunctions: [], workStyleTags: [], valueTags: [], values: "" });
+  const [form, setForm] = useState(initial || { name: "", title: "", industry: "", years: "", careerHistory: "", experiencedFunctions: [], experiencedSubAreas: [], workStyleTags: [], valueTags: [], values: "" });
   const [status, setStatus] = useState("idle");
   const [errorMsg, setErrorMsg] = useState(null);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -2867,7 +2862,9 @@ function ProfileFieldsTalent({ initial, onSaved }) {
       await fetch("/api/talent/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) })
         .then(async (res) => { const d = await res.json(); if (!res.ok) throw new Error(d.error); });
       setStatus("saved");
-      onSaved?.(form);
+      // サーバー側では bio にも careerHistory と同じ内容が書かれる。画面側の summary(=bio)も
+      // 揃えておかないと、この後スキルマップを更新したときに古い職歴がAIに渡ってしまう。
+      onSaved?.({ ...form, summary: form.careerHistory });
       setTimeout(() => setStatus("idle"), 2000);
     } catch (err) {
       setErrorMsg(err.message);
@@ -2887,16 +2884,18 @@ function ProfileFieldsTalent({ initial, onSaved }) {
         <input className="field-input" value={form.title || ""} onChange={set("title")} />
       </div>
       <div style={{ marginBottom: 16 }}>
-        <label className="field-label">職歴(会社名・役職・期間・担当内容など)</label>
+        <label className="field-label">職歴・実績(会社名・役職・期間・担当内容・成果など)</label>
         <textarea
           className="field-input"
-          rows={5}
+          rows={7}
           placeholder={"例:\n2018-2023 株式会社〇〇 営業マネージャー — 新規開拓チーム立ち上げ、年間売上2億円達成\n2015-2018 △△株式会社 法人営業 — SaaSのフィールドセールス"}
           value={form.careerHistory || ""}
           onChange={set("careerHistory")}
           style={{ resize: "vertical", lineHeight: 1.7 }}
         />
-        <p style={{ fontSize: 11, color: COLORS.faint, margin: "6px 0 0" }}>マッチング後、メッセージ画面の「相手人材の詳細」で企業側に表示されます。</p>
+        <p style={{ fontSize: 11, color: COLORS.faint, margin: "6px 0 0", lineHeight: 1.7 }}>
+          企業側の候補一覧・詳細画面と、スキルマップのAI解析の両方で使われます。具体的な数字や役割を書くほど、スコアの精度が上がります。
+        </p>
       </div>
       <div className="two-col" style={{ display: "grid", gap: 14, marginBottom: 16 }}>
         <div>
@@ -2918,6 +2917,13 @@ function ProfileFieldsTalent({ initial, onSaved }) {
         onChange={(v) => setForm({ ...form, experiencedFunctions: v })}
       />
       <MultiSelectDropdown
+        label="具体的に経験した業務"
+        hint="複数選択可・スコアの精度が上がります"
+        options={FUNCTION_SUBAREA_OPTIONS}
+        selected={form.experiencedSubAreas || []}
+        onChange={(v) => setForm({ ...form, experiencedSubAreas: v })}
+      />
+      <MultiSelectDropdown
         label="得意な働き方"
         hint="複数選択可"
         options={WORK_STYLE_OPTIONS}
@@ -2925,10 +2931,6 @@ function ProfileFieldsTalent({ initial, onSaved }) {
         onChange={(v) => setForm({ ...form, workStyleTags: v })}
         accent={COLORS.amber}
       />
-      <div style={{ marginBottom: 16 }}>
-        <label className="field-label">自己紹介・実績</label>
-        <textarea className="field-input" rows={4} style={{ resize: "vertical", fontFamily: "inherit", lineHeight: 1.6 }} value={form.bio || ""} onChange={set("bio")} />
-      </div>
       <MultiSelectDropdown
         label="大切にしている価値観"
         hint="複数選択可"
@@ -4022,6 +4024,155 @@ function PaymentsView({ mode, onBack, onOpenProjectDetail }) {
   );
 }
 
+// 報酬の振込先口座。機微情報のため、保存済みの口座番号は末尾3桁だけを返す設計
+// (フルの値はDBにのみ存在し、画面には出さない)。変更するときは入れ直す。
+const ACCOUNT_TYPE_OPTIONS = ["普通", "当座"];
+
+function TalentBankAccountField() {
+  const [account, setAccount] = useState(null); // 保存済み(マスク済み)の内容
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({ bankName: "", branchName: "", accountType: "普通", accountNumber: "", accountHolder: "" });
+  const [status, setStatus] = useState("idle");
+  const [errorMsg, setErrorMsg] = useState(null);
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  const load = async () => {
+    try {
+      const res = await fetch("/api/talent/bank-account");
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error);
+      setAccount(d.account);
+    } catch (e) {
+      setErrorMsg("振込先口座の取得に失敗しました。");
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => { load(); }, []);
+
+  const startEdit = () => {
+    // 口座番号だけは復元できない(マスクしか持っていない)ため、必ず入れ直してもらう
+    setForm({
+      bankName: account?.bankName || "",
+      branchName: account?.branchName || "",
+      accountType: account?.accountType || "普通",
+      accountNumber: "",
+      accountHolder: account?.accountHolder || "",
+    });
+    setErrorMsg(null);
+    setEditing(true);
+  };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setStatus("saving");
+    setErrorMsg(null);
+    try {
+      const res = await fetch("/api/talent/bank-account", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "保存に失敗しました");
+      setAccount(d.account);
+      setEditing(false);
+      setStatus("saved");
+      setTimeout(() => setStatus("idle"), 2000);
+    } catch (err) {
+      setErrorMsg(err.message);
+      setStatus("idle");
+    }
+  };
+
+  const remove = async () => {
+    if (!window.confirm("登録済みの振込先口座を削除しますか?")) return;
+    setStatus("saving");
+    try {
+      const res = await fetch("/api/talent/bank-account", { method: "DELETE" });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "削除に失敗しました");
+      setAccount(null);
+      setEditing(false);
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setStatus("idle");
+    }
+  };
+
+  const box = { background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 22, marginBottom: 20 };
+
+  return (
+    <div style={box}>
+      <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 15, marginBottom: 6 }}>振込先口座</div>
+      <p style={{ fontSize: 11.5, color: COLORS.faint, margin: "0 0 16px", lineHeight: 1.8 }}>
+        報酬のお振り込み先です。登録後は<strong style={{ color: COLORS.muted }}>口座番号の末尾3桁のみ</strong>を表示します(確認用)。BATTER BOXの運営以外がこの情報を見ることはありません。
+      </p>
+
+      {loading ? (
+        <div style={{ fontSize: 13, color: COLORS.muted }}>読み込み中…</div>
+      ) : editing ? (
+        <form onSubmit={submit}>
+          <div className="two-col" style={{ display: "grid", gap: 14, marginBottom: 14 }}>
+            <div>
+              <label className="field-label">金融機関名</label>
+              <input className="field-input" required placeholder="例: みずほ銀行" value={form.bankName} onChange={set("bankName")} />
+            </div>
+            <div>
+              <label className="field-label">支店名</label>
+              <input className="field-input" required placeholder="例: 渋谷支店" value={form.branchName} onChange={set("branchName")} />
+            </div>
+          </div>
+          <div className="two-col" style={{ display: "grid", gap: 14, marginBottom: 14 }}>
+            <div>
+              <label className="field-label">預金種別</label>
+              <select className="field-select" value={form.accountType} onChange={set("accountType")}>
+                {ACCOUNT_TYPE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="field-label">口座番号(数字7桁)</label>
+              <input className="field-input" required inputMode="numeric" placeholder="1234567" value={form.accountNumber} onChange={set("accountNumber")} />
+            </div>
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <label className="field-label">口座名義(カナ)</label>
+            <input className="field-input" required placeholder="ﾔﾏﾀﾞ ﾀﾛｳ" value={form.accountHolder} onChange={set("accountHolder")} />
+            <p style={{ fontSize: 11, color: COLORS.faint, margin: "6px 0 0" }}>全角カナで入力しても半角カナに自動変換されます。漢字・ひらがなは使えません。</p>
+          </div>
+          <ErrorNote message={errorMsg} />
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, flexWrap: "wrap" }}>
+            <button type="button" className="btn-ghost" onClick={() => { setEditing(false); setErrorMsg(null); }} disabled={status === "saving"}>キャンセル</button>
+            <button className="btn-primary" type="submit" disabled={status === "saving"}>{status === "saving" ? "保存中…" : "保存する"}</button>
+          </div>
+        </form>
+      ) : account ? (
+        <>
+          <div style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "14px 16px", fontSize: 13, lineHeight: 2 }}>
+            <div>{account.bankName} {account.branchName}</div>
+            <div>{account.accountType} <span style={{ fontFamily: FONT_MONO }}>{account.accountNumberMasked}</span></div>
+            <div style={{ fontFamily: FONT_MONO }}>{account.accountHolder}</div>
+          </div>
+          <ErrorNote message={errorMsg} />
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14, flexWrap: "wrap" }}>
+            <button type="button" className="btn-ghost" onClick={remove} disabled={status === "saving"} style={{ fontSize: 12.5, padding: "8px 16px" }}>削除</button>
+            <button type="button" className="btn-ghost" onClick={startEdit} style={{ fontSize: 12.5, padding: "8px 16px" }}>変更する</button>
+          </div>
+          {status === "saved" && <div style={{ fontSize: 12, color: COLORS.successDim, textAlign: "right", marginTop: 6 }}>保存しました ✓</div>}
+        </>
+      ) : (
+        <>
+          <div style={{ fontSize: 13, color: COLORS.muted, marginBottom: 14 }}>まだ登録されていません。契約完了後のお振り込みに必要です。</div>
+          <ErrorNote message={errorMsg} />
+          <button type="button" className="btn-primary" onClick={startEdit} style={{ fontSize: 13, padding: "10px 22px" }}>振込先口座を登録する</button>
+        </>
+      )}
+    </div>
+  );
+}
+
 function SettingsView({ mode, user, profile, onBack, onProfileSaved }) {
   // 顔写真は /api/talent/photo で個別に保存するため、プロフィールフォームとは別に状態を持つ
   const [photoUpdatedAt, setPhotoUpdatedAt] = useState(profile.data?.photoUpdatedAt || null);
@@ -4050,6 +4201,7 @@ function SettingsView({ mode, user, profile, onBack, onProfileSaved }) {
           {mode === "company" ? "AI課題診断を一度完了すると、企業情報をここで編集できるようになります。" : "スキルマップ作成を一度完了すると、プロフィールをここで編集できるようになります。"}
         </div>
       )}
+      {mode === "talent" && user.talentId && <TalentBankAccountField />}
       <AccountSettings currentEmail={user.email} />
     </div>
   );

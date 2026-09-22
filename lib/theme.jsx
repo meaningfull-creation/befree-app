@@ -105,10 +105,10 @@ export function GlobalStyle() {
         max-width: 880px; margin: 0 auto;
         padding: 10px max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
       }
-      .app-topbar-logo { height: 42px; width: auto; display: block; }
+      .app-topbar-logo { height: 54px; width: auto; display: block; }
       @media (max-width: 720px) {
         .app-topbar-inner { padding-top: 8px; padding-bottom: 8px; }
-        .app-topbar-logo { height: 32px; }
+        .app-topbar-logo { height: 40px; }
       }
       /* 契約の進行フロー(契約成立→実行中→完了報告→企業が確認→契約完了)のステッパー */
       .flow-steps { display: flex; align-items: flex-start; }

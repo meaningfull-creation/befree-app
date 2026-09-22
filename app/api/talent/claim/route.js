@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
-import { clampAxisScores, sanitizeGrowthAreas } from "@/lib/axes";
+import { clampAxisScores, sanitizeGrowthAreas, sanitizeSubFunctions } from "@/lib/axes";
+import { sanitizeIndustryFit } from "@/lib/industries";
 import { logError } from "@/lib/errorLog";
 
 // POST /api/talent/claim
 // 認証必須(role=talent)。未ログインのまま /api/talent/analyze を進めて得た結果
 // (talentForm・スコア等)を、アカウント作成の直後にまとめて保存する。
-// body: { talentForm, scores, phases, bottlenecks, growthAreas, summary }
+// body: { talentForm, scores, phases, bottlenecks, growthAreas, industryFit, axisEvidence, summary }
 export async function POST(req) {
   try {
     const user = await requireRole("talent");
@@ -15,7 +16,7 @@ export async function POST(req) {
       return NextResponse.json({ error: "実務経験者アカウントでのログインが必要です" }, { status: 401 });
     }
 
-    const { talentForm, scores, phases, bottlenecks, growthAreas, summary } = await req.json();
+    const { talentForm, scores, phases, bottlenecks, growthAreas, industryFit, axisEvidence, summary } = await req.json();
     if (!talentForm?.name || !scores) {
       return NextResponse.json({ error: "talentForm, scores are required" }, { status: 400 });
     }
@@ -27,13 +28,17 @@ export async function POST(req) {
     const experiencedFunctions = Array.isArray(talentForm.experiencedFunctions) ? talentForm.experiencedFunctions : [];
     const workStyleTags = Array.isArray(talentForm.workStyleTags) ? talentForm.workStyleTags : [];
     const valueTags = Array.isArray(talentForm.valueTags) ? talentForm.valueTags : [];
+    const experiencedSubAreas = sanitizeSubFunctions(talentForm.experiencedSubAreas);
+    const safeIndustryFit = sanitizeIndustryFit(industryFit);
+    // 解析時にサニタイズ済みの値がそのまま返ってくる想定だが、クライアント経由のため念のため型だけ確認する
+    const safeAxisEvidence = axisEvidence && typeof axisEvidence === "object" && !Array.isArray(axisEvidence) ? axisEvidence : {};
 
     // 新規作成直後のアカウントを想定しているが、念のため既存のTalentがあれば使い回す。
     let talentId = user.talentId;
     let talentSkillMapId = null;
     if (talentId) {
       const skillMap = await prisma.talentSkillMap.create({
-        data: { talentId, axisScores: clampedScores, phases: safePhases, bottlenecks: safeBottlenecks, growthAreas: safeGrowthAreas, summary: summary || null },
+        data: { talentId, axisScores: clampedScores, phases: safePhases, bottlenecks: safeBottlenecks, growthAreas: safeGrowthAreas, industryFit: safeIndustryFit, axisEvidence: safeAxisEvidence, summary: summary || null },
       });
       await prisma.talent.update({
         where: { id: talentId },
@@ -42,7 +47,9 @@ export async function POST(req) {
           industry: talentForm.industry || null,
           years: talentForm.years,
           bio: talentForm.summary || summary || null,
+          careerHistory: talentForm.summary || null,
           experiencedFunctions,
+          experiencedSubAreas,
           workStyleTags,
           valueTags,
           values: talentForm.values || null,
@@ -57,11 +64,13 @@ export async function POST(req) {
           industry: talentForm.industry || null,
           years: talentForm.years,
           bio: talentForm.summary || summary || null,
+          careerHistory: talentForm.summary || null,
           experiencedFunctions,
+          experiencedSubAreas,
           workStyleTags,
           valueTags,
           values: talentForm.values || null,
-          skillMaps: { create: [{ axisScores: clampedScores, phases: safePhases, bottlenecks: safeBottlenecks, growthAreas: safeGrowthAreas, summary: summary || null }] },
+          skillMaps: { create: [{ axisScores: clampedScores, phases: safePhases, bottlenecks: safeBottlenecks, growthAreas: safeGrowthAreas, industryFit: safeIndustryFit, axisEvidence: safeAxisEvidence, summary: summary || null }] },
           capacity: { create: { maxConcurrentEngagements: 3, currentCommittedHours: 0 } },
         },
         include: { skillMaps: true },

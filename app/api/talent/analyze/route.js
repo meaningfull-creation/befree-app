@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { callClaudeJSON } from "@/lib/claude";
-import { clampAxisScores, sanitizeGrowthAreas } from "@/lib/axes";
+import { clampAxisScores, sanitizeGrowthAreas, sanitizeSubFunctions, sanitizeAxisNotes } from "@/lib/axes";
+import { sanitizeIndustryFit } from "@/lib/industries";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { logError } from "@/lib/errorLog";
@@ -25,7 +26,7 @@ export async function POST(req) {
       return NextResponse.json({ error: "talentForm.name is required" }, { status: 400 });
     }
 
-    const result = await callClaudeJSON(buildTalentSystemPrompt(), buildTalentAnalysisPrompt(talentForm), 3500, { fast: true }); // モバイル利用が中心の人材側は速度を優先
+    const result = await callClaudeJSON(buildTalentSystemPrompt(), buildTalentAnalysisPrompt(talentForm), 4500, { fast: true }); // モバイル利用が中心の人材側は速度を優先
     const scores = clampAxisScores(result.scores, 30);
     const phases = Array.isArray(result.phases) ? result.phases : [];
     const bottlenecks = Array.isArray(result.bottlenecks) ? result.bottlenecks : [];
@@ -33,6 +34,11 @@ export async function POST(req) {
     const experiencedFunctions = Array.isArray(talentForm.experiencedFunctions) ? talentForm.experiencedFunctions : [];
     const workStyleTags = Array.isArray(talentForm.workStyleTags) ? talentForm.workStyleTags : [];
     const valueTags = Array.isArray(talentForm.valueTags) ? talentForm.valueTags : [];
+    const experiencedSubAreas = sanitizeSubFunctions(talentForm.experiencedSubAreas);
+    const industryFit = sanitizeIndustryFit(result.industryFit);
+    // 採点根拠は全10軸のキーを保証したうえで、空の軸は落として保存する
+    const allNotes = sanitizeAxisNotes(result.evidence);
+    const axisEvidence = Object.fromEntries(Object.entries(allNotes).filter(([, v]) => v));
 
     // 同一アカウントでの再解析は、新しいTalentを作らず既存プロフィールを更新し、
     // スキルマップだけ新規追加する(履歴として残す)。
@@ -43,7 +49,7 @@ export async function POST(req) {
       try {
         if (talentId) {
           const skillMap = await prisma.talentSkillMap.create({
-            data: { talentId, axisScores: scores, phases, bottlenecks, growthAreas, summary: result.summary || null },
+            data: { talentId, axisScores: scores, phases, bottlenecks, growthAreas, industryFit, axisEvidence, summary: result.summary || null },
           });
           const updated = await prisma.talent.update({
             where: { id: talentId },
@@ -52,7 +58,9 @@ export async function POST(req) {
               industry: talentForm.industry || null,
               years: talentForm.years,
               bio: talentForm.summary || null,
+              careerHistory: talentForm.summary || null,
               experiencedFunctions,
+              experiencedSubAreas,
               workStyleTags,
               valueTags,
               values: talentForm.values || null,
@@ -68,12 +76,14 @@ export async function POST(req) {
               industry: talentForm.industry || null,
               years: talentForm.years,
               bio: talentForm.summary || null,
+              careerHistory: talentForm.summary || null,
               experiencedFunctions,
+              experiencedSubAreas,
               workStyleTags,
               valueTags,
               values: talentForm.values || null,
               skillMaps: {
-                create: [{ axisScores: scores, phases, bottlenecks, growthAreas, summary: result.summary || null }],
+                create: [{ axisScores: scores, phases, bottlenecks, growthAreas, industryFit, axisEvidence, summary: result.summary || null }],
               },
               capacity: { create: { maxConcurrentEngagements: 3, currentCommittedHours: 0 } },
             },
@@ -95,6 +105,8 @@ export async function POST(req) {
       phases,
       bottlenecks,
       growthAreas,
+      industryFit,
+      axisEvidence,
       summary: result.summary || null,
       talentId,
       talentSkillMapId,

@@ -15,7 +15,7 @@ async function Nav() {
 
   return (
     <header style={{ display: "flex", alignItems: "center", gap: 10, maxWidth: 1040, margin: "0 auto", padding: "24px 24px 0" }}>
-      <img src="/logo.png" alt="BATTER BOX" style={{ height: 38, width: "auto" }} />
+      <img src="/logo.png" alt="BATTER BOX" style={{ height: 50, width: "auto" }} />
       <div style={{ marginLeft: "auto", display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
         {!user && (
           <>

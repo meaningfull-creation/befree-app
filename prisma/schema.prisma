@@ -71,7 +71,9 @@ model Talent {
   industry             String? // 主な業種・事業ドメインの経験
   years                String?
   bio                  String?
+  careerHistory        String? // 職歴・実績(自由記述)。v5.4で bio と同じ内容を保持する一本化した入力欄
   experiencedFunctions Json? // 経験してきた機能領域(複数選択、AXESのkeyの配列)。スキル分析の精度向上に使う
+  experiencedSubAreas  Json? // 機能領域の中での具体的な経験(lib/axes.js の FUNCTION_SUBAREAS のラベル配列)。採点根拠の具体化に使う
   workStyleTags        Json? // 得意な働き方(複数選択タグ)
   valueTags            Json? // 大切にしている価値観(複数選択タグ)
   values               String? // 仕事において大切にしていること・価値観(自由記述の補足)
@@ -82,8 +84,25 @@ model Talent {
 
   skillMaps TalentSkillMap[]
   capacity  Capacity?
-  user      User?
-  photo     TalentPhoto?
+  user        User?
+  photo       TalentPhoto?
+  bankAccount TalentBankAccount?
+}
+
+// 人材の振込先口座。報酬の支払いに使う機微情報のため、本人と管理者しか参照できない
+// (APIレベルで口座番号はマスクして返し、フルの値は保存時のみ扱う)。
+// Talent本体ではなく別テーブルに分けることで、マッチング等の一覧取得で誤って読み出さないようにしている。
+model TalentBankAccount {
+  id            String   @id @default(uuid())
+  talentId      String   @unique
+  talent        Talent   @relation(fields: [talentId], references: [id])
+  bankName      String // 金融機関名
+  branchName    String // 支店名
+  accountType   String // 普通 | 当座
+  accountNumber String // 口座番号
+  accountHolder String // 口座名義(カナ)
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
 }
 
 // 人材の顔写真。Talent本体にBytesを持たせると、マッチング等の一覧取得(findMany)のたびに
@@ -108,6 +127,8 @@ model TalentSkillMap {
   phases      Json // 適性のある事業フェーズタグ
   bottlenecks Json // 強みが活きる課題領域タグ
   growthAreas Json? // これから伸ばしていきたい領域(相対的にスコアが低い軸の建設的な分析、配列)
+  industryFit Json? // 経験を活かせる可能性がある業界の候補([{industry, reason}]、最大4件)
+  axisEvidence Json? // 軸ごとの採点根拠の一言({axisKey: "根拠"})。スコアの説明責任を果たすために保存する
   summary     String?
   createdAt   DateTime @default(now())
 
