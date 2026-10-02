@@ -382,6 +382,7 @@ model User {
   sessions Session[]
   messages Message[]
   passwordResetTokens PasswordResetToken[]
+  loginTokens         LoginToken[]
 }
 
 model Session {
@@ -408,6 +409,21 @@ model Message {
 }
 
 // パスワードリセット用のワンタイムトークン。有効期限付き、使用後は失効させる。
+// 「この続きはこちらから」メールのワンタイムログインリンク。
+// v6.8でアカウント作成を入力より前に移したため、途中で間が空いても
+// メールから同じアカウントに戻ってこられるようにする。
+// 使い捨て(usedAt)かつ期限付き。メールクライアントの先読みで消費されないよう、
+// リンクを開いた時点ではログインせず、/continue 画面のボタン(POST)で初めて消費する。
+model LoginToken {
+  id        String    @id @default(uuid()) // このidをそのままログインリンクのトークンとして使う
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
 model PasswordResetToken {
   id        String   @id @default(uuid()) // このidをそのままリセットリンクのトークンとして使う
   userId    String

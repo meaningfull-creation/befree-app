@@ -10,7 +10,8 @@ export const maxDuration = 60;
 
 // POST /api/diagnosis/start
 // 認証は必須ではない。ログイン前の訪問者でも診断を始められるようにするため
-// (アカウント作成は診断結果が出た後にまとめて行う設計 — /api/diagnosis/claim 参照)。
+// v6.8でアカウント作成が入力より前に移ったため、通常はログイン済みで呼ばれる。
+// 未ログインでも対話自体は進むが、その場合は保存されない。
 // 企業アカウントでログイン済みの場合のみ、その場でCompany/DiagnosisSessionに永続化する。
 // body: { companyForm: { name, industry, headcount, phase, revenue } }
 // returns: { question, options, axis, companyId, sessionId, turnId }
@@ -35,7 +36,7 @@ export async function POST(req) {
     // 1問目のターン(DiagnosisTurn)を保存する。同一アカウントでの再診断は、
     // 新しいCompanyを作らず既存のプロフィールを更新して使い回す。
     // 未ログインの場合はここでは何も永続化せず、クライアント側で結果を保持しておき、
-    // アカウント作成時(/api/diagnosis/claim)にまとめて保存する。
+    // 未ログイン時は保存せず、対話だけ進める。
     let companyId = isCompanyUser ? user.companyId : null;
     let sessionId = null;
     let turnId = null;

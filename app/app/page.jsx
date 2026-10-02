@@ -77,14 +77,17 @@ async function postPatch(url, body) {
   return data;
 }
 
-export function ProgressRail({ step, steps, onStepClick }) {
+// minClickableStep: これより前のステップには戻れなくする。
+// v6.8でアカウント作成が最初のステップになり、登録後にそこへ戻ると
+// 「既に登録されています」で詰まるため、登録済みなら2から、という指定に使う。
+export function ProgressRail({ step, steps, onStepClick, minClickableStep = 1 }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 40, flexWrap: "wrap" }}>
       {steps.map((label, i) => {
         const idx = i + 1;
         const active = idx === step;
         const done = idx < step;
-        const clickable = done && !!onStepClick;
+        const clickable = done && !!onStepClick && idx >= minClickableStep;
         const content = (
           <div style={{ display: "flex", alignItems: "center", gap: 8, opacity: active ? 1 : done ? 0.75 : 0.4 }}>
             <div
@@ -333,7 +336,7 @@ export function TalentAvatar({ talentId, name, photoUpdatedAt, size = 46 }) {
 
 // wide: ダッシュボードや一覧など、横幅があるほど情報が並べやすい画面で本文の最大幅を広げる。
 // 対話や読み物の画面は、1行が長くなりすぎないよう従来どおり880pxに保つ。
-export function Shell({ children, step, steps, headerRight, onStepClick, nav, wide }) {
+export function Shell({ children, step, steps, headerRight, onStepClick, nav, wide, minClickableStep = 1 }) {
   return (
     <div className="app-root">
       <GlobalStyle />
@@ -344,7 +347,7 @@ export function Shell({ children, step, steps, headerRight, onStepClick, nav, wi
         </div>
       </header>
       <div className="shell-container" style={{ position: "relative", maxWidth: wide ? 1180 : 880, margin: "0 auto", padding: "28px 24px 80px" }}>
-        {steps && <ProgressRail step={step} steps={steps} onStepClick={onStepClick} />}
+        {steps && <ProgressRail step={step} steps={steps} onStepClick={onStepClick} minClickableStep={minClickableStep} />}
         {children}
       </div>
       {nav && nav.length > 0 && (

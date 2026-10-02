@@ -12,7 +12,7 @@ export const maxDuration = 60;
 
 // POST /api/talent/analyze
 // 認証は必須ではない(未ログインでもスキル解析を進められる。アカウント作成は
-// 結果が出た後にまとめて行う設計 — /api/talent/claim 参照)。
+// v6.8でアカウント作成が入力より前に移ったため、通常はログイン済みで呼ばれる)。
 // 実務経験者アカウントでログイン済みの場合のみ、その場でDB保存する。
 // body: { talentForm: { name, title, industry, years, summary, experiencedFunctions, workStyleTags, valueTags, values } }
 // returns: { scores, phases, bottlenecks, growthAreas, summary, talentId, talentSkillMapId }

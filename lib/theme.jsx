@@ -89,7 +89,8 @@ export function GlobalStyle() {
       .btn-ghost { background: ${COLORS.surface}; color: ${COLORS.text}; border: 1.5px solid ${COLORS.border}; border-radius: 999px; padding: 11px 20px; min-height: 44px; font-size: 13.5px; cursor: pointer; font-family: ${FONT_BODY}; font-weight: 500; transition: border-color 0.15s ease, color 0.15s ease, transform 0.15s ease; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
       .btn-ghost:hover { border-color: ${COLORS.teal}; color: ${COLORS.tealDim}; transform: translateY(-1px); }
       .field-label { font-size: 12.5px; letter-spacing: 0.02em; color: ${COLORS.muted}; margin-bottom: 7px; display: block; font-family: ${FONT_BODY}; font-weight: 500; }
-      .field-input, .field-select { width: 100%; background: ${COLORS.surfaceRaised}; border: 1.5px solid ${COLORS.border}; color: ${COLORS.text}; border-radius: 14px; padding: 12px 14px; font-size: 14px; font-family: ${FONT_BODY}; outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+      /* 入力欄も指で押せる44pxを下回らないようにする(以前は42px) */
+      .field-input, .field-select { width: 100%; min-height: 44px; background: ${COLORS.surfaceRaised}; border: 1.5px solid ${COLORS.border}; color: ${COLORS.text}; border-radius: 14px; padding: 12px 14px; font-size: 14px; font-family: ${FONT_BODY}; outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
       .field-input:focus, .field-select:focus { border-color: ${COLORS.teal}; box-shadow: 0 0 0 3px rgba(244,105,25,0.14); }
       .field-input::placeholder { color: ${COLORS.faint}; }
       *:focus-visible { outline: 2px solid ${COLORS.teal}; outline-offset: 2px; }
