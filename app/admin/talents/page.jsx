@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AdminShell, COLORS } from "@/lib/adminTheme";
-import { reviewTalentAction } from "@/lib/actions";
+import { reviewTalentAction, adminDeleteTalentAction } from "@/lib/actions";
+import DeleteRowButton from "../_components/DeleteRowButton";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +69,7 @@ export default async function TalentsPage({ searchParams }) {
               <th>審査状況</th>
               <th>登録日</th>
               <th></th>
+              <th style={{ textAlign: "right" }}>削除</th>
             </tr>
           </thead>
           <tbody>
@@ -111,12 +113,23 @@ export default async function TalentsPage({ searchParams }) {
                       )}
                     </div>
                   </td>
+                  <td style={{ textAlign: "right" }}>
+                    <div style={{ display: "inline-flex" }}>
+                      <DeleteRowButton
+                        action={adminDeleteTalentAction}
+                        idName="talentId"
+                        id={t.id}
+                        name={t.name}
+                        kindLabel="人材"
+                      />
+                    </div>
+                  </td>
                 </tr>
               );
             })}
             {talents.length === 0 && (
               <tr>
-                <td colSpan={8} style={{ color: COLORS.muted, textAlign: "center", padding: 30 }}>
+                <td colSpan={9} style={{ color: COLORS.muted, textAlign: "center", padding: 30 }}>
                   {q ? "該当する人材が見つかりませんでした" : "まだ人材が登録されていません"}
                 </td>
               </tr>

@@ -196,7 +196,7 @@ export default async function TalentDetailPage({ params }) {
           <>
             <table>
               <thead>
-                <tr><th>軸</th><th>スコア(0〜30・高いほど強み)</th></tr>
+                <tr><th>軸</th><th>経験の配分(10軸合計100点・30点以上で主戦場)</th></tr>
               </thead>
               <tbody>
                 {AXES.map((a) => (
@@ -311,7 +311,6 @@ export default async function TalentDetailPage({ params }) {
         </p>
         <form action={adminDeleteTalentAction} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <input type="hidden" name="talentId" value={talent.id} />
-          <input type="hidden" name="expectedName" value={talent.name} />
           <input className="admin-input" name="confirmText" placeholder={`確認のため「${talent.name}」と入力`} style={{ minWidth: 220 }} />
           <button type="submit" className="admin-btn-muted" style={{ borderColor: COLORS.amber, color: COLORS.amber }}>この人材を完全に削除する</button>
         </form>

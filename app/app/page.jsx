@@ -27,7 +27,7 @@ import {
   LayoutDashboard,
   LogOut,
 } from "lucide-react";
-import { AXES, TALENT_SCORE_RUBRIC, FUNCTION_SUBAREA_OPTIONS, WORK_STYLE_OPTIONS, VALUE_OPTIONS } from "@/lib/axes";
+import { AXES, TALENT_SCORE_RUBRIC, TALENT_FOCUS_POINTS, FUNCTION_SUBAREA_OPTIONS, WORK_STYLE_OPTIONS, VALUE_OPTIONS } from "@/lib/axes";
 import { INDUSTRY_OPTIONS } from "@/lib/industries";
 import { computeScoreDelta } from "@/lib/scoreDelta";
 import { DEFAULT_SCHEDULE } from "@/lib/paymentSchedule";
@@ -1471,7 +1471,7 @@ export function StepTalentAnalyzing({ talentForm, onNext }) {
 // Talent flow — Step 3: skill map result
 // ---------------------------------------------------------------------------
 // 人材のスキルマップ結果画面から、特定の1軸だけをさらに深掘りするミニ対話。
-function TalentAxisDeepDive({ talentForm, axisKey, axisLabel, currentScore, currentNote, talentSkillMapId, onComplete, onCancel }) {
+function TalentAxisDeepDive({ talentForm, axisKey, axisLabel, currentScore, currentScores, currentNote, talentSkillMapId, onComplete, onCancel }) {
   const [messages, setMessages] = useState([]);
   const [history, setHistory] = useState([]);
   const [currentQuestion, setCurrentQuestion] = useState(null);
@@ -1484,10 +1484,11 @@ function TalentAxisDeepDive({ talentForm, axisKey, axisLabel, currentScore, curr
     setErrorMsg(null);
     try {
       const result = await postJSON("/api/talent/axis-deep-dive", {
-        talentForm, axisKey, currentScore, currentNote, history: h, talentSkillMapId,
+        talentForm, axisKey, currentScore, currentScores, currentNote, history: h, talentSkillMapId,
       });
       if (result.done) {
-        onComplete(axisKey, result.score, result.note);
+        // 配点制なので、深掘りすると当該軸だけでなく10軸すべての取り分が変わる
+        onComplete(axisKey, result.score, result.note, result.scores);
         return;
       }
       setMessages((m) => {
@@ -1572,12 +1573,19 @@ export function StepTalentSkillMap({ name, scores, fit, talentForm, talentSkillM
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  const handleDeepDiveComplete = (axisKey, newScore) => {
-    setLocalScores((s) => ({ ...s, [axisKey]: newScore }));
+  const handleDeepDiveComplete = (axisKey, newScore, _newNote, newScores) => {
+    // 配点制: サーバーが10軸すべてを100点に引き直して返すので、丸ごと差し替える
+    setLocalScores((s) => (newScores && typeof newScores === "object" ? newScores : { ...s, [axisKey]: newScore }));
     setDeepDiveAxis(null);
   };
 
-  const data = AXES.map((a) => ({ axis: a.label, score: Math.round(localScores[a.key] * progress), full: 30 }));
+  // 配点制: 合計100点の配分。レーダーの外枠は「即戦力ライン」の TALENT_FOCUS_POINTS で、
+  // そこを超えた軸は枠いっぱいに振り切る(どこに経験が寄っているかが形で分かる)。
+  const data = AXES.map((a) => ({
+    axis: a.label,
+    score: Math.min(TALENT_FOCUS_POINTS, Math.round(localScores[a.key] * progress)),
+    full: TALENT_FOCUS_POINTS,
+  }));
   const strengths = AXES.map((a) => ({ ...a, score: localScores[a.key] })).sort((a, b) => b.score - a.score).slice(0, 3);
   const allAxes = AXES.map((a) => ({ ...a, score: localScores[a.key] })).sort((a, b) => b.score - a.score);
 
@@ -1619,9 +1627,9 @@ export function StepTalentSkillMap({ name, scores, fit, talentForm, talentSkillM
               <div key={a.key} style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ width: 96, fontSize: 12, color: COLORS.muted, flexShrink: 0 }}>{a.label}</div>
                 <div style={{ flex: 1, height: 10, background: COLORS.surfaceRaised, borderRadius: 5, overflow: "hidden" }}>
-                  <div style={{ width: `${Math.round((score / 30) * 100)}%`, height: "100%", background: COLORS.amber, borderRadius: 5, transition: "width 0.3s ease" }} />
+                  <div style={{ width: `${Math.min(100, Math.round((score / TALENT_FOCUS_POINTS) * 100))}%`, height: "100%", background: COLORS.amber, borderRadius: 5, transition: "width 0.3s ease" }} />
                 </div>
-                <div style={{ width: 44, textAlign: "right", fontFamily: FONT_MONO, fontSize: 12.5, color: COLORS.text }}>{score}<span style={{ fontSize: 10, color: COLORS.faint }}>/30</span></div>
+                <div style={{ width: 44, textAlign: "right", fontFamily: FONT_MONO, fontSize: 12.5, color: COLORS.text }}>{score}<span style={{ fontSize: 10, color: COLORS.faint }}>点</span></div>
               </div>
             );
           })}
@@ -1629,7 +1637,7 @@ export function StepTalentSkillMap({ name, scores, fit, talentForm, talentSkillM
       )}
       {/* スコアの見方は、点数を見たあとに確認するものなのでチャートの下に置く */}
       <div style={{ marginTop: 14, marginBottom: 4 }}>
-        <div style={{ fontSize: 11.5, color: COLORS.faint, marginBottom: 8 }}>スコアの見方(10軸・各30点満点)</div>
+        <div style={{ fontSize: 11.5, color: COLORS.faint, marginBottom: 8 }}>配点の見方(経験100点を10軸に配分／{TALENT_FOCUS_POINTS}点以上で「この領域は即戦力」)</div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {TALENT_SCORE_RUBRIC.map((r) => (
             <span
@@ -1641,18 +1649,20 @@ export function StepTalentSkillMap({ name, scores, fit, talentForm, talentSkillM
           ))}
         </div>
         <p style={{ fontSize: 11.5, color: COLORS.faint, margin: "10px 0 0", lineHeight: 1.7 }}>
-          今回の解析で直接お聞きしたのは一部の軸のみです。気になる項目は、下部の「項目ごとに深掘り」からいつでも詳しく確認・更新できます。
+          これは優劣の点数ではなく「経験がどこに寄っているか」の配分です。合計は誰でも100点なので、
+          全部が高い人は存在しません。だからこそ、企業の課題に合った経験を持つ方に打席が回ります。
+          気になる項目は、下部の「項目ごとに深掘り」からいつでも詳しく確認・更新できます(1つの軸を厚くすると、他の軸はその分薄くなります)。
         </p>
       </div>
 
       {revealed && (
         <div className="fade-in" style={{ marginTop: 24 }}>
-          <div style={{ fontSize: 12, color: COLORS.muted, letterSpacing: "0.04em", marginBottom: 10 }}>強みとして特に高いスコアの軸</div>
+          <div style={{ fontSize: 12, color: COLORS.muted, letterSpacing: "0.04em", marginBottom: 10 }}>経験が最も寄っている軸</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 24 }}>
             {strengths.map((s) => (
               <div key={s.key} style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "14px 16px" }}>
                 <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 6 }}>{s.label}</div>
-                <div style={{ fontFamily: FONT_MONO, fontSize: 20, color: COLORS.teal }}>{s.score}<span style={{ fontSize: 11, color: COLORS.faint }}> /30</span></div>
+                <div style={{ fontFamily: FONT_MONO, fontSize: 20, color: COLORS.teal }}>{s.score}<span style={{ fontSize: 11, color: COLORS.faint }}> 点</span></div>
               </div>
             ))}
           </div>
@@ -1739,6 +1749,7 @@ export function StepTalentSkillMap({ name, scores, fit, talentForm, talentSkillM
                           axisKey={a.key}
                           axisLabel={a.label}
                           currentScore={a.score}
+                          currentScores={localScores}
                           currentNote=""
                           talentSkillMapId={talentSkillMapId}
                           onComplete={handleDeepDiveComplete}
@@ -3982,8 +3993,8 @@ function TalentDashboard({ onOpenProjects, onOpenProjectDetail, onBack }) {
             {topStrengths.map((a) => (
               <div key={a.key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontSize: 12.5, fontWeight: 500, width: 104, flexShrink: 0 }}>{a.label}</span>
-                <span className="mini-bar"><span style={{ width: `${Math.round((a.score / 30) * 100)}%` }} /></span>
-                <span style={{ fontFamily: FONT_MONO, fontSize: 11.5, color: COLORS.tealDim, flexShrink: 0 }}>{a.score}<span style={{ color: COLORS.faint }}>/30</span></span>
+                <span className="mini-bar"><span style={{ width: `${Math.min(100, Math.round((a.score / TALENT_FOCUS_POINTS) * 100))}%` }} /></span>
+                <span style={{ fontFamily: FONT_MONO, fontSize: 11.5, color: COLORS.tealDim, flexShrink: 0 }}>{a.score}<span style={{ color: COLORS.faint }}>点</span></span>
               </div>
             ))}
           </div>

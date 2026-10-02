@@ -260,7 +260,6 @@ export default async function CompanyDetailPage({ params }) {
         </p>
         <form action={adminDeleteCompanyAction} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <input type="hidden" name="companyId" value={company.id} />
-          <input type="hidden" name="expectedName" value={company.name} />
           <input className="admin-input" name="confirmText" placeholder={`確認のため「${company.name}」と入力`} style={{ minWidth: 220 }} />
           <button type="submit" className="admin-btn-muted" style={{ borderColor: COLORS.amber, color: COLORS.amber }}>この企業を完全に削除する</button>
         </form>

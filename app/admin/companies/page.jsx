@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AdminShell, COLORS } from "@/lib/adminTheme";
+import { adminDeleteCompanyAction } from "@/lib/actions";
+import DeleteRowButton from "../_components/DeleteRowButton";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +61,7 @@ export default async function CompaniesPage({ searchParams }) {
               <th>従業員数</th>
               <th>最優先ボトルネック</th>
               <th>診断日</th>
+              <th style={{ textAlign: "right" }}>削除</th>
             </tr>
           </thead>
           <tbody>
@@ -74,12 +77,23 @@ export default async function CompaniesPage({ searchParams }) {
                   <td>{c.headcount || "—"}</td>
                   <td>{w ? <span className="admin-badge">{w[0]}: {w[1]}</span> : "未診断"}</td>
                   <td style={{ color: COLORS.muted }}>{new Date(c.createdAt).toLocaleDateString("ja-JP")}</td>
+                  <td style={{ textAlign: "right" }}>
+                    <div style={{ display: "inline-flex" }}>
+                      <DeleteRowButton
+                        action={adminDeleteCompanyAction}
+                        idName="companyId"
+                        id={c.id}
+                        name={c.name}
+                        kindLabel="企業"
+                      />
+                    </div>
+                  </td>
                 </tr>
               );
             })}
             {companies.length === 0 && (
               <tr>
-                <td colSpan={5} style={{ color: COLORS.muted, textAlign: "center", padding: 30 }}>
+                <td colSpan={6} style={{ color: COLORS.muted, textAlign: "center", padding: 30 }}>
                   {q ? "該当する企業が見つかりませんでした" : "まだ企業が登録されていません"}
                 </td>
               </tr>

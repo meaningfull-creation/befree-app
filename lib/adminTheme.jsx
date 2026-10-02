@@ -15,14 +15,17 @@ export const COLORS = {
   teal: "#4FD1C5",
   tealDim: "#2C6E68",
   amber: "#F2B84B",
+  danger: "#FF6B6B",
+  dangerDim: "#5A2A2E",
 };
 export const FONT_DISPLAY = "'Space Grotesk', sans-serif";
 export const FONT_BODY = "'Inter', sans-serif";
 export const FONT_MONO = "'IBM Plex Mono', monospace";
 
 export function AdminGlobalStyle() {
-  return (
-    <style>{`
+  // <style>の子要素にすると React が ' を &#x27; にエスケープしてしまい、
+  // SSRの出力とクライアントの描画がずれてハイドレーションエラーになる。
+  const css = `
       @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
       * { box-sizing: border-box; }
       body { margin: 0; background: ${COLORS.bg}; color: ${COLORS.text}; font-family: ${FONT_BODY}; }
@@ -39,6 +42,8 @@ export function AdminGlobalStyle() {
       .admin-btn:hover { background: rgba(79,209,197,0.08); }
       .admin-btn-muted { font-family: ${FONT_BODY}; font-size: 12.5px; background: transparent; color: ${COLORS.muted}; border: 1px solid ${COLORS.border}; border-radius: 6px; padding: 5px 11px; cursor: pointer; }
       .admin-btn-muted:hover { border-color: ${COLORS.muted}; }
+      .admin-btn-danger { font-family: ${FONT_BODY}; font-size: 12.5px; background: transparent; color: ${COLORS.danger}; border: 1px solid ${COLORS.dangerDim}; border-radius: 6px; padding: 5px 11px; cursor: pointer; white-space: nowrap; }
+      .admin-btn-danger:hover { background: rgba(255,107,107,0.10); border-color: ${COLORS.danger}; }
       .admin-input { font-family: ${FONT_BODY}; font-size: 12.5px; background: ${COLORS.surfaceRaised}; border: 1px solid ${COLORS.border}; color: ${COLORS.text}; border-radius: 6px; padding: 5px 8px; width: 80px; }
       .admin-notify-dot {
         display: inline-flex; align-items: center; justify-content: center;
@@ -53,8 +58,8 @@ export function AdminGlobalStyle() {
         70%  { box-shadow: 0 0 0 6px rgba(255,77,79,0); }
         100% { box-shadow: 0 0 0 0 rgba(255,77,79,0); }
       }
-    `}</style>
-  );
+  `;
+  return <style dangerouslySetInnerHTML={{ __html: css }} />;
 }
 
 // ナビゲーションに表示する「新着」件数。厳密な既読管理はまだ実装していないため、

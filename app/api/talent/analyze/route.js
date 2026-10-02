@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { callClaudeJSON } from "@/lib/claude";
-import { clampAxisScores, sanitizeGrowthAreas, sanitizeSubFunctions, sanitizeAxisNotes } from "@/lib/axes";
+import { normalizeAllocation, sanitizeGrowthAreas, sanitizeSubFunctions, sanitizeAxisNotes } from "@/lib/axes";
 import { sanitizeIndustryFit } from "@/lib/industries";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
@@ -27,7 +27,8 @@ export async function POST(req) {
     }
 
     const result = await callClaudeJSON(buildTalentSystemPrompt(), buildTalentAnalysisPrompt(talentForm), 4500, { fast: true }); // モバイル利用が中心の人材側は速度を優先
-    const scores = clampAxisScores(result.scores, 30);
+    // 配点制: AIの出力は合計がずれるので、合計ちょうど100点に正規化してから保存する
+    const scores = normalizeAllocation(result.scores);
     const phases = Array.isArray(result.phases) ? result.phases : [];
     const bottlenecks = Array.isArray(result.bottlenecks) ? result.bottlenecks : [];
     const growthAreas = sanitizeGrowthAreas(result.growthAreas);

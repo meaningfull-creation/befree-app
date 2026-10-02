@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
-import { clampAxisScores, sanitizeGrowthAreas, sanitizeSubFunctions } from "@/lib/axes";
+import { normalizeAllocation, sanitizeGrowthAreas, sanitizeSubFunctions } from "@/lib/axes";
 import { sanitizeIndustryFit } from "@/lib/industries";
 import { logError } from "@/lib/errorLog";
 
@@ -21,7 +21,8 @@ export async function POST(req) {
       return NextResponse.json({ error: "talentForm, scores are required" }, { status: 400 });
     }
 
-    const clampedScores = clampAxisScores(scores, 30);
+    // 配点制: 合計ちょうど100点に正規化してから保存する
+    const clampedScores = normalizeAllocation(scores);
     const safePhases = Array.isArray(phases) ? phases : [];
     const safeBottlenecks = Array.isArray(bottlenecks) ? bottlenecks : [];
     const safeGrowthAreas = sanitizeGrowthAreas(growthAreas);
