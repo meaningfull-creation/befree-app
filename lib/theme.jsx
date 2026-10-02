@@ -3,7 +3,8 @@
 // サイト全体の配色をそのブランドカラーへ統一している。
 // キー名(teal/tealDim/amber等)は初期実装からの互換のため維持しているが、
 // 値そのものはロゴから抽出したネイビー×オレンジのパレットになっている。
-const COLORS_IN_PROGRESS_BG = "#F46919"; // 進行中バッジの塗り(ブランドのオレンジ)
+const COLORS_IN_PROGRESS_BG = "#C35414"; // 進行中バッジの塗り。ブランドのオレンジ(#F46919)は
+                                        // 白文字で3.05:1しかないため、濃い方のオレンジを使う(4.57:1)
 
 export const COLORS = {
   bg: "#F7F9FC",           // 淡いブルーグレーの背景
@@ -12,7 +13,8 @@ export const COLORS = {
   border: "#DCE3EC",       // 柔らかいブルーグレーの境界線
   text: "#04162D",         // ロゴと同じ濃いネイビー
   muted: "#5B6B82",        // ネイビー系のミュートグレー
-  faint: "#A6B0C0",        // さらに淡いグレー
+  faint: "#646F85",        // 控えめなグレー。#A6B0C0は白地で2.19:1しかなく
+                           // 「/100」「10軸の平均値…」などの説明文が読めなかったため濃くした(5.05:1)
   teal: "#F46919",         // プライマリアクセント(ロゴのオレンジ)
   tealDim: "#C35414",      // プライマリアクセントの濃色
   amber: "#1B3A63",        // セカンダリアクセント(ロゴのネイビーの明るいトーン)
@@ -83,7 +85,8 @@ export function GlobalStyle() {
       .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(244,105,25,0.35); }
       .btn-primary:active { transform: translateY(1px); box-shadow: 0 1px 0 ${COLORS.tealDim}; }
       .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform:none; box-shadow:none; }
-      .btn-ghost { background: ${COLORS.surface}; color: ${COLORS.text}; border: 1.5px solid ${COLORS.border}; border-radius: 999px; padding: 11px 20px; font-size: 13.5px; cursor: pointer; font-family: ${FONT_BODY}; font-weight: 500; transition: border-color 0.15s ease, color 0.15s ease, transform 0.15s ease; text-decoration: none; display: inline-flex; align-items: center; }
+      /* 既定のボタンは指で押せる44pxを下回らないようにする(個別にpaddingを詰めている箇所の保険) */
+      .btn-ghost { background: ${COLORS.surface}; color: ${COLORS.text}; border: 1.5px solid ${COLORS.border}; border-radius: 999px; padding: 11px 20px; min-height: 44px; font-size: 13.5px; cursor: pointer; font-family: ${FONT_BODY}; font-weight: 500; transition: border-color 0.15s ease, color 0.15s ease, transform 0.15s ease; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
       .btn-ghost:hover { border-color: ${COLORS.teal}; color: ${COLORS.tealDim}; transform: translateY(-1px); }
       .field-label { font-size: 12.5px; letter-spacing: 0.02em; color: ${COLORS.muted}; margin-bottom: 7px; display: block; font-family: ${FONT_BODY}; font-weight: 500; }
       .field-input, .field-select { width: 100%; background: ${COLORS.surfaceRaised}; border: 1.5px solid ${COLORS.border}; color: ${COLORS.text}; border-radius: 14px; padding: 12px 14px; font-size: 14px; font-family: ${FONT_BODY}; outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
@@ -156,10 +159,12 @@ export function GlobalStyle() {
       }
       .app-topbar-inner {
         display: flex; align-items: center; gap: 12px;
-        max-width: 880px; margin: 0 auto;
+        max-width: 1080px; margin: 0 auto; /* ナビが6項目あり880pxでは収まらない */
         padding: 10px max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
       }
       .app-topbar-logo { height: 54px; width: auto; display: block; }
+      /* ロゴもリンクなので、指で押せる高さを確保する */
+      .app-topbar-inner > a { display: inline-flex; align-items: center; min-height: 44px; flex-shrink: 0; }
       @media (max-width: 720px) {
         .app-topbar-inner { padding-top: 8px; padding-bottom: 8px; }
         .app-topbar-logo { height: 40px; }
@@ -169,15 +174,18 @@ export function GlobalStyle() {
       .flow-step { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; }
       .flow-step-line { position: absolute; top: 12px; right: 50%; left: -50%; height: 2px; }
       /* 未読バッジ(赤の丸ピル)。ヘッダー・下部タブ・メッセージ一覧で共用 */
-      .nav-badge { background: #e5484d; color: #ffffff; border-radius: 999px; font-size: 10px; font-weight: 700; line-height: 1; min-width: 17px; height: 17px; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; margin-left: 6px; }
+      .nav-badge { background: #C92A2F; color: #ffffff; border-radius: 999px; font-size: 11px; font-weight: 700; line-height: 1; min-width: 18px; height: 18px; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; margin-left: 6px; }
       .nav-badge-float { position: absolute; top: -6px; right: -10px; margin: 0; z-index: 1; box-shadow: 0 0 0 2px ${COLORS.surface}; }
       /* メインメニュー: デスクトップはヘッダーのボタン列、モバイルは画面下部の固定タブ */
-      .top-nav { display: flex; align-items: center; gap: 8px; }
+      .top-nav { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+      /* flexの既定(flex-shrink:1)でボタンが縮み、ラベルが2行に折り返して崩れていた。
+         フォントの読み込みに失敗した環境でも1行に保つ。 */
+      .top-nav > button { white-space: nowrap; flex-shrink: 0; }
       .top-nav .nav-active { border-color: ${COLORS.teal}; color: ${COLORS.tealDim}; font-weight: 700; }
       .bottom-nav { display: none; }
       @media (max-width: 720px) {
         .top-nav { display: none; }
-        .shell-container { padding: 24px 16px 110px !important; }
+        .shell-container { padding: 24px 16px 120px !important; }
         .bottom-nav {
           display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
           background: ${COLORS.surface}; border-top: 1px solid ${COLORS.border};
@@ -186,18 +194,21 @@ export function GlobalStyle() {
           justify-content: space-around;
         }
         .bottom-nav button {
-          flex: 1; min-width: 0; min-height: 52px;
+          flex: 1; min-width: 0; min-height: 56px;
           display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
           background: none; border: none; padding: 6px 2px; cursor: pointer;
-          font-family: ${FONT_BODY}; font-size: 10px; font-weight: 500; color: ${COLORS.muted};
+          font-family: ${FONT_BODY}; font-size: 11px; font-weight: 500; color: ${COLORS.muted};
         }
-        .bottom-nav button .bn-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        /* nowrap+ellipsisだと「ダッシュボ…」と切れて意味が分からなくなるため、折り返す */
+        .bottom-nav button .bn-label { max-width: 100%; line-height: 1.25; text-align: center; overflow-wrap: anywhere; }
         .bottom-nav button.active { color: ${COLORS.teal}; font-weight: 700; }
       }
-      /* 下部タブが6項目になったため、狭い画面ではラベルを一段小さくして収まりを良くする */
+      /* 狭い画面でも11px(自分で決めた下限)を割らないよう、文字は小さくせず
+         字間と余白だけを詰める。それでも入らないラベルは2行に折り返す。 */
       @media (max-width: 400px) {
-        .bottom-nav button { font-size: 9px; padding: 6px 1px; }
+        .bottom-nav button { padding: 6px 1px; letter-spacing: -0.04em; }
       }
+      .bottom-nav button.active { color: ${COLORS.tealDim}; font-weight: 700; }
       @media (max-width: 620px) {
         .two-col { grid-template-columns: 1fr !important; }
         .flow-step > div:last-child { font-size: 10px !important; }

@@ -91,9 +91,10 @@ export function ProgressRail({ step, steps, onStepClick }) {
               style={{
                 width: 22, height: 22, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 11, fontFamily: FONT_MONO,
-                background: done ? COLORS.teal : "transparent",
-                border: `1.5px solid ${done || active ? COLORS.teal : COLORS.border}`,
-                color: done ? COLORS.onAccent : active ? COLORS.teal : COLORS.faint,
+                // 明るいオレンジ(#F46919)に白文字だと3.05:1しかないため濃い方を使う
+                background: done ? COLORS.tealDim : "transparent",
+                border: `1.5px solid ${done || active ? COLORS.tealDim : COLORS.border}`,
+                color: done ? COLORS.onAccent : active ? COLORS.tealDim : COLORS.muted,
                 flexShrink: 0,
               }}
             >
@@ -109,7 +110,8 @@ export function ProgressRail({ step, steps, onStepClick }) {
             {clickable ? (
               <button
                 onClick={() => onStepClick(idx)}
-                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", margin: 0 }}
+                // 丸が22pxしかなく指では押せなかったため、見た目は変えずに当たり判定だけ広げる
+                style={{ background: "none", border: "none", padding: "11px 4px", cursor: "pointer", margin: 0, minHeight: 44, display: "flex", alignItems: "center" }}
                 aria-label={`${label}に戻る`}
               >
                 {content}
@@ -278,6 +280,23 @@ export function TalentPhotoField({ talentId, name, photoUpdatedAt, onChange }) {
 // 人材のアバター。顔写真が登録されていれば /api/talents/[id]/photo を表示し、
 // なければ従来どおり頭文字のプレースホルダーを出す。
 // photoUpdatedAt をクエリに付けて、差し替え直後に古い画像がキャッシュから出るのを防ぐ。
+// 候補一覧で「この人とは既にどこまで進んでいるか」を示すバッジ。
+// 一覧の時点で分からないと、同じ人に二重に連絡してしまう。
+const RELATION_META = {
+  contracted: { label: "契約中", color: COLORS.success, bg: "rgba(34,139,94,0.10)", border: "rgba(34,139,94,0.35)" },
+  talking: { label: "やり取り中", color: COLORS.teal, bg: "rgba(27,58,99,0.08)", border: "rgba(27,58,99,0.30)" },
+  proposed: { label: "連絡済み", color: COLORS.muted, bg: "transparent", border: COLORS.border },
+};
+export function RelationBadge({ relation }) {
+  const m = RELATION_META[relation];
+  if (!m) return null;
+  return (
+    <span style={{ fontSize: 11, fontWeight: 700, color: m.color, background: m.bg, border: `1px solid ${m.border}`, borderRadius: 6, padding: "2px 8px" }}>
+      {m.label}
+    </span>
+  );
+}
+
 export function TalentAvatar({ talentId, name, photoUpdatedAt, size = 46 }) {
   const [failed, setFailed] = useState(false);
   // 写真を差し替えたら、前回の読み込み失敗状態は破棄して再挑戦する
@@ -301,9 +320,10 @@ export function TalentAvatar({ talentId, name, photoUpdatedAt, size = 46 }) {
       aria-hidden="true"
       style={{
         ...base,
-        background: `linear-gradient(135deg, ${COLORS.tealDim}, ${COLORS.surfaceRaised})`,
+        // 以前はグラデーションの明るい側に白文字が乗り、頭文字がほぼ見えなかった(1.12:1)
+        background: COLORS.amber,
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: Math.round(size * 0.33), color: COLORS.onAccent,
+        fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: Math.round(size * 0.36), color: COLORS.onAccent,
       }}
     >
       {(name || "?")[0]}
@@ -583,7 +603,7 @@ export function StepDialog({ companyForm, onNext }) {
               }
             >
               {m.from === "ai" && !m.reflection && (
-                <div style={{ fontSize: 10.5, color: COLORS.faint, marginBottom: 3, fontFamily: FONT_MONO }}>{AI_PERSONA_NAME}</div>
+                <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 3, fontFamily: FONT_MONO }}>{AI_PERSONA_NAME}</div>
               )}
               <div
                 style={
@@ -747,8 +767,9 @@ export function StepSkillMap({ scores, summary, axisNotes, topIssueDetails, comp
         {summary || "対話結果から算出した、成長を阻む要因のスコアです。スコアが低い軸ほど優先度の高いボトルネックです。"}
       </p>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 16, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "18px 22px", marginBottom: 16 }}>
-        <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 34, color: totalScore < 50 ? COLORS.tealDim : COLORS.text }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "18px 22px", marginBottom: 16 }}>
+        {/* 狭い画面で「49」と「/ 100」が上下に割れていたので、ひとまとまりで折り返す */}
+        <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 34, whiteSpace: "nowrap", color: totalScore < 50 ? COLORS.tealDim : COLORS.text }}>
           {Math.round(totalScore * progress)}<span style={{ fontSize: 16, color: COLORS.faint, fontWeight: 500 }}> / 100</span>
         </div>
         <div>
@@ -758,8 +779,8 @@ export function StepSkillMap({ scores, summary, axisNotes, topIssueDetails, comp
       </div>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-        <button className={chartView === "radar" ? "btn-primary" : "btn-ghost"} onClick={() => setChartView("radar")} style={{ fontSize: 12, padding: "6px 14px" }}>レーダー</button>
-        <button className={chartView === "bar" ? "btn-primary" : "btn-ghost"} onClick={() => setChartView("bar")} style={{ fontSize: 12, padding: "6px 14px" }}>棒グラフ</button>
+        <button className={chartView === "radar" ? "btn-primary" : "btn-ghost"} onClick={() => setChartView("radar")} style={{ fontSize: 12, padding: "6px 16px", minHeight: 44 }}>レーダー</button>
+        <button className={chartView === "bar" ? "btn-primary" : "btn-ghost"} onClick={() => setChartView("bar")} style={{ fontSize: 12, padding: "6px 16px", minHeight: 44 }}>棒グラフ</button>
       </div>
 
       {chartView === "radar" ? (
@@ -768,7 +789,7 @@ export function StepSkillMap({ scores, summary, axisNotes, topIssueDetails, comp
             <RadarChart data={data} outerRadius="64%" margin={{ top: 24, right: 40, bottom: 24, left: 40 }}>
               <PolarGrid stroke={COLORS.border} />
               <PolarAngleAxis dataKey="axis" tick={{ fill: COLORS.text, fontSize: 12, fontFamily: FONT_BODY, fontWeight: 500 }} />
-              <PolarRadiusAxis domain={[0, 100]} tick={{ fill: COLORS.faint, fontSize: 9, fontFamily: FONT_MONO }} axisLine={false} tickCount={5} />
+              <PolarRadiusAxis domain={[0, 100]} tick={{ fill: COLORS.faint, fontSize: 11, fontFamily: FONT_MONO }} axisLine={false} tickCount={5} />
               <Radar dataKey="ideal" stroke={COLORS.amber} fill="none" strokeWidth={1.5} strokeDasharray="4 3" isAnimationActive={false} />
               <Radar dataKey="score" stroke={COLORS.teal} fill={COLORS.teal} fillOpacity={0.28} strokeWidth={2} isAnimationActive={false} />
             </RadarChart>
@@ -800,7 +821,9 @@ export function StepSkillMap({ scores, summary, axisNotes, topIssueDetails, comp
       </div>
       {revealed && (
         <div className="fade-in" style={{ marginTop: 24 }}>
-          <div style={{ fontSize: 12, color: COLORS.muted, letterSpacing: "0.04em", marginBottom: 10 }}>成長を止めている課題TOP3</div>
+          <div style={{ fontSize: 12, color: COLORS.muted, letterSpacing: "0.04em", marginBottom: 2 }}>成長を止めている課題TOP3</div>
+          {/* 「1位 22点」は、点数が低いほど深刻だと知らないと逆に読めてしまう */}
+          <div style={{ fontSize: 11.5, color: COLORS.muted, marginBottom: 10 }}>点数が低い項目ほど深刻です。1位がいま最も優先すべき課題です。</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {bottlenecks.map((b, i) => {
               const detail = issueByAxis[b.key];
@@ -809,7 +832,7 @@ export function StepSkillMap({ scores, summary, axisNotes, topIssueDetails, comp
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
                     <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: COLORS.faint }}>{i + 1}位</span>
                     <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 15 }}>{b.label}</span>
-                    <span style={{ fontFamily: FONT_MONO, fontSize: 13, color: COLORS.amber }}>{b.score}点</span>
+                    <span style={{ fontFamily: FONT_MONO, fontSize: 13, color: COLORS.amber }}>{b.score}<span style={{ fontSize: 11, color: COLORS.muted }}>/100点</span></span>
                     {detail && (
                       <span style={{ marginLeft: "auto", fontSize: 11, padding: "2px 9px", borderRadius: 6, border: `1px solid ${priorityColor[detail.priority] || COLORS.border}`, color: priorityColor[detail.priority] || COLORS.muted }}>
                         優先度: {detail.priority}
@@ -1025,8 +1048,15 @@ function StepTalentProposal({ companyScores, companyPhase, companyIndustry, onRe
   return (
     <div className="fade-in">
       <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 600, margin: "0 0 6px" }}>今、御社に必要な経験</h1>
-      <p style={{ color: COLORS.muted, fontSize: 14, margin: "0 0 28px" }}>
+      <p style={{ color: COLORS.muted, fontSize: 14, margin: "0 0 10px" }}>
         優先度の高いボトルネックに対して、実務経験に基づいた伴走人材を提案します。月10時間単位で現場に関与します。
+      </p>
+      {/* MATCH%は「御社の課題TOP3に、その人の経験がどれだけ重なるか」。
+          全分野が得意な人ほど高くなる数字ではないため、意味を添えておかないと
+          50%台を「低い」と読まれてしまう。 */}
+      <p style={{ color: COLORS.muted, fontSize: 12.5, lineHeight: 1.8, margin: "0 0 28px" }}>
+        MATCH%は<strong style={{ color: COLORS.text }}>御社の課題TOP3に、その人の経験がどれだけ重なっているか</strong>を表します。
+        「何でもできる人」ほど高くなる数字ではありません。課題に経験が集中している人ほど高くなります。
       </p>
 
       {errorMsg && <ErrorNote message={errorMsg} onRetry={load} />}
@@ -1052,9 +1082,11 @@ function StepTalentProposal({ companyScores, companyPhase, companyIndustry, onRe
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                   <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 15.5, color: COLORS.text }}>{t.name}</span>
-                  <span style={{ fontSize: 11, background: "rgba(27,58,99,0.12)", color: COLORS.amber, border: "1px solid rgba(27,58,99,0.35)", borderRadius: 6, padding: "2px 8px", fontFamily: FONT_MONO }}>
+                  <span style={{ fontSize: 11.5, background: "rgba(27,58,99,0.12)", color: COLORS.text, border: "1px solid rgba(27,58,99,0.35)", borderRadius: 6, padding: "2px 8px", fontFamily: FONT_MONO, fontWeight: 700 }}>
                     MATCH {t.match}%
                   </span>
+                  {/* 既に接点のある人かどうかを一覧で分かるようにする(二重に連絡するのを防ぐ) */}
+                  {t.relation && <RelationBadge relation={t.relation} />}
                 </div>
                 <div style={{ fontSize: 13, color: COLORS.muted, margin: "3px 0 6px" }}>{t.role || "—"}</div>
                 {/* 経験(業種・年数)を一覧の時点で分かるようにする */}
@@ -1079,7 +1111,9 @@ function StepTalentProposal({ companyScores, companyPhase, companyIndustry, onRe
       )}
 
       <div style={{ display: "flex", justifyContent: "flex-start", marginTop: 30 }}>
-        <button className="btn-ghost" onClick={onRestart}>最初からやり直す</button>
+        {/* 「最初からやり直す」だけだと、ここから抜けるには診断をやり直すしかないように見える。
+            何をやり直すのかを明示する(通常の移動はヘッダー/下部タブから行える) */}
+        <button className="btn-ghost" onClick={onRestart}>企業情報の入力からやり直す</button>
       </div>
     </div>
   );
@@ -1380,7 +1414,7 @@ export function StepTalentDialogue({ talentForm, onNext }) {
               }
             >
               {m.from === "ai" && !m.reflection && (
-                <div style={{ fontSize: 10.5, color: COLORS.faint, marginBottom: 3, fontFamily: FONT_MONO }}>{AI_PERSONA_NAME}</div>
+                <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 3, fontFamily: FONT_MONO }}>{AI_PERSONA_NAME}</div>
               )}
               <div
                 style={
@@ -1604,8 +1638,8 @@ export function StepTalentSkillMap({ name, scores, fit, talentForm, talentSkillM
       )}
 
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-        <button className={talentChartView === "radar" ? "btn-primary" : "btn-ghost"} onClick={() => setTalentChartView("radar")} style={{ fontSize: 12, padding: "6px 14px" }}>レーダー</button>
-        <button className={talentChartView === "bar" ? "btn-primary" : "btn-ghost"} onClick={() => setTalentChartView("bar")} style={{ fontSize: 12, padding: "6px 14px" }}>棒グラフ</button>
+        <button className={talentChartView === "radar" ? "btn-primary" : "btn-ghost"} onClick={() => setTalentChartView("radar")} style={{ fontSize: 12, padding: "6px 16px", minHeight: 44 }}>レーダー</button>
+        <button className={talentChartView === "bar" ? "btn-primary" : "btn-ghost"} onClick={() => setTalentChartView("bar")} style={{ fontSize: 12, padding: "6px 16px", minHeight: 44 }}>棒グラフ</button>
       </div>
 
       {talentChartView === "radar" ? (
@@ -1614,7 +1648,7 @@ export function StepTalentSkillMap({ name, scores, fit, talentForm, talentSkillM
             <RadarChart data={data} outerRadius="64%" margin={{ top: 24, right: 40, bottom: 24, left: 40 }}>
               <PolarGrid stroke={COLORS.border} />
               <PolarAngleAxis dataKey="axis" tick={{ fill: COLORS.text, fontSize: 12, fontFamily: FONT_BODY, fontWeight: 500 }} />
-              <PolarRadiusAxis domain={[0, 30]} tick={{ fill: COLORS.faint, fontSize: 9, fontFamily: FONT_MONO }} axisLine={false} tickCount={4} />
+              <PolarRadiusAxis domain={[0, TALENT_FOCUS_POINTS]} tick={{ fill: COLORS.faint, fontSize: 11, fontFamily: FONT_MONO }} axisLine={false} tickCount={4} />
               <Radar dataKey="score" stroke={COLORS.amber} fill={COLORS.amber} fillOpacity={0.28} strokeWidth={2} isAnimationActive={false} />
             </RadarChart>
           </ResponsiveContainer>
@@ -1629,7 +1663,7 @@ export function StepTalentSkillMap({ name, scores, fit, talentForm, talentSkillM
                 <div style={{ flex: 1, height: 10, background: COLORS.surfaceRaised, borderRadius: 5, overflow: "hidden" }}>
                   <div style={{ width: `${Math.min(100, Math.round((score / TALENT_FOCUS_POINTS) * 100))}%`, height: "100%", background: COLORS.amber, borderRadius: 5, transition: "width 0.3s ease" }} />
                 </div>
-                <div style={{ width: 44, textAlign: "right", fontFamily: FONT_MONO, fontSize: 12.5, color: COLORS.text }}>{score}<span style={{ fontSize: 10, color: COLORS.faint }}>点</span></div>
+                <div style={{ width: 44, textAlign: "right", fontFamily: FONT_MONO, fontSize: 12.5, color: COLORS.text }}>{score}<span style={{ fontSize: 11, color: COLORS.faint }}>点</span></div>
               </div>
             );
           })}
@@ -1838,7 +1872,7 @@ function StepTalentMatches({ talentScores, talentPhases, onRestart, onOpenThread
                 <div key={i} style={{ background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "12px 16px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 13, fontWeight: 600, fontFamily: FONT_DISPLAY }}>{issue.axisLabel}</span>
-                    {issue.priority && <span style={{ fontSize: 10.5, color: COLORS.tealDim }}>優先度: {issue.priority}</span>}
+                    {issue.priority && <span style={{ fontSize: 11, color: COLORS.tealDim }}>優先度: {issue.priority}</span>}
                   </div>
                   {issue.currentState && <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 4, lineHeight: 1.7 }}>{issue.currentState}</div>}
                 </div>
@@ -2483,7 +2517,7 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, dr
                   )}
                   {suggestedPatterns && (
                     <div className="fade-in" style={{ marginBottom: 14 }}>
-                      <p style={{ fontSize: 10.5, color: COLORS.faint, margin: "0 0 8px" }}>
+                      <p style={{ fontSize: 11, color: COLORS.faint, margin: "0 0 8px" }}>
                         ※ AIによる一般的な相場感に基づく「たたき台」です。パターンを選んだ後も、下の入力欄で数値を自由に調整できます。
                       </p>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
@@ -2495,7 +2529,7 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, dr
                           >
                             <div style={{ fontSize: 11.5, fontWeight: 600, color: COLORS.teal, marginBottom: 4 }}>{p.label}</div>
                             <div style={{ fontSize: 12, fontFamily: FONT_MONO, marginBottom: 4 }}>{p.monthlyHours}h ・ ¥{p.companyAmount.toLocaleString()}</div>
-                            <div style={{ fontSize: 10.5, color: COLORS.muted, lineHeight: 1.5 }}>{p.rationale}</div>
+                            <div style={{ fontSize: 11, color: COLORS.muted, lineHeight: 1.5 }}>{p.rationale}</div>
                           </button>
                         ))}
                       </div>
@@ -2608,13 +2642,13 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, dr
               {showDate && (
                 <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "6px 0 2px" }}>
                   <span style={{ flex: 1, height: 1, background: COLORS.border }} />
-                  <span style={{ fontSize: 10.5, color: COLORS.faint, fontFamily: FONT_MONO, flexShrink: 0 }}>{formatDayLabel(at)}</span>
+                  <span style={{ fontSize: 11, color: COLORS.faint, fontFamily: FONT_MONO, flexShrink: 0 }}>{formatDayLabel(at)}</span>
                   <span style={{ flex: 1, height: 1, background: COLORS.border }} />
                 </div>
               )}
               <div style={{ display: "flex", flexDirection: "column", alignItems: m.mine ? "flex-end" : "flex-start", marginTop: startsGroup ? 6 : -6 }}>
                 {startsGroup && (
-                  <div style={{ fontSize: 10.5, color: COLORS.faint, margin: "0 4px 4px" }}>{m.mine ? "あなた" : counterpartName}</div>
+                  <div style={{ fontSize: 11, color: COLORS.faint, margin: "0 4px 4px" }}>{m.mine ? "あなた" : counterpartName}</div>
                 )}
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 7, maxWidth: "85%", flexDirection: m.mine ? "row-reverse" : "row" }}>
                   <div
@@ -2632,7 +2666,7 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, dr
                     {m.body}
                   </div>
                   {endsGroup && (
-                    <span style={{ fontSize: 10, color: COLORS.faint, fontFamily: FONT_MONO, flexShrink: 0, paddingBottom: 3 }}>
+                    <span style={{ fontSize: 11, color: COLORS.faint, fontFamily: FONT_MONO, flexShrink: 0, paddingBottom: 3 }}>
                       {at.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   )}
@@ -2753,8 +2787,8 @@ function MyPageCompany({ profile, onProceed, onRediagnose, onCompare }) {
           前回の診断結果({new Date(profile.diagnosedAt).toLocaleDateString("ja-JP")})
         </span>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn-ghost" onClick={onCompare} style={{ fontSize: 12, padding: "6px 12px" }}>過去の診断と比較する</button>
-          <button className="btn-ghost" onClick={onRediagnose} style={{ fontSize: 12, padding: "6px 12px" }}>もう一度AI診断を受け直す</button>
+          <button className="btn-ghost" onClick={onCompare} style={{ fontSize: 12, padding: "6px 14px", minHeight: 44 }}>過去の診断と比較する</button>
+          <button className="btn-ghost" onClick={onRediagnose} style={{ fontSize: 12, padding: "6px 14px", minHeight: 44 }}>もう一度AI診断を受け直す</button>
         </div>
       </div>
       <StepSkillMap scores={profile.scores} summary={profile.summary} axisNotes={profile.axisNotes} topIssueDetails={profile.topIssueDetails} companyForm={profile.companyForm} companySkillMapId={profile.companySkillMapId} onNext={onProceed} />
@@ -3149,15 +3183,19 @@ function ProjectsListView({ onOpenProject, onBack }) {
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, flexWrap: "wrap", gap: 8 }}>
                 <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14.5 }}>{p.name}</span>
-                <ProjectStatusBadge project={p} />
+                <span style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
+                  <ProjectStatusBadge project={p} />
+                  {/* カード全体が押せることが分かるようにする */}
+                  <ChevronRight size={16} color={COLORS.muted} />
+                </span>
               </div>
               <div style={{ fontSize: 12, color: COLORS.muted }}>
                 {p.companyName} × {p.talentName} ・ タスク {p.doneTaskCount}/{p.taskCount}完了
                 {p.inProgressTaskCount > 0 && <span style={{ color: COLORS.tealDim }}>(進行中 {p.inProgressTaskCount})</span>}
               </div>
             </button>
-            <a href={`/app/projects/${p.id}`} style={{ fontSize: 11, color: COLORS.faint, display: "inline-block", marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
-              共有可能なURLで開く ↗
+            <a href={`/app/projects/${p.id}`} style={{ fontSize: 12, color: COLORS.muted, display: "inline-flex", alignItems: "center", minHeight: 44, marginTop: 4 }} onClick={(e) => e.stopPropagation()}>
+              共有できるURLで開く ↗
             </a>
           </div>
         ))}
@@ -3443,7 +3481,7 @@ function ProjectDetailView({ projectId, onBack }) {
                 {companyInfo.topIssues.map((issue, i) => (
                   <div key={i} style={{ fontSize: 12.5, color: COLORS.text, background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "8px 12px" }}>
                     <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 600 }}>{issue.axisLabel}</span>
-                    {issue.priority && <span style={{ fontSize: 10.5, color: COLORS.tealDim, marginLeft: 8 }}>優先度: {issue.priority}</span>}
+                    {issue.priority && <span style={{ fontSize: 11, color: COLORS.tealDim, marginLeft: 8 }}>優先度: {issue.priority}</span>}
                     {issue.currentState && <div style={{ color: COLORS.muted, marginTop: 2, fontSize: 12 }}>{issue.currentState}</div>}
                   </div>
                 ))}
@@ -3550,7 +3588,7 @@ function ProjectDetailView({ projectId, onBack }) {
             )
           )}
           {tasks.length > 0 && (
-            <div style={{ fontSize: 10.5, color: COLORS.faint }}>ステータスのバッジをタップ、またはスマホでは行を左右にスワイプして「未着手 → 進行中 → 完了」を切り替えられます。✎でタスク名を編集できます。</div>
+            <div style={{ fontSize: 11, color: COLORS.faint }}>ステータスのバッジをタップ、またはスマホでは行を左右にスワイプして「未着手 → 進行中 → 完了」を切り替えられます。✎でタスク名を編集できます。</div>
           )}
         </div>
         <form onSubmit={addTask} style={{ display: "flex", gap: 8 }}>
@@ -3732,7 +3770,7 @@ function DashboardStatCard({ label, value, sub, accent, tone }) {
       <div style={{ fontSize: 11, color: COLORS.muted, marginBottom: 5, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</div>
       {/* 「カスタマーサクセス」のような長い文字列が値に入るタイルもあるため、文字数で自動的に縮める */}
       <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: typeof value === "string" && value.length > 6 ? 15 : 22, lineHeight: 1.3, color: accent || COLORS.text, overflowWrap: "anywhere" }}>{value}</div>
-      {sub && <div style={{ fontSize: 10.5, color: COLORS.faint, marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 11, color: COLORS.faint, marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</div>}
     </div>
   );
 }
@@ -3779,7 +3817,7 @@ function DashboardProjectRow({ p, onOpen }) {
         <span style={{ fontSize: 11, color: COLORS.muted, fontFamily: FONT_MONO, flexShrink: 0 }}>{p.doneTaskCount}/{p.taskCount}</span>
         {p.totalLoggedHours != null && <span style={{ fontSize: 11, color: COLORS.faint, flexShrink: 0 }}>{p.totalLoggedHours}h</span>}
         {p.lastActivityAt && (
-          <span style={{ fontSize: 10.5, color: COLORS.faint, flexShrink: 0 }}>
+          <span style={{ fontSize: 11, color: COLORS.faint, flexShrink: 0 }}>
             {new Date(p.lastActivityAt).toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" })}
           </span>
         )}
@@ -3876,7 +3914,7 @@ function CompanyDashboard({ onOpenProjects, onOpenProjectDetail, onBack }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ width: 19, height: 19, borderRadius: 6, background: COLORS.teal, color: COLORS.onAccent, fontSize: 11, fontWeight: 700, fontFamily: FONT_DISPLAY, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{idx + 1}</span>
                   <span style={{ fontSize: 12.5, fontWeight: 600, flex: 1, minWidth: 0 }}>{i.axisLabel}</span>
-                  {i.priority && <span style={{ fontSize: 10.5, color: priorityColor[i.priority] || COLORS.muted, flexShrink: 0 }}>{i.priority}</span>}
+                  {i.priority && <span style={{ fontSize: 11, color: priorityColor[i.priority] || COLORS.muted, flexShrink: 0 }}>{i.priority}</span>}
                 </div>
                 {i.currentState && <div style={{ fontSize: 11.5, color: COLORS.muted, marginTop: 5, lineHeight: 1.7 }}>{i.currentState}</div>}
               </div>
@@ -3901,7 +3939,7 @@ function CompanyDashboard({ onOpenProjects, onOpenProjectDetail, onBack }) {
 
         <DashboardCard
           title="進行中プロジェクト"
-          action={d.projects.length > 0 ? <button className="btn-ghost" onClick={onOpenProjects} style={{ fontSize: 11, padding: "4px 11px" }}>すべて見る</button> : null}
+          action={d.projects.length > 0 ? <button className="btn-ghost" onClick={onOpenProjects} style={{ fontSize: 11, padding: "4px 12px", minHeight: 44 }}>すべて見る</button> : null}
           empty={d.projects.length === 0 ? "進行中のプロジェクトはありません。契約が成立すると表示されます。" : null}
           spanAll
         >
@@ -4049,7 +4087,7 @@ function TalentDashboard({ onOpenProjects, onOpenProjectDetail, onBack }) {
 
         <DashboardCard
           title="進行中案件"
-          action={d.projects.length > 0 ? <button className="btn-ghost" onClick={onOpenProjects} style={{ fontSize: 11, padding: "4px 11px" }}>すべて見る</button> : null}
+          action={d.projects.length > 0 ? <button className="btn-ghost" onClick={onOpenProjects} style={{ fontSize: 11, padding: "4px 12px", minHeight: 44 }}>すべて見る</button> : null}
           empty={d.projects.length === 0 ? "進行中の案件はありません。契約が成立すると表示されます。" : null}
           spanAll
         >
@@ -4079,9 +4117,10 @@ function PaymentStatusBadge({ status, isForecast, isCompany }) {
   return (
     <span style={{
       fontSize: 11, fontFamily: FONT_DISPLAY, fontWeight: 700, borderRadius: 999, padding: "3px 10px", whiteSpace: "nowrap",
-      background: paid ? COLORS.success : isForecast ? COLORS.surface : "#FFF3EA",
-      color: paid ? COLORS.onAccent : isForecast ? COLORS.muted : COLORS.tealDim,
-      border: `1.5px solid ${paid ? COLORS.success : isForecast ? COLORS.border : COLORS.teal}`,
+      // 白文字を #1E9E5A に乗せると3.45:1しかないため、確定表示は濃い緑を使う
+      background: paid ? COLORS.successDim : isForecast ? COLORS.surface : "#FFF3EA",
+      color: paid ? COLORS.onAccent : isForecast ? COLORS.muted : "#A8450E",
+      border: `1.5px solid ${paid ? COLORS.successDim : isForecast ? COLORS.border : COLORS.tealDim}`,
     }}>
       {label}
     </span>
@@ -4187,7 +4226,7 @@ function PaymentsView({ mode, onBack, onOpenProjectDetail }) {
           )}
 
           {c.projectId && (
-            <button className="btn-ghost" onClick={() => onOpenProjectDetail(c.projectId)} style={{ fontSize: 12, padding: "7px 16px", marginTop: 12 }}>
+            <button className="btn-ghost" onClick={() => onOpenProjectDetail(c.projectId)} style={{ fontSize: 12, padding: "7px 16px", marginTop: 12, minHeight: 44 }}>
               プロジェクトを開く
             </button>
           )}
@@ -4389,6 +4428,10 @@ function SettingsView({ mode, user, profile, onBack, onProfileSaved }) {
   );
 }
 
+// URLに載せる画面。flow(診断ウィザード)とthread(個別スレッド)は
+// stepや開いているスレッドまでURLに持たせていないため、復元対象から外している。
+const URL_VIEWS = ["mypage", "dashboard", "projects", "inbox", "settings", "compare", "payments"];
+
 export default function Home() {
   const [authState, setAuthState] = useState({ loading: true, user: null });
   const [step, setStep] = useState(1);
@@ -4402,6 +4445,12 @@ export default function Home() {
   const [profile, setProfile] = useState({ loading: true, data: null });
   const [unreadCount, setUnreadCount] = useState(0);
   const initializedViewRef = useRef(false);
+  const skipPushRef = useRef(false);   // popstateで変えた画面をpushStateし返さないための印
+  const urlSyncedRef = useRef(false);  // 最初の1回はreplace、以降はpushで履歴を積む
+  const homeViewRef = useRef("flow");  // popstateハンドラから最新のホーム画面を読むため
+  const pendingCandidatesRef = useRef(false); // ?view=candidates で開かれた(プロフィール取得待ち)
+  const isCandidateStepRef = useRef(false);   // いま候補一覧(診断フローのstep4)を見ているか
+  const openCandidatesRef = useRef(null);     // popstateハンドラから候補一覧を開くため
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -4410,16 +4459,69 @@ export default function Home() {
       .catch(() => setAuthState({ loading: false, user: null }));
   }, []);
 
-  // /app?project=<id> で開かれた場合は、そのプロジェクト詳細を直接表示する
-  // (メール内のリンクや /app/projects/[id] からのリダイレクトで使う)
+  // --- 画面の状態をURLに同期する -------------------------------------------
+  // これまで表示中の画面はReactのstateだけで持っていたため、URLは常に /app のままだった。
+  // そのせいで「ブラウザの戻るでログイン画面まで飛ばされる」「再読み込みすると必ず
+  // マイページに戻る」「この画面を見て、とURLを送れない」という3つの不便があった。
+  // ?view=... をURLに書き、popstate(戻る/進む)で画面を復元する。
+  //
+  // flow(診断ウィザード)とthread(個別スレッド)はURLに含めない。
+  // 途中のstep・開いているスレッドまではURLに持たせていないので、
+  // 復元しても中身が空になってしまうため。threadは一覧(inbox)に寄せる。
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const pid = new URLSearchParams(window.location.search).get("project");
+    const sp = new URLSearchParams(window.location.search);
+    const pid = sp.get("project");
     if (pid) {
+      // /app?project=<id>(メール内のリンクや /app/projects/[id] からのリダイレクト)
       setActiveProjectId(pid);
       setView("projectDetail");
       initializedViewRef.current = true; // マイページ自動オープンに上書きさせない
+      return;
     }
+    const v = sp.get("view");
+    if (v === "candidates") {
+      // 候補一覧はプロフィール(診断結果)が揃ってからでないと開けないので、
+      // ここでは印だけ付けて、下のeffectでプロフィール取得後に開く。
+      pendingCandidatesRef.current = true;
+      initializedViewRef.current = true;
+      return;
+    }
+    if (v && URL_VIEWS.includes(v)) {
+      setView(v);
+      initializedViewRef.current = true;
+    }
+  }, []);
+
+  // 画面が変わったらURLを書き換える。最初の1回だけは履歴を増やさない(replace)。
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!initializedViewRef.current) return;
+    if (skipPushRef.current) { skipPushRef.current = false; return; }
+    let target = "/app";
+    if (view === "projectDetail" && activeProjectId) target = `/app?project=${encodeURIComponent(activeProjectId)}`;
+    else if (view === "thread") target = "/app?view=inbox";
+    else if (view === "flow" && isCandidateStepRef.current) target = "/app?view=candidates";
+    else if (URL_VIEWS.includes(view)) target = `/app?view=${view}`;
+    if (target === window.location.pathname + window.location.search) return;
+    if (urlSyncedRef.current) window.history.pushState({ view }, "", target);
+    else window.history.replaceState({ view }, "", target);
+    urlSyncedRef.current = true;
+  }, [view, activeProjectId]);
+
+  // 戻る/進む
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onPop = () => {
+      const sp = new URLSearchParams(window.location.search);
+      const pid = sp.get("project");
+      const v = sp.get("view");
+      skipPushRef.current = true; // popstateで変えた分をpushStateし返さない
+      if (pid) { setActiveProjectId(pid); setView("projectDetail"); return; }
+      setView(v && URL_VIEWS.includes(v) ? v : homeViewRef.current);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   useEffect(() => {
@@ -4462,6 +4564,15 @@ export default function Home() {
     initializedViewRef.current = true;
   }, [profile]);
 
+  // ?view=candidates で開かれた場合は、プロフィール(診断結果)が揃ってから候補一覧を表示する
+  useEffect(() => {
+    if (!pendingCandidatesRef.current) return;
+    if (profile.loading) return;
+    pendingCandidatesRef.current = false;
+    if (authState.user?.role === "company" && profile.data?.hasData) openCandidatesRef.current?.();
+    else setView(profile.data?.hasData ? "mypage" : "flow");
+  }, [profile, authState.user]);
+
   const reset = () => { setStep(1); setView("flow"); };
   // メッセージ画面から「戻る」で開いた元の画面(マイページ/一覧/マッチング等)に正しく戻すための記録。
   // 以前は一律で診断フロー(view="flow")に戻していたため、「戻ったら診断画面だった」という混乱があった。
@@ -4476,6 +4587,7 @@ export default function Home() {
   const goToMyPage = () => setView("mypage");
   // スキルマップ作成済みのユーザーの「ホーム」はマイページ。未作成なら診断フロー。
   const homeView = profile.data?.hasData ? "mypage" : "flow";
+  homeViewRef.current = homeView;
   const backHome = () => setView(homeView);
   const backFromInbox = () => setView(inboxOrigin && !["inbox", "thread"].includes(inboxOrigin) ? inboxOrigin : homeView);
   const backFromThread = () => setView(threadOrigin === "inbox" ? "inbox" : threadOrigin && threadOrigin !== "thread" ? threadOrigin : homeView);
@@ -4526,16 +4638,25 @@ export default function Home() {
   if (profile.loading) return <LoadingScreen />;
 
   const mode = authState.user.role; // "company" | "talent"
+  // URL同期用。候補一覧は view="flow" + step 4 なので、この2つをrefで渡す。
+  isCandidateStepRef.current = view === "flow" && mode === "company" && step === 4;
+  openCandidatesRef.current = proceedFromMyPageCompany;
   const steps = mode === "company" ? COMPANY_STEPS : TALENT_STEPS;
   // メインメニュー。デスクトップではヘッダーのボタン列、モバイルでは画面下部の固定タブとして表示する。
   const activeNavKey =
-    view === "thread" ? "inbox" : view === "projectDetail" ? "projects" : view;
+    view === "thread" ? "inbox"
+      : view === "projectDetail" ? "projects"
+      : view === "flow" && mode === "company" && step === 4 ? "candidates"
+      : view;
   const navItems = [
     ...(profile.data?.hasData ? [{ key: "mypage", label: "マイページ", Icon: UserRound, onClick: goToMyPage }] : []),
     { key: "inbox", label: "メッセージ", Icon: Send, onClick: openInbox, badge: unreadCount },
     // ダッシュボードは企業側のみナビに出す。人材側はマイページ(スキルマップ)が実質のホームで
     // 項目が多すぎるとタブが狭くなるため、ナビから外して5項目にしている(マイページから開ける)。
     ...(profile.data?.hasData && mode === "company" ? [{ key: "dashboard", label: "ダッシュボード", Icon: LayoutDashboard, onClick: openDashboard }] : []),
+    // 企業の主目的である候補一覧は、これまでマイページを一番下までスクロールしないと
+    // 開けなかった。ナビから1クリックで行けるようにする。
+    ...(profile.data?.hasData && mode === "company" ? [{ key: "candidates", label: "人材を探す", Icon: Users, onClick: proceedFromMyPageCompany }] : []),
     { key: "projects", label: "プロジェクト", Icon: ClipboardList, onClick: openProjects },
     // 企業は「いつ支払うか」、人材は「いつ入金されるか」。同じ画面をロール別の見出しで出す。
     { key: "payments", label: mode === "company" ? "お支払い" : "入金予定", Icon: Wallet, onClick: openPayments },
@@ -4553,7 +4674,7 @@ export default function Home() {
           </button>
         ))}
       </div>
-      <button className="btn-ghost" onClick={logout} title="ログアウト" aria-label="ログアウト" style={{ padding: "8px 11px" }}>
+      <button className="btn-ghost" onClick={logout} title="ログアウト" aria-label="ログアウト" style={{ padding: "8px 12px", minHeight: 44, flexShrink: 0 }}>
         <LogOut size={15} />
       </button>
     </>

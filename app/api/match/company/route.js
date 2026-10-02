@@ -8,7 +8,10 @@ import { getAxisWeightMultipliers } from "@/lib/axisPerformance";
 
 // POST /api/match/company
 // 認証必須(role=company)。body: { companyScores, companyPhase, companyIndustry }
-// returns: { candidates: [{ id, name, role, axis, bottleneckTags, reason, match, breakdown }] }  match降順、稼働上限に達した人材は除外
+// returns: { candidates: [{ id, name, role, axis, bottleneckTags, reason, match, breakdown, relation }] }
+//   match降順、稼働上限に達した人材は除外。
+//   relation は「この企業がその人材と既にどこまで進んでいるか」(contracted | talking | proposed | null)。
+//   一覧の時点で分からないと、同じ人に二重に連絡してしまうため返している。
 export async function POST(req) {
   try {
     const user = await requireRole("company");
@@ -22,14 +25,38 @@ export async function POST(req) {
     }
 
     // 各人材の最新スキルマップを取得(スキルマップは履歴を残す設計のため、直近1件を使う)
-    const [talents, activeCountByTalent, axisWeightMultipliers] = await Promise.all([
+    const [talents, activeCountByTalent, axisWeightMultipliers, myMatches] = await Promise.all([
       prisma.talent.findMany({
         where: { status: "approved" },
         include: { skillMaps: { orderBy: { createdAt: "desc" }, take: 1 }, capacity: true },
       }),
       getActiveEngagementCountByTalent(),
       getAxisWeightMultipliers(),
+      // この企業が既に接点を持っている人材(過去の診断分も含めて全スキルマップ分を見る)
+      user.companyId
+        ? prisma.match.findMany({
+            where: { companySkillMap: { companyId: user.companyId } },
+            select: {
+              status: true,
+              talentSkillMap: { select: { talentId: true } },
+              engagement: { select: { status: true } },
+              _count: { select: { messages: true } },
+            },
+          })
+        : [],
     ]);
+
+    // 人材ID → これまでの進み具合。同じ人材に複数のマッチがある場合は、進んでいる方を採用する。
+    const RELATION_RANK = { proposed: 1, talking: 2, contracted: 3 };
+    const relationByTalent = {};
+    for (const m of myMatches) {
+      const tid = m.talentSkillMap?.talentId;
+      if (!tid) continue;
+      const rel = m.engagement ? "contracted" : m._count.messages > 0 ? "talking" : "proposed";
+      if (!relationByTalent[tid] || RELATION_RANK[rel] > RELATION_RANK[relationByTalent[tid]]) {
+        relationByTalent[tid] = rel;
+      }
+    }
 
     const pool = talents
       .filter((t) => t.skillMaps.length > 0 && isTalentAvailable(t, activeCountByTalent))
@@ -50,6 +77,7 @@ export async function POST(req) {
           axisScores: sm.axisScores,
           phaseTags: sm.phases || [],
           talentSkillMapId: sm.id,
+          relation: relationByTalent[t.id] || null,
         };
       });
 
