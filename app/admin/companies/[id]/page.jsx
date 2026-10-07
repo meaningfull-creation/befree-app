@@ -168,7 +168,7 @@ export default async function CompanyDetailPage({ params }) {
                       <form action={adjustCompanyScoreAction} style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         <input type="hidden" name="skillMapId" value={latest.id} />
                         <input type="hidden" name="axisKey" value={a.key} />
-                        <input type="hidden" name="redirectPath" value={`/admin/companies/${companyId}`} />
+                        <input type="hidden" name="redirectPath" value={`/admin/companies/${company.id}`} />
                         <input className="admin-input" style={{ width: 60 }} type="number" min="0" max="100" name="newScore" defaultValue={latest.axisScores[a.key]} />
                         <button type="submit" className="admin-btn-muted">保存</button>
                       </form>
