@@ -28,6 +28,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { AXES, TALENT_SCORE_RUBRIC, TALENT_FOCUS_POINTS, FUNCTION_SUBAREA_OPTIONS, WORK_STYLE_OPTIONS, VALUE_OPTIONS } from "@/lib/axes";
+import { postSSE } from "@/lib/sseClient";
 import { INDUSTRY_OPTIONS } from "@/lib/industries";
 import { computeScoreDelta } from "@/lib/scoreDelta";
 import { DEFAULT_SCHEDULE } from "@/lib/paymentSchedule";
@@ -505,6 +506,24 @@ function TypingBubble() {
   );
 }
 
+
+// 生成中の文字列を、そのまま吹き出しとして伸ばしていくための差し込み。
+// streaming フラグ付きのメッセージは「まだ確定していない表示」で、
+// 完成時(done)に本物のメッセージへ置き換える。
+function applyStreamDelta(setMessages, delta) {
+  setMessages((m) => {
+    const next = [...m];
+    const put = (kind, text, isReflection) => {
+      const i = next.findIndex((x) => x.streaming === kind);
+      if (i >= 0) next[i] = { ...next[i], text };
+      else next.push({ from: "ai", text, reflection: isReflection, streaming: kind });
+    };
+    if (typeof delta.reflection === "string") put("reflection", delta.reflection, true);
+    if (typeof delta.question === "string") put("question", delta.question, false);
+    return next;
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Company flow — Step 2: AI dialogue (real API calls to /api/diagnosis/*)
 // ---------------------------------------------------------------------------
@@ -525,15 +544,24 @@ export function StepDialog({ companyForm, onNext }) {
     setErrorMsg(null);
     try {
       const isFirst = h.length === 0;
+      // 生成の途中経過を受け取り、文字が出てきたら「入力中…」は引っ込める
+      const onDelta = (d) => {
+        setTyping(false);
+        applyStreamDelta(setMessages, d);
+      };
       const result = isFirst
-        ? await postJSON("/api/diagnosis/start", { companyForm })
-        : await postJSON("/api/diagnosis/answer", {
-            companyForm,
-            history: h,
-            companyId: companyIdRef.current,
-            sessionId: sessionIdRef.current,
-            turnId: turnIdRef.current,
-          });
+        ? await postSSE("/api/diagnosis/start", { companyForm }, onDelta)
+        : await postSSE(
+            "/api/diagnosis/answer",
+            {
+              companyForm,
+              history: h,
+              companyId: companyIdRef.current,
+              sessionId: sessionIdRef.current,
+              turnId: turnIdRef.current,
+            },
+            onDelta
+          );
 
       if (isFirst) {
         if (result.companyId) companyIdRef.current = result.companyId;
@@ -542,19 +570,21 @@ export function StepDialog({ companyForm, onNext }) {
       if (result.turnId) turnIdRef.current = result.turnId;
 
       if (result.done) {
-        setMessages((m) => [...m, { from: "ai", text: result.summary || "回答内容をもとに、10軸でスキルマップを生成します。" }]);
+        setMessages((m) => [...m.filter((x) => !x.streaming), { from: "ai", text: result.summary || "回答内容をもとに、10軸でスキルマップを生成します。" }]);
         setTyping(false);
         setTimeout(() => onNext(result.scores, result.summary, result.axisNotes, result.topIssueDetails, h, result.companySkillMapId), 900);
         return;
       }
+      // 途中表示を、確定した本文で置き換える
       setMessages((m) => {
-        const next = [...m];
+        const next = m.filter((x) => !x.streaming);
         if (result.reflection) next.push({ from: "ai", text: result.reflection, reflection: true });
         next.push({ from: "ai", text: result.question });
         return next;
       });
       setCurrentQuestion({ question: result.question, options: (result.options || []).slice(0, 4), axis: result.axis || null });
     } catch (e) {
+      setMessages((m) => m.filter((x) => !x.streaming)); // 途中まで出た文字は消す
       setErrorMsg("AIとの通信に失敗しました。もう一度お試しください。");
     } finally {
       setTyping(false);
@@ -671,6 +701,7 @@ function AxisDeepDive({ companyForm, axisKey, axisLabel, currentScore, currentNo
       });
       setCurrentQuestion({ question: result.question, options: (result.options || []).slice(0, 4) });
     } catch (e) {
+      setMessages((m) => m.filter((x) => !x.streaming)); // 途中まで出た文字は消す
       setErrorMsg("AIとの通信に失敗しました。もう一度お試しください。");
     } finally {
       setTyping(false);
@@ -1348,24 +1379,31 @@ export function StepTalentDialogue({ talentForm, onNext }) {
     setErrorMsg(null);
     try {
       const isFirst = h.length === 0;
+      // 生成の途中経過を受け取り、文字が出てきたら「入力中…」は引っ込める
+      const onDelta = (d) => {
+        setTyping(false);
+        applyStreamDelta(setMessages, d);
+      };
       const result = isFirst
-        ? await postJSON("/api/talent/dialogue/start", { talentForm })
-        : await postJSON("/api/talent/dialogue/answer", { talentForm, history: h });
+        ? await postSSE("/api/talent/dialogue/start", { talentForm }, onDelta)
+        : await postSSE("/api/talent/dialogue/answer", { talentForm, history: h }, onDelta);
 
       if (result.done) {
-        setMessages((m) => [...m, { from: "ai", text: result.summary || "回答内容をもとに、10軸でスキルマップを生成します。" }]);
+        setMessages((m) => [...m.filter((x) => !x.streaming), { from: "ai", text: result.summary || "回答内容をもとに、10軸でスキルマップを生成します。" }]);
         setTyping(false);
         setTimeout(() => onNext(result), 900);
         return;
       }
+      // 途中表示を、確定した本文で置き換える
       setMessages((m) => {
-        const next = [...m];
+        const next = m.filter((x) => !x.streaming);
         if (result.reflection) next.push({ from: "ai", text: result.reflection, reflection: true });
         next.push({ from: "ai", text: result.question });
         return next;
       });
       setCurrentQuestion({ question: result.question, options: (result.options || []).slice(0, 4), axis: result.axis || null });
     } catch (e) {
+      setMessages((m) => m.filter((x) => !x.streaming)); // 途中まで出た文字は消す
       setErrorMsg("AIとの通信に失敗しました。もう一度お試しください。");
     } finally {
       setTyping(false);
@@ -1536,6 +1574,7 @@ function TalentAxisDeepDive({ talentForm, axisKey, axisLabel, currentScore, curr
       });
       setCurrentQuestion({ question: result.question, options: (result.options || []).slice(0, 4) });
     } catch (e) {
+      setMessages((m) => m.filter((x) => !x.streaming)); // 途中まで出た文字は消す
       setErrorMsg("AIとの通信に失敗しました。もう一度お試しください。");
     } finally {
       setTyping(false);

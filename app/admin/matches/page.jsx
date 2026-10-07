@@ -1,9 +1,14 @@
 import { prisma } from "@/lib/prisma";
-import { AdminShell, COLORS, FONT_MONO } from "@/lib/adminTheme";
+import { AdminShell, AdminPager, COLORS, FONT_MONO } from "@/lib/adminTheme";
 import { scoreMatch } from "@/lib/matching";
 import { getAxisWeightMultipliers } from "@/lib/axisPerformance";
 
 export const dynamic = "force-dynamic";
+
+// マッチング表は「企業 × 人材」の総当たりなので、企業が増えるほど
+// 計算量もHTMLの量も掛け算で増える。300社の時点で1ページ575KB・約1秒かかっていた。
+// 他の一覧と同じ20件ずつに区切る(1ページあたりの計算量も20×人材数に収まる)。
+const PAGE_SIZE = 20;
 
 // 「契約は企業側から提案する」という新しい流れに合わせ、企業が提案したものの
 // まだ人材が回答していない契約(Engagement.status === "proposed")を一覧できるようにしている。
@@ -22,10 +27,23 @@ async function getPendingContracts() {
   });
 }
 
-async function getMatrix() {
-  const [companies, talents, axisWeightMultipliers] = await Promise.all([
-    prisma.company.findMany({ include: { skillMaps: { orderBy: { createdAt: "desc" }, take: 1 } } }),
-    prisma.talent.findMany({ include: { skillMaps: { orderBy: { createdAt: "desc" }, take: 1 } } }),
+async function getMatrix(page) {
+  const [companies, companyTotal, talents, axisWeightMultipliers] = await Promise.all([
+    prisma.company.findMany({
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      // 一覧に出すのは社名・フェーズと最新スキルマップのスコアだけ
+      select: {
+        id: true, name: true, phase: true,
+        skillMaps: { orderBy: { createdAt: "desc" }, take: 1, select: { axisScores: true } },
+      },
+    }),
+    prisma.company.count(),
+    // 人材側は「上位3名」を選ぶために全件が必要。重いカラム(bio等)は読まない。
+    prisma.talent.findMany({
+      select: { id: true, name: true, skillMaps: { orderBy: { createdAt: "desc" }, take: 1, select: { axisScores: true, phases: true } } },
+    }),
     getAxisWeightMultipliers(),
   ]);
 
@@ -33,7 +51,7 @@ async function getMatrix() {
     .filter((t) => t.skillMaps.length > 0)
     .map((t) => ({ id: t.id, name: t.name, axisScores: t.skillMaps[0].axisScores, phases: t.skillMaps[0].phases || [] }));
 
-  return companies
+  const rows = companies
     .filter((c) => c.skillMaps.length > 0)
     .map((c) => {
       const sm = c.skillMaps[0];
@@ -43,10 +61,13 @@ async function getMatrix() {
         .slice(0, 3);
       return { id: c.id, name: c.name, phase: c.phase, top: ranked };
     });
+  return { rows, companyTotal };
 }
 
-export default async function MatchesPage() {
-  const [rows, pendingContracts] = await Promise.all([getMatrix(), getPendingContracts()]);
+export default async function MatchesPage({ searchParams }) {
+  const page = Math.max(1, Number(searchParams?.page) || 1);
+  const [{ rows, companyTotal }, pendingContracts] = await Promise.all([getMatrix(page), getPendingContracts()]);
+  const totalPages = Math.max(1, Math.ceil(companyTotal / PAGE_SIZE));
 
   return (
     <AdminShell current="matches">
@@ -111,6 +132,8 @@ export default async function MatchesPage() {
           </table>
         </div>
       ))}
+
+      <AdminPager page={page} totalPages={totalPages} qsFor={(p) => `?page=${p}`} />
     </AdminShell>
   );
 }

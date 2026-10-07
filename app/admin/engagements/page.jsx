@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { AdminShell, COLORS, FONT_MONO } from "@/lib/adminTheme";
+import { AdminShell, AdminPager, COLORS, FONT_MONO } from "@/lib/adminTheme";
 import {
   recordOutcomeAction,
   updateEngagementStatusAction,
@@ -11,9 +11,15 @@ import {
 
 export const dynamic = "force-dynamic";
 
-async function getEngagements() {
+// 1件あたり請求・支払・成果の明細まで展開するため、全件返すとHTMLが肥大する
+// (60件で533KB)。他の一覧と同じ20件ずつに区切る。
+const PAGE_SIZE = 20;
+
+async function getEngagements(page) {
   return prisma.engagement.findMany({
     orderBy: { createdAt: "desc" },
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
     include: {
       match: {
         include: {
@@ -32,8 +38,10 @@ const STATUS_LABEL = { active: "進行中", paused: "一時停止", completed: "
 const INVOICE_STATUS_LABEL = { draft: "下書き", sent: "送付済み", paid: "入金済み" };
 const PAYOUT_STATUS_LABEL = { draft: "下書き", scheduled: "支払予定", paid: "支払済み" };
 
-export default async function EngagementsPage() {
-  const engagements = await getEngagements();
+export default async function EngagementsPage({ searchParams }) {
+  const page = Math.max(1, Number(searchParams?.page) || 1);
+  const [engagements, total] = await Promise.all([getEngagements(page), prisma.engagement.count()]);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <AdminShell current="engagements">
@@ -217,6 +225,8 @@ export default async function EngagementsPage() {
           </div>
         );
       })}
+
+      <AdminPager page={page} totalPages={totalPages} qsFor={(p) => `?page=${p}`} />
     </AdminShell>
   );
 }

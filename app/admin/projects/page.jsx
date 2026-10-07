@@ -1,10 +1,14 @@
 import { prisma } from "@/lib/prisma";
-import { AdminShell, COLORS, FONT_MONO } from "@/lib/adminTheme";
+import { AdminShell, AdminPager, COLORS, FONT_MONO } from "@/lib/adminTheme";
 
 export const dynamic = "force-dynamic";
 
-async function getProjects() {
+const PAGE_SIZE = 20;
+
+async function getProjects(page) {
   return prisma.project.findMany({
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
     include: {
       engagement: {
         include: {
@@ -26,8 +30,10 @@ async function getProjects() {
 
 const STATUS_LABEL = { active: "進行中", completed: "完了", paused: "一時停止" };
 
-export default async function AdminProjectsPage() {
-  const projects = await getProjects();
+export default async function AdminProjectsPage({ searchParams }) {
+  const page = Math.max(1, Number(searchParams?.page) || 1);
+  const [projects, total] = await Promise.all([getProjects(page), prisma.project.count()]);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <AdminShell current="projects">
@@ -74,6 +80,8 @@ export default async function AdminProjectsPage() {
           );
         })}
       </div>
+
+      <AdminPager page={page} totalPages={totalPages} qsFor={(p) => `?page=${p}`} />
     </AdminShell>
   );
 }

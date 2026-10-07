@@ -133,6 +133,24 @@ export async function AdminNav({ current }) {
   );
 }
 
+// 一覧のページ送り。企業・人材一覧に同じ記述が重複していたので共通化し、
+// 未ページングだった一覧(マッチング・契約・メッセージ・プロジェクト)にも使う。
+export function AdminPager({ page, totalPages, qsFor }) {
+  if (totalPages <= 1) return null;
+  const linkStyle = (disabled) => ({
+    display: "inline-block",
+    opacity: disabled ? 0.4 : 1,
+    pointerEvents: disabled ? "none" : "auto",
+  });
+  return (
+    <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 16 }}>
+      <a href={qsFor(Math.max(1, page - 1))} className="admin-btn-muted" style={linkStyle(page === 1)}>前へ</a>
+      <span style={{ fontSize: 13, color: COLORS.muted, alignSelf: "center" }}>{page} / {totalPages}</span>
+      <a href={qsFor(Math.min(totalPages, page + 1))} className="admin-btn-muted" style={linkStyle(page === totalPages)}>次へ</a>
+    </div>
+  );
+}
+
 export function AdminShell({ current, children }) {
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 24px 80px" }}>

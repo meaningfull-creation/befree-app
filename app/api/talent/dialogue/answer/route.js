@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { callClaudeJSON } from "@/lib/claude";
+import { callClaudeJSON, callClaudeJSONStream, extractPartialString } from "@/lib/claude";
+import { sseResponse } from "@/lib/sse";
 import { normalizeAllocation, sanitizeGrowthAreas, sanitizeSubFunctions, sanitizeAxisNotes } from "@/lib/axes";
 import { sanitizeIndustryFit } from "@/lib/industries";
 import { prisma } from "@/lib/prisma";
@@ -23,27 +24,50 @@ export const maxDuration = 60;
 //          { done: true, scores, phases, bottlenecks, growthAreas, summary, talentId, talentSkillMapId }
 export async function POST(req) {
   try {
-    const user = await getCurrentUser();
+    // ログイン判定とリクエストの読み取りは互いに独立なので同時に行う。
+    // DBはネットワーク越し(Neon)なので、1往復でも直列に積むと体感に出る。
+    const [user, body] = await Promise.all([getCurrentUser(), req.json()]);
     const isTalentUser = !!(user && user.role === "talent");
 
-    const { talentForm, history } = await req.json();
+    const { talentForm, history } = body;
     if (!talentForm?.name || !Array.isArray(history)) {
       return NextResponse.json({ error: "talentForm and history are required" }, { status: 400 });
     }
 
     if (history.length < MAX_TALENT_DIALOG_TURNS) {
-      const result = await callClaudeJSON(
-        buildTalentDialogSystemPrompt(),
-        buildTalentDialogNextQuestionPrompt(talentForm, history),
-        700,
-        { fast: true } // 対話の1問は高速モデルで返し、体感速度を優先する
-      );
-      return NextResponse.json({
-        done: false,
-        question: result.question,
-        options: (result.options || []).slice(0, 4),
-        axis: result.axis || null,
-        reflection: result.reflection || null,
+      // 質問1問は生成しながら流す。全文を待たずに文字が出ていくので、
+      // 同じ秒数でも「止まっている」感じがなくなる。
+      return sseResponse(async (send) => {
+        let sentReflection = "";
+        let sentQuestion = "";
+
+        const result = await callClaudeJSONStream(
+          buildTalentDialogSystemPrompt(),
+          buildTalentDialogNextQuestionPrompt(talentForm, history),
+          700,
+          { fast: true }, // 対話の1問は高速モデルで返し、体感速度を優先する
+          (text) => {
+            // 出来かけのJSONから、表示する2つの文字列だけを取り出して流す
+            const r = extractPartialString(text, "reflection");
+            if (r && typeof r.value === "string" && r.value !== sentReflection) {
+              sentReflection = r.value;
+              send("delta", { reflection: sentReflection });
+            }
+            const q = extractPartialString(text, "question");
+            if (q && typeof q.value === "string" && q.value !== sentQuestion) {
+              sentQuestion = q.value;
+              send("delta", { question: sentQuestion });
+            }
+          }
+        );
+
+        send("done", {
+          done: false,
+          question: result.question,
+          options: (result.options || []).slice(0, 4),
+          axis: result.axis || null,
+          reflection: result.reflection || null,
+        });
       });
     }
 

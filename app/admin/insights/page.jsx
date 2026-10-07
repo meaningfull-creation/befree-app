@@ -12,8 +12,10 @@ async function getAxisPerformance() {
 }
 
 async function getPhaseAverages() {
+  // フェーズ別の平均を出すだけなので、企業レコード全体ではなく必要な列だけ読む
+  // (全件スキャンする集計なのでページングはできない。読む量を減らして備える)
   const skillMaps = await prisma.companySkillMap.findMany({
-    include: { company: true },
+    select: { companyId: true, axisScores: true, company: { select: { phase: true } } },
     orderBy: { createdAt: "desc" },
   });
   // 企業ごとに最新1件だけ使う(同じ企業が複数回診断している場合の重複を避ける)
