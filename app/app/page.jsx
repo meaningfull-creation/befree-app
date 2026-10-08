@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { AXES, TALENT_SCORE_RUBRIC, TALENT_FOCUS_POINTS, FUNCTION_SUBAREA_OPTIONS, WORK_STYLE_OPTIONS, VALUE_OPTIONS } from "@/lib/axes";
 import { postSSE } from "@/lib/sseClient";
+import { NO_MATCHING_OPTION_ANSWER } from "@/lib/dialogueAnswers";
 import { INDUSTRY_OPTIONS } from "@/lib/industries";
 import { computeScoreDelta } from "@/lib/scoreDelta";
 import { DEFAULT_SCHEDULE } from "@/lib/paymentSchedule";
@@ -496,6 +497,35 @@ export function StepCompany({ onNext, initialForm }) {
   );
 }
 
+// 選択肢のどれも当てはまらないときの逃げ道。
+// 「選択肢を見てもどれが当てはまるか悩んだ」というフィードバックを受けて追加した。
+// 無理に近いものを選ばせると、その答えがそのままスキルマップの採点に使われてしまうため、
+// AI側には「情報が得られなかった軸」として扱わせる(lib/dialogueAnswers.js)。
+// 選択肢より目立たないよう、枠なしのテキストボタンにしている。
+function NoMatchingOption({ onClick, compact = false }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        background: "none",
+        border: "none",
+        padding: compact ? "8px 4px" : "10px 4px",
+        minHeight: 44,
+        color: COLORS.faint,
+        fontFamily: FONT_BODY,
+        fontSize: compact ? 11.5 : 12,
+        textAlign: "left",
+        textDecoration: "underline",
+        textUnderlineOffset: 3,
+        cursor: "pointer",
+      }}
+    >
+      {NO_MATCHING_OPTION_ANSWER}
+    </button>
+  );
+}
+
 function TypingBubble() {
   return (
     <div style={{ display: "inline-flex", gap: 4, alignItems: "center", background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: "4px 14px 14px 14px", padding: "12px 16px" }}>
@@ -665,6 +695,11 @@ export function StepDialog({ companyForm, onNext }) {
           <button key={opt} className="btn-ghost" onClick={() => answer(opt)}>{opt}</button>
         ))}
       </div>
+      {showOptions && (
+        <div style={{ marginTop: 4 }}>
+          <NoMatchingOption onClick={() => answer(NO_MATCHING_OPTION_ANSWER)} />
+        </div>
+      )}
     </div>
   );
 }
@@ -748,6 +783,7 @@ function AxisDeepDive({ companyForm, axisKey, axisLabel, currentScore, currentNo
           {currentQuestion.options.map((opt) => (
             <button key={opt} className="btn-ghost" onClick={() => answer(opt)} style={{ textAlign: "left", fontSize: 12.5, padding: "8px 12px" }}>{opt}</button>
           ))}
+          <NoMatchingOption compact onClick={() => answer(NO_MATCHING_OPTION_ANSWER)} />
         </div>
       )}
     </div>
@@ -1486,6 +1522,7 @@ export function StepTalentDialogue({ talentForm, onNext }) {
               {opt}
             </button>
           ))}
+          <NoMatchingOption onClick={() => answer(NO_MATCHING_OPTION_ANSWER)} />
         </div>
       )}
     </div>
@@ -1621,6 +1658,7 @@ function TalentAxisDeepDive({ talentForm, axisKey, axisLabel, currentScore, curr
           {currentQuestion.options.map((opt) => (
             <button key={opt} className="btn-ghost" onClick={() => answer(opt)} style={{ textAlign: "left", fontSize: 12.5, padding: "8px 12px" }}>{opt}</button>
           ))}
+          <NoMatchingOption compact onClick={() => answer(NO_MATCHING_OPTION_ANSWER)} />
         </div>
       )}
     </div>
