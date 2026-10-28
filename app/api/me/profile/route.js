@@ -17,19 +17,26 @@ export async function GET() {
       prisma.companySkillMap.findFirst({ where: { companyId: user.companyId }, orderBy: { createdAt: "desc" } }),
     ]);
 
-    if (!latest) return NextResponse.json({ role: "company", hasData: false });
+    const companyForm = company
+      ? {
+          name: company.name,
+          industry: company.industry,
+          headcount: company.headcount,
+          fundingType: company.fundingType,
+          phase: company.phase,
+          revenue: company.revenue,
+        }
+      : null;
+
+    // 診断がまだでも、入力済みの会社情報は返す。
+    // 途中で離脱した方が入り直したときに、入力フォームを埋め直さずに済ませるため(v6.14)。
+    // hasData は「スキルマップがあるか」の意味のままなので、画面の出し分けは変わらない。
+    if (!latest) return NextResponse.json({ role: "company", hasData: false, companyForm });
 
     return NextResponse.json({
       role: "company",
       hasData: true,
-      companyForm: {
-        name: company.name,
-        industry: company.industry,
-        headcount: company.headcount,
-        fundingType: company.fundingType,
-        phase: company.phase,
-        revenue: company.revenue,
-      },
+      companyForm,
       scores: latest.axisScores,
       axisNotes: latest.axisNotes,
       topIssueDetails: latest.topIssueDetails,
@@ -47,28 +54,33 @@ export async function GET() {
       prisma.talentSkillMap.findFirst({ where: { talentId: user.talentId }, orderBy: { createdAt: "desc" } }),
     ]);
 
-    if (!latest) return NextResponse.json({ role: "talent", hasData: false });
+    const talentForm = talent
+      ? {
+          name: talent.name,
+          title: talent.title,
+          industry: talent.industry,
+          years: talent.years,
+          summary: talent.bio,
+          // v5.4で自由記述をcareerHistoryに一本化。それ以前のデータはbioにしか入っていないため、
+          // 未設定の場合はbioを初期値として見せる(保存時に両方へ書き込まれて揃う)。
+          careerHistory: talent.careerHistory || talent.bio || "",
+          experiencedFunctions: talent.experiencedFunctions || [],
+          experiencedSubAreas: talent.experiencedSubAreas || [],
+          workStyleTags: talent.workStyleTags || [],
+          valueTags: talent.valueTags || [],
+          values: talent.values,
+        }
+      : null;
+
+    // 自己分析がまだでも、入力済みの経歴は返す(企業側と同じ理由)。
+    if (!latest) return NextResponse.json({ role: "talent", hasData: false, talentForm });
 
     return NextResponse.json({
       role: "talent",
       hasData: true,
       talentId: talent.id,
       photoUpdatedAt: talent.photoUpdatedAt, // 顔写真の有無と、差し替え時のキャッシュ破棄に使う
-      talentForm: {
-        name: talent.name,
-        title: talent.title,
-        industry: talent.industry,
-        years: talent.years,
-        summary: talent.bio,
-        // v5.4で自由記述をcareerHistoryに一本化。それ以前のデータはbioにしか入っていないため、
-        // 未設定の場合はbioを初期値として見せる(保存時に両方へ書き込まれて揃う)。
-        careerHistory: talent.careerHistory || talent.bio || "",
-        experiencedFunctions: talent.experiencedFunctions || [],
-        experiencedSubAreas: talent.experiencedSubAreas || [],
-        workStyleTags: talent.workStyleTags || [],
-        valueTags: talent.valueTags || [],
-        values: talent.values,
-      },
+      talentForm,
       status: talent.status,
       scores: latest.axisScores,
       phases: latest.phases,

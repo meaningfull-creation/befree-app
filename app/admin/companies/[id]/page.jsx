@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AdminShell, COLORS, FONT_MONO } from "@/lib/adminTheme";
 import { AXES } from "@/lib/axes";
+import { companyDisplayName } from "@/lib/companyProfile";
 import { scoreMatch } from "@/lib/matching";
 import { getAxisWeightMultipliers } from "@/lib/axisPerformance";
 import { recordMatchAction, acceptMatchAction, declineMatchAction, adjustCompanyScoreAction, adminUpdateCompanyAction, adminDeleteCompanyAction } from "@/lib/actions";
@@ -10,7 +11,8 @@ export const dynamic = "force-dynamic";
 async function getCompany(id) {
   return prisma.company.findUnique({
     where: { id },
-    include: { skillMaps: { orderBy: { createdAt: "desc" } } },
+    // メールアドレスは、会社名が空の企業(アカウント作成だけで離脱)を識別し連絡するための唯一の手がかり
+    include: { skillMaps: { orderBy: { createdAt: "desc" } }, user: { select: { email: true } } },
   });
 }
 
@@ -118,10 +120,23 @@ export default async function CompanyDetailPage({ params }) {
   return (
     <AdminShell current="companies">
       <a href="/admin/companies" style={{ fontSize: 12.5, color: COLORS.muted }}>← 企業一覧に戻る</a>
-      <h1 style={{ fontSize: 22, fontWeight: 600, margin: "10px 0 4px" }}>{company.name}</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 600, margin: "10px 0 4px", color: company.name ? undefined : COLORS.muted }}>
+        {companyDisplayName(company.name)}
+      </h1>
       <p style={{ color: COLORS.muted, fontSize: 13.5, margin: "0 0 24px" }}>
+        {company.user?.email && <span style={{ fontFamily: FONT_MONO, fontSize: 12.5 }}>{company.user.email}</span>}
+        {company.user?.email && [company.industry, company.phase, company.headcount, company.revenue].some(Boolean) && " / "}
         {[company.industry, company.phase, company.headcount, company.revenue].filter(Boolean).join(" / ")}
       </p>
+      {!latest && (
+        <div className="admin-card" style={{ marginBottom: 20, borderColor: COLORS.amber }}>
+          <div style={{ fontSize: 13, color: COLORS.amber }}>
+            {company.name
+              ? "会社情報の入力までは終えていますが、AI課題診断が未完了のためスキルマップがありません。マッチングの対象にはなりません。"
+              : "アカウント作成だけで、会社情報の入力に進んでいません。マッチングの対象にはなりません。"}
+          </div>
+        </div>
+      )}
 
       <div className="admin-card">
         <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 12 }}>基本情報の編集(表記ミスの修正等)</div>
@@ -260,7 +275,7 @@ export default async function CompanyDetailPage({ params }) {
         </p>
         <form action={adminDeleteCompanyAction} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <input type="hidden" name="companyId" value={company.id} />
-          <input className="admin-input" name="confirmText" placeholder={`確認のため「${company.name}」と入力`} style={{ minWidth: 220 }} />
+          <input className="admin-input" name="confirmText" placeholder={`確認のため「${companyDisplayName(company.name)}」と入力`} style={{ minWidth: 220 }} />
           <button type="submit" className="admin-btn-muted" style={{ borderColor: COLORS.amber, color: COLORS.amber }}>この企業を完全に削除する</button>
         </form>
       </div>

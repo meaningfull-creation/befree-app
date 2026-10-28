@@ -3,6 +3,7 @@ import { callClaudeJSONStream, extractPartialString } from "@/lib/claude";
 import { sseResponse } from "@/lib/sse";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { saveCompanyProfile } from "@/lib/companyProfile";
 import { logError } from "@/lib/errorLog";
 import { buildDialogSystemPrompt, buildDialogNextQuestionPrompt } from "@/lib/dialoguePrompts";
 
@@ -36,22 +37,9 @@ export async function POST(req) {
     const prepareRecords = (async () => {
       if (!isCompanyUser) return { companyId: null, sessionId: null };
       try {
-        let companyId = user.companyId;
-        const profile = {
-          name: companyForm.name,
-          industry: companyForm.industry,
-          headcount: companyForm.headcount,
-          fundingType: companyForm.fundingType,
-          phase: companyForm.phase,
-          revenue: companyForm.revenue,
-        };
-        if (companyId) {
-          await prisma.company.update({ where: { id: companyId }, data: profile });
-        } else {
-          const company = await prisma.company.create({ data: profile });
-          companyId = company.id;
-          await prisma.user.update({ where: { id: user.id }, data: { companyId } });
-        }
+        // 通常はアカウント作成時(v6.14)に作成済みなので、ここは更新になる。
+        // 作成に失敗していた場合や、入力の途中でログインした場合はここで作られる。
+        const companyId = await saveCompanyProfile(prisma, user, companyForm);
         const session = await prisma.diagnosisSession.create({
           data: { companyId, status: "in_progress" },
         });

@@ -19,16 +19,37 @@ export default function DiagnosePage() {
   const [company, setCompany] = useState(null);
   const [result, setResult] = useState(null); // { scores, summary, axisNotes, topIssueDetails }
   const [auth, setAuth] = useState({ loading: true, user: null });
+  const [restoring, setRestoring] = useState(true); // 保存済みの入力内容を読み込み中かどうか
 
-  // 既にログイン済みならアカウント作成は飛ばす(メールのリンクから戻ってきた場合など)
+  // 既にログイン済みならアカウント作成は飛ばす(メールのリンクから戻ってきた場合など)。
+  // あわせて、途中まで入力して離脱した方のために、保存済みの内容をフォームに戻す(v6.14)。
+  // 復元が終わるまで入力画面を出さない — 先に空のフォームを描いてしまうと、
+  // 初期値は最初の描画時にしか読まれないため、あとから届いた内容が反映されない。
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((data) => {
-        setAuth({ loading: false, user: data.user || null });
-        if (data.user?.role === "company") setStep((s) => (s === 1 ? 2 : s));
-      })
-      .catch(() => setAuth({ loading: false, user: null }));
+    let alive = true;
+    (async () => {
+      try {
+        const me = await fetch("/api/auth/me").then((r) => r.json());
+        const user = me.user || null;
+        if (!alive) return;
+        setAuth({ loading: false, user });
+        if (user?.role === "company") {
+          setStep((s) => (s === 1 ? 2 : s));
+          try {
+            const profile = await fetch("/api/me/profile").then((r) => r.json());
+            // 名前が空のレコード(アカウント作成だけで離脱)は、復元しても意味がないので無視する
+            if (alive && profile?.companyForm?.name) setCompany(profile.companyForm);
+          } catch {
+            // 復元できなくても入力はできるので、失敗は無視して空のフォームを出す
+          }
+        }
+      } catch {
+        if (alive) setAuth({ loading: false, user: null });
+      } finally {
+        if (alive) setRestoring(false);
+      }
+    })();
+    return () => { alive = false; };
   }, []);
 
   const headerRight = auth.user ? null : (
@@ -57,7 +78,12 @@ export default function DiagnosePage() {
   return (
     <Shell step={step} steps={STEPS} headerRight={headerRight} onStepClick={setStep} minClickableStep={auth.user ? 2 : 1}>
       {step === 1 && <SignupStep role="company" onDone={() => { setAuth((a) => ({ ...a, user: { role: "company" } })); setStep(2); }} />}
-      {step === 2 && <StepCompany onNext={(form) => { setCompany(form); setStep(3); }} initialForm={company} />}
+      {step === 2 && restoring && (
+        <div className="fade-in" style={{ textAlign: "center", padding: "80px 0", color: COLORS.muted, fontSize: 13.5 }}>
+          読み込んでいます…
+        </div>
+      )}
+      {step === 2 && !restoring && <StepCompany onNext={(form) => { setCompany(form); setStep(3); }} initialForm={company} />}
       {step === 3 && (
         <StepDialog
           companyForm={company}

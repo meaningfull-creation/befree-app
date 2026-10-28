@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { companyDisplayName } from "@/lib/companyProfile";
 import { requireRole } from "@/lib/auth";
 
 function csvEscape(value) {
@@ -24,18 +25,19 @@ export async function GET(req) {
   const companies = await prisma.company.findMany({
     where,
     orderBy: { createdAt: "desc" },
-    include: { skillMaps: { orderBy: { createdAt: "desc" }, take: 1 } },
+    include: { skillMaps: { orderBy: { createdAt: "desc" }, take: 1 }, user: { select: { email: true } } },
   });
 
   let csv = "\uFEFF"; // Excelで文字化けしないようUTF-8 BOMを付与
-  csv += toCsvRow(["会社名", "登録状況", "業種", "従業員数", "外部資本の有無", "成長段階", "年商", "最新診断日", "総合スコア"]);
+  csv += toCsvRow(["会社名", "メールアドレス", "登録状況", "業種", "従業員数", "外部資本の有無", "成長段階", "年商", "最新診断日", "総合スコア"]);
   for (const c of companies) {
     const sm = c.skillMaps[0];
     const avg = sm ? Math.round(Object.values(sm.axisScores).reduce((s, v) => s + v, 0) / Object.values(sm.axisScores).length) : "";
     csv += toCsvRow([
-      c.name,
-      // スキルマップが無い = 会社情報の入力まで終えてAI課題診断が未完了
-      sm ? "完了" : "入力途中",
+      companyDisplayName(c.name),
+      c.user?.email ?? "",
+      // 一覧の「登録状況」と同じ区分。会社名が空 = アカウント作成だけで離脱した企業
+      sm ? "完了" : c.name ? "入力途中" : "アカウントのみ",
       c.industry, c.headcount,
       c.fundingType === "vc" ? "外部資本あり" : c.fundingType === "independent" ? "外部資本なし" : "",
       c.phase, c.revenue,

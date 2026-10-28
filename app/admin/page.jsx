@@ -4,14 +4,15 @@ import { AdminShell, COLORS, FONT_MONO } from "@/lib/adminTheme";
 export const dynamic = "force-dynamic"; // 常に最新のDB状態を表示する
 
 async function getCounts() {
-  const [companies, talents, companiesIncomplete, talentsIncomplete, talentsAccountOnly, companySkillMaps, talentSkillMaps, matches, engagements, newInquiries, pendingContracts] = await Promise.all([
+  const [companies, talents, companiesIncomplete, talentsIncomplete, companiesAccountOnly, talentsAccountOnly, companySkillMaps, talentSkillMaps, matches, engagements, newInquiries, pendingContracts] = await Promise.all([
     prisma.company.count(),
     prisma.talent.count(),
     // 入力は始めたがAI対話(診断・自己分析)を終えていない数。
     // レコードは入力の冒頭で作られるので、登録数にはこの方々も含まれる。
-    prisma.company.count({ where: { skillMaps: { none: {} } } }),
+    prisma.company.count({ where: { skillMaps: { none: {} }, NOT: { name: "" } } }),
     prisma.talent.count({ where: { skillMaps: { none: {} }, NOT: { name: "" } } }),
-    // 人材はアカウント作成の時点でレコードを作るため、経歴すら入れていない方もいる
+    // アカウント作成の時点でレコードを作るため、会社情報・経歴すら入れていない方もいる
+    prisma.company.count({ where: { name: "" } }),
     prisma.talent.count({ where: { name: "" } }),
     prisma.companySkillMap.count(),
     prisma.talentSkillMap.count(),
@@ -20,7 +21,7 @@ async function getCounts() {
     prisma.inquiry.count({ where: { status: "new" } }),
     prisma.engagement.count({ where: { status: "proposed" } }),
   ]);
-  return { companies, talents, companiesIncomplete, talentsIncomplete, talentsAccountOnly, companySkillMaps, talentSkillMaps, matches, engagements, newInquiries, pendingContracts };
+  return { companies, talents, companiesIncomplete, talentsIncomplete, companiesAccountOnly, talentsAccountOnly, companySkillMaps, talentSkillMaps, matches, engagements, newInquiries, pendingContracts };
 }
 
 function StatCard({ label, value, note }) {
@@ -40,12 +41,19 @@ export default async function AdminDashboard() {
     <AdminShell current="dashboard">
       <h1 style={{ fontSize: 20, fontWeight: 600, margin: "0 0 6px" }}>ダッシュボード</h1>
       <p style={{ color: COLORS.muted, fontSize: 13.5, margin: "0 0 24px" }}>
-        DBに保存されている企業・人材・マッチングの件数です。人材はアカウント作成の時点、企業は会社情報の入力の時点で
-        レコードを作るため、登録数にはAI対話をまだ終えていない方も含まれます(内訳を各カードに表示しています)。
+        DBに保存されている企業・人材・マッチングの件数です。企業・人材ともアカウント作成の時点でレコードを作るため、
+        登録数にはAI対話をまだ終えていない方も含まれます(内訳を各カードに表示しています)。
       </p>
 
       <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 8 }}>
-        <StatCard label="登録企業数" value={c.companies} note={c.companiesIncomplete > 0 ? `うち${c.companiesIncomplete}社は入力途中` : null} />
+        <StatCard
+          label="登録企業数"
+          value={c.companies}
+          note={[
+            c.companiesAccountOnly > 0 ? `うち${c.companiesAccountOnly}社はアカウントのみ` : null,
+            c.companiesIncomplete > 0 ? `うち${c.companiesIncomplete}社は入力途中` : null,
+          ].filter(Boolean).join(" / ") || null}
+        />
         <StatCard
           label="登録人材数"
           value={c.talents}

@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { AXES, TALENT_SCORE_RUBRIC, TALENT_FOCUS_POINTS, FUNCTION_SUBAREA_OPTIONS, WORK_STYLE_OPTIONS, VALUE_OPTIONS } from "@/lib/axes";
 import { postSSE } from "@/lib/sseClient";
+import { mergeRestoredForm, pickOption, splitOtherValue } from "@/lib/formRestore";
 import { NO_MATCHING_OPTION_ANSWER } from "@/lib/dialogueAnswers";
 import { INDUSTRY_OPTIONS } from "@/lib/industries";
 import { computeScoreDelta } from "@/lib/scoreDelta";
@@ -427,12 +428,29 @@ const PHASE_OPTIONS_INDEPENDENT = ["創業〜3年目(基盤づくり期)", "4〜
 const REVENUE_OPTIONS = ["1000万円未満", "1000万〜1億円", "1〜3億円", "3〜10億円", "10〜30億円", "30億円以上"];
 const TALENT_YEARS_OPTIONS = ["3年未満", "3〜5年", "5〜10年", "10〜15年", "15〜20年", "20年以上"];
 
+const DEFAULT_COMPANY_FORM = {
+  name: "",
+  industry: INDUSTRY_OPTIONS[1],
+  headcount: "11〜30名",
+  fundingType: "independent",
+  phase: PHASE_OPTIONS_INDEPENDENT[1],
+  revenue: "1〜3億円",
+};
+
 export function StepCompany({ onNext, initialForm }) {
-  const [form, setForm] = useState(
-    initialForm?.name
-      ? initialForm
-      : { name: "", industry: INDUSTRY_OPTIONS[1], headcount: "11〜30名", fundingType: "independent", phase: PHASE_OPTIONS_INDEPENDENT[1], revenue: "1〜3億円" }
-  );
+  const [form, setForm] = useState(() => {
+    const merged = mergeRestoredForm(DEFAULT_COMPANY_FORM, initialForm);
+    const fundingType = pickOption(merged.fundingType, FUNDING_TYPE_OPTIONS.map((o) => o.value), DEFAULT_COMPANY_FORM.fundingType);
+    const phaseOptions = fundingType === "vc" ? PHASE_OPTIONS_VC : PHASE_OPTIONS_INDEPENDENT;
+    return {
+      ...merged,
+      fundingType,
+      industry: pickOption(merged.industry, INDUSTRY_OPTIONS, DEFAULT_COMPANY_FORM.industry),
+      headcount: pickOption(merged.headcount, HEADCOUNT_OPTIONS, DEFAULT_COMPANY_FORM.headcount),
+      phase: pickOption(merged.phase, phaseOptions, phaseOptions[1]),
+      revenue: pickOption(merged.revenue, REVENUE_OPTIONS, DEFAULT_COMPANY_FORM.revenue),
+    };
+  });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const setFundingType = (e) => {
     const fundingType = e.target.value;
@@ -1255,25 +1273,38 @@ const TALENT_TITLE_GROUPS = [
 const TALENT_INDUSTRY_OPTIONS = INDUSTRY_OPTIONS;
 
 
+const TALENT_TITLE_OPTIONS = TALENT_TITLE_GROUPS.flatMap((g) => g.options);
+const DEFAULT_TALENT_FORM = {
+  name: "",
+  title: TALENT_TITLE_GROUPS[0].options[0],
+  titleOther: "",
+  industry: TALENT_INDUSTRY_OPTIONS[0],
+  industryOther: "",
+  years: "15〜20年",
+  summary: "",
+  experiencedFunctions: [],
+  experiencedSubAreas: [],
+  workStyleTags: [],
+  valueTags: [],
+  values: "",
+};
+
 export function StepTalentInput({ onNext, initialForm }) {
-  const [form, setForm] = useState(
-    initialForm?.name
-      ? { titleOther: "", industryOther: "", summary: "", experiencedFunctions: [], experiencedSubAreas: [], workStyleTags: [], valueTags: [], values: "", ...initialForm }
-      : {
-          name: "",
-          title: TALENT_TITLE_GROUPS[0].options[0],
-          titleOther: "",
-          industry: TALENT_INDUSTRY_OPTIONS[0],
-          industryOther: "",
-          years: "15〜20年",
-          summary: "",
-          experiencedFunctions: [],
-          experiencedSubAreas: [],
-          workStyleTags: [],
-          valueTags: [],
-          values: "",
-        }
-  );
+  const [form, setForm] = useState(() => {
+    const merged = mergeRestoredForm(DEFAULT_TALENT_FORM, initialForm);
+    // 役職と業種は「その他(自由入力)」で打ち込んだ文言がそのまま保存されている。
+    // 選択肢に無い値はプルダウンでは選べないので、「その他」+自由入力欄に戻す。
+    const title = splitOtherValue(merged.title, TALENT_TITLE_OPTIONS);
+    const industry = splitOtherValue(merged.industry, TALENT_INDUSTRY_OPTIONS);
+    return {
+      ...merged,
+      title: title.value,
+      titleOther: title.other || merged.titleOther,
+      industry: industry.value,
+      industryOther: industry.other || merged.industryOther,
+      years: pickOption(merged.years, TALENT_YEARS_OPTIONS, DEFAULT_TALENT_FORM.years),
+    };
+  });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const valid = form.name.trim().length > 0;
 
@@ -4718,6 +4749,14 @@ export default function Home() {
   if (profile.loading) return <LoadingScreen />;
 
   const mode = authState.user.role; // "company" | "talent"
+
+  // 入力フォームの初期値。この画面で入力し直した内容を優先し、無ければ保存済みの内容を戻す。
+  // 途中まで入力して離脱した方が入り直したとき、同じことを打ち直さずに済ませるため(v6.14)。
+  // 初期値はフォームの初回描画時にしか読まれないので、useEffectではなくここで決める。
+  // 名前が空のレコード(アカウント作成だけで離脱)は復元しても意味がないので無視する。
+  const companyInitialForm = company?.name ? company : profile.data?.companyForm?.name ? profile.data.companyForm : company;
+  const talentInitialForm = talent?.name ? talent : profile.data?.talentForm?.name ? profile.data.talentForm : talent;
+
   // URL同期用。候補一覧は view="flow" + step 4 なので、この2つをrefで渡す。
   isCandidateStepRef.current = view === "flow" && mode === "company" && step === 4;
   openCandidatesRef.current = proceedFromMyPageCompany;
@@ -4842,7 +4881,7 @@ export default function Home() {
   if (mode === "company") {
     return (
       <Shell step={step} steps={COMPANY_STEPS} headerRight={headerRight} onStepClick={goToStep} nav={navItems}>
-        {step === 1 && <StepCompany onNext={(form) => { setCompany(form); setStep(2); }} initialForm={company} />}
+        {step === 1 && <StepCompany onNext={(form) => { setCompany(form); setStep(2); }} initialForm={companyInitialForm} />}
         {step === 2 && (
           <StepDialog
             companyForm={company}
@@ -4859,7 +4898,7 @@ export default function Home() {
 
   return (
     <Shell step={step} steps={TALENT_STEPS} headerRight={headerRight} onStepClick={goToStep} nav={navItems}>
-      {step === 1 && <StepTalentInput onNext={(form) => { setTalent(form); setStep(2); }} initialForm={talent} />}
+      {step === 1 && <StepTalentInput onNext={(form) => { setTalent(form); setStep(2); }} initialForm={talentInitialForm} />}
       {step === 2 && (
         <StepTalentDialogue
           talentForm={talent}

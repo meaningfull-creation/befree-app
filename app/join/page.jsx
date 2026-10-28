@@ -18,16 +18,37 @@ export default function JoinPage() {
   const [talent, setTalent] = useState(null);
   const [result, setResult] = useState(null); // /api/talent/dialogue/answer の最終ターン(done:true)のレスポンス全体
   const [auth, setAuth] = useState({ loading: true, user: null });
+  const [restoring, setRestoring] = useState(true); // 保存済みの入力内容を読み込み中かどうか
 
-  // 既にログイン済みならアカウント作成は飛ばす(メールのリンクから戻ってきた場合など)
+  // 既にログイン済みならアカウント作成は飛ばす(メールのリンクから戻ってきた場合など)。
+  // あわせて、途中まで入力して離脱した方のために、保存済みの内容をフォームに戻す(v6.14)。
+  // 復元が終わるまで入力画面を出さない — 先に空のフォームを描いてしまうと、
+  // 初期値は最初の描画時にしか読まれないため、あとから届いた内容が反映されない。
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((data) => {
-        setAuth({ loading: false, user: data.user || null });
-        if (data.user?.role === "talent") setStep((s) => (s === 1 ? 2 : s));
-      })
-      .catch(() => setAuth({ loading: false, user: null }));
+    let alive = true;
+    (async () => {
+      try {
+        const me = await fetch("/api/auth/me").then((r) => r.json());
+        const user = me.user || null;
+        if (!alive) return;
+        setAuth({ loading: false, user });
+        if (user?.role === "talent") {
+          setStep((s) => (s === 1 ? 2 : s));
+          try {
+            const profile = await fetch("/api/me/profile").then((r) => r.json());
+            // 名前が空のレコード(アカウント作成だけで離脱)は、復元しても意味がないので無視する
+            if (alive && profile?.talentForm?.name) setTalent(profile.talentForm);
+          } catch {
+            // 復元できなくても入力はできるので、失敗は無視して空のフォームを出す
+          }
+        }
+      } catch {
+        if (alive) setAuth({ loading: false, user: null });
+      } finally {
+        if (alive) setRestoring(false);
+      }
+    })();
+    return () => { alive = false; };
   }, []);
 
   const headerRight = auth.user ? null : (
@@ -56,7 +77,12 @@ export default function JoinPage() {
   return (
     <Shell step={step} steps={STEPS} headerRight={headerRight} onStepClick={setStep} minClickableStep={auth.user ? 2 : 1}>
       {step === 1 && <SignupStep role="talent" onDone={() => { setAuth((a) => ({ ...a, user: { role: "talent" } })); setStep(2); }} />}
-      {step === 2 && <StepTalentInput onNext={(form) => { setTalent(form); setStep(3); }} initialForm={talent} />}
+      {step === 2 && restoring && (
+        <div className="fade-in" style={{ textAlign: "center", padding: "80px 0", color: COLORS.muted, fontSize: 13.5 }}>
+          読み込んでいます…
+        </div>
+      )}
+      {step === 2 && !restoring && <StepTalentInput onNext={(form) => { setTalent(form); setStep(3); }} initialForm={talent} />}
       {step === 3 && (
         <StepTalentDialogue
           talentForm={talent}
