@@ -28,12 +28,15 @@ export async function GET(req) {
   });
 
   let csv = "\uFEFF"; // Excelで文字化けしないようUTF-8 BOMを付与
-  csv += toCsvRow(["会社名", "業種", "従業員数", "外部資本の有無", "成長段階", "年商", "最新診断日", "総合スコア"]);
+  csv += toCsvRow(["会社名", "登録状況", "業種", "従業員数", "外部資本の有無", "成長段階", "年商", "最新診断日", "総合スコア"]);
   for (const c of companies) {
     const sm = c.skillMaps[0];
     const avg = sm ? Math.round(Object.values(sm.axisScores).reduce((s, v) => s + v, 0) / Object.values(sm.axisScores).length) : "";
     csv += toCsvRow([
-      c.name, c.industry, c.headcount,
+      c.name,
+      // スキルマップが無い = 会社情報の入力まで終えてAI課題診断が未完了
+      sm ? "完了" : "入力途中",
+      c.industry, c.headcount,
       c.fundingType === "vc" ? "外部資本あり" : c.fundingType === "independent" ? "外部資本なし" : "",
       c.phase, c.revenue,
       sm ? new Date(sm.createdAt).toLocaleDateString("ja-JP") : "",

@@ -9,7 +9,7 @@ const PAGE_SIZE = 20;
 
 async function getTalents(q, page) {
   const where = q ? { name: { contains: q, mode: "insensitive" } } : {};
-  const [talents, total, pendingCount] = await Promise.all([
+  const [talents, total, pendingCount, incompleteCount] = await Promise.all([
     prisma.talent.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -19,8 +19,12 @@ async function getTalents(q, page) {
     }),
     prisma.talent.count({ where }),
     prisma.talent.count({ where: { ...where, status: "pending" } }),
+    // 経歴入力は終えたがAI対話を完了していない方(スキルマップがまだ無い)。
+    // v6.12で、対話の完了を待たずに経歴入力の時点でレコードを作るようにしたため、
+    // この一覧には「入力途中」の方も並ぶ。運営が見分けられるよう件数を出す。
+    prisma.talent.count({ where: { ...where, skillMaps: { none: {} } } }),
   ]);
-  return { talents, total, pendingCount };
+  return { talents, total, pendingCount, incompleteCount };
 }
 
 function bestAxis(axisScores) {
@@ -35,7 +39,7 @@ const STATUS_LABEL = { pending: "審査中", approved: "承認済み", rejected:
 export default async function TalentsPage({ searchParams }) {
   const q = searchParams?.q?.trim() || "";
   const page = Math.max(1, Number(searchParams?.page) || 1);
-  const { talents, total, pendingCount } = await getTalents(q, page);
+  const { talents, total, pendingCount, incompleteCount } = await getTalents(q, page);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const qsFor = (p) => `?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`;
 
@@ -43,7 +47,9 @@ export default async function TalentsPage({ searchParams }) {
     <AdminShell current="talents">
       <h1 style={{ fontSize: 20, fontWeight: 600, margin: "0 0 6px" }}>人材一覧</h1>
       <p style={{ color: COLORS.muted, fontSize: 13.5, margin: "0 0 20px" }}>
-        {total}名が登録されています。{pendingCount > 0 && <span style={{ color: COLORS.amber }}>審査中が{pendingCount}件あります。</span>}
+        {total}名が登録されています。
+        {incompleteCount > 0 && <span style={{ color: COLORS.amber }}>うち{incompleteCount}名はAI対話が未完了(入力途中)です。</span>}
+        {pendingCount > 0 && <span style={{ color: COLORS.amber }}>審査中が{pendingCount}件あります。</span>}
       </p>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
@@ -62,6 +68,7 @@ export default async function TalentsPage({ searchParams }) {
           <thead>
             <tr>
               <th>氏名</th>
+              <th>登録状況</th>
               <th>直近の役職</th>
               <th>経験年数</th>
               <th>最大の強み軸</th>
@@ -80,6 +87,13 @@ export default async function TalentsPage({ searchParams }) {
                 <tr key={t.id}>
                   <td>
                     <a href={`/admin/talents/${t.id}`}>{t.name}</a>
+                  </td>
+                  <td>
+                    {sm ? (
+                      <span className="admin-badge">完了</span>
+                    ) : (
+                      <span className="admin-badge" style={{ color: COLORS.amber }}>入力途中</span>
+                    )}
                   </td>
                   <td style={{ color: COLORS.muted }}>{t.title || "—"}</td>
                   <td style={{ color: COLORS.muted }}>{t.years || "—"}</td>

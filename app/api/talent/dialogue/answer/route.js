@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { callClaudeJSON, callClaudeJSONStream, extractPartialString } from "@/lib/claude";
 import { sseResponse } from "@/lib/sse";
-import { normalizeAllocation, sanitizeGrowthAreas, sanitizeSubFunctions, sanitizeAxisNotes } from "@/lib/axes";
+import { normalizeAllocation, sanitizeGrowthAreas, sanitizeAxisNotes } from "@/lib/axes";
 import { sanitizeIndustryFit } from "@/lib/industries";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { saveTalentProfile } from "@/lib/talentProfile";
 import { logError } from "@/lib/errorLog";
 import {
   buildTalentDialogSystemPrompt,
@@ -79,10 +80,6 @@ export async function POST(req) {
     const phases = Array.isArray(result.phases) ? result.phases : [];
     const bottlenecks = Array.isArray(result.bottlenecks) ? result.bottlenecks : [];
     const growthAreas = sanitizeGrowthAreas(result.growthAreas);
-    const experiencedFunctions = Array.isArray(talentForm.experiencedFunctions) ? talentForm.experiencedFunctions : [];
-    const workStyleTags = Array.isArray(talentForm.workStyleTags) ? talentForm.workStyleTags : [];
-    const valueTags = Array.isArray(talentForm.valueTags) ? talentForm.valueTags : [];
-    const experiencedSubAreas = sanitizeSubFunctions(talentForm.experiencedSubAreas);
     const industryFit = sanitizeIndustryFit(result.industryFit);
     // 採点根拠は全10軸のキーを保証したうえで、空の軸は落として保存する
     const allNotes = sanitizeAxisNotes(result.evidence);
@@ -93,51 +90,15 @@ export async function POST(req) {
     let talentStatus = "approved"; // 新規作成時のDBデフォルトと合わせている(現段階は自動承認運用)
     if (isTalentUser) {
       try {
-        if (talentId) {
-          const skillMap = await prisma.talentSkillMap.create({
-            data: { talentId, axisScores: scores, phases, bottlenecks, growthAreas, industryFit, axisEvidence, summary: result.summary || null },
-          });
-          const updated = await prisma.talent.update({
-            where: { id: talentId },
-            data: {
-              title: talentForm.title,
-              industry: talentForm.industry || null,
-              years: talentForm.years,
-              bio: talentForm.summary || null,
-              careerHistory: talentForm.summary || null,
-              experiencedFunctions,
-              experiencedSubAreas,
-              workStyleTags,
-              valueTags,
-              values: talentForm.values || null,
-            },
-          });
-          talentSkillMapId = skillMap.id;
-          talentStatus = updated.status;
-        } else {
-          const talent = await prisma.talent.create({
-            data: {
-              name: talentForm.name,
-              title: talentForm.title,
-              industry: talentForm.industry || null,
-              years: talentForm.years,
-              bio: talentForm.summary || null,
-              careerHistory: talentForm.summary || null,
-              experiencedFunctions,
-              experiencedSubAreas,
-              workStyleTags,
-              valueTags,
-              values: talentForm.values || null,
-              skillMaps: { create: [{ axisScores: scores, phases, bottlenecks, growthAreas, industryFit, axisEvidence, summary: result.summary || null }] },
-              capacity: { create: { maxConcurrentEngagements: 3, currentCommittedHours: 0 } },
-            },
-            include: { skillMaps: true },
-          });
-          talentId = talent.id;
-          talentSkillMapId = talent.skillMaps[0]?.id || null;
-          talentStatus = talent.status;
-          await prisma.user.update({ where: { id: user.id }, data: { talentId } });
-        }
+        // 通常は対話開始時(/api/talent/dialogue/start)に作成済みなので、ここは更新になる。
+        // 開始時の保存に失敗していた場合や、対話の途中でログインした場合はここで作られる。
+        talentId = await saveTalentProfile(prisma, user, talentForm);
+        const skillMap = await prisma.talentSkillMap.create({
+          data: { talentId, axisScores: scores, phases, bottlenecks, growthAreas, industryFit, axisEvidence, summary: result.summary || null },
+        });
+        talentSkillMapId = skillMap.id;
+        const talent = await prisma.talent.findUnique({ where: { id: talentId }, select: { status: true } });
+        talentStatus = talent?.status ?? talentStatus;
       } catch (persistErr) {
         console.error("failed to persist talent dialogue result:", persistErr.message);
       }

@@ -28,11 +28,14 @@ export async function GET(req) {
   });
 
   let csv = "\uFEFF";
-  csv += toCsvRow(["氏名", "役職", "業種経験", "実務経験年数", "審査状況", "稼働(現在h)", "稼働上限(社)", "最新解析日", "登録日"]);
+  csv += toCsvRow(["氏名", "登録状況", "役職", "業種経験", "実務経験年数", "審査状況", "稼働(現在h)", "稼働上限(社)", "最新解析日", "登録日"]);
   for (const t of talents) {
     const sm = t.skillMaps[0];
     csv += toCsvRow([
-      t.name, t.title, t.industry, t.years, t.status,
+      t.name,
+      // スキルマップが無い = 経歴入力まで終えてAI対話が未完了(v6.12で一覧に載るようになった)
+      sm ? "完了" : "入力途中",
+      t.title, t.industry, t.years, t.status,
       t.capacity?.currentCommittedHours ?? "",
       t.capacity?.maxConcurrentEngagements ?? "",
       sm ? new Date(sm.createdAt).toLocaleDateString("ja-JP") : "",

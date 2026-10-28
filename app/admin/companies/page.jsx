@@ -9,7 +9,7 @@ const PAGE_SIZE = 20;
 
 async function getCompanies(q, page) {
   const where = q ? { name: { contains: q, mode: "insensitive" } } : {};
-  const [companies, total] = await Promise.all([
+  const [companies, total, incompleteCount] = await Promise.all([
     prisma.company.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -18,8 +18,11 @@ async function getCompanies(q, page) {
       take: PAGE_SIZE,
     }),
     prisma.company.count({ where }),
+    // 会社情報の入力は終えたが、AI課題診断をまだ完了していない企業。
+    // Companyレコードは診断の開始時に作られるので、この一覧には入力途中の企業も並ぶ。
+    prisma.company.count({ where: { ...where, skillMaps: { none: {} } } }),
   ]);
-  return { companies, total };
+  return { companies, total, incompleteCount };
 }
 
 function worstAxis(axisScores) {
@@ -32,14 +35,17 @@ function worstAxis(axisScores) {
 export default async function CompaniesPage({ searchParams }) {
   const q = searchParams?.q?.trim() || "";
   const page = Math.max(1, Number(searchParams?.page) || 1);
-  const { companies, total } = await getCompanies(q, page);
+  const { companies, total, incompleteCount } = await getCompanies(q, page);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const qsFor = (p) => `?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`;
 
   return (
     <AdminShell current="companies">
       <h1 style={{ fontSize: 20, fontWeight: 600, margin: "0 0 6px" }}>企業一覧</h1>
-      <p style={{ color: COLORS.muted, fontSize: 13.5, margin: "0 0 20px" }}>{total}社が登録されています。</p>
+      <p style={{ color: COLORS.muted, fontSize: 13.5, margin: "0 0 20px" }}>
+        {total}社が登録されています。
+        {incompleteCount > 0 && <span style={{ color: COLORS.amber }}>うち{incompleteCount}社はAI課題診断が未完了(入力途中)です。</span>}
+      </p>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
         <form method="get" style={{ display: "flex", gap: 8 }}>
@@ -57,6 +63,7 @@ export default async function CompaniesPage({ searchParams }) {
           <thead>
             <tr>
               <th>会社名</th>
+              <th>登録状況</th>
               <th>フェーズ</th>
               <th>従業員数</th>
               <th>最優先ボトルネック</th>
@@ -72,6 +79,13 @@ export default async function CompaniesPage({ searchParams }) {
                 <tr key={c.id}>
                   <td>
                     <a href={`/admin/companies/${c.id}`}>{c.name}</a>
+                  </td>
+                  <td>
+                    {sm ? (
+                      <span className="admin-badge">完了</span>
+                    ) : (
+                      <span className="admin-badge" style={{ color: COLORS.amber }}>入力途中</span>
+                    )}
                   </td>
                   <td>{c.phase || "—"}</td>
                   <td>{c.headcount || "—"}</td>
