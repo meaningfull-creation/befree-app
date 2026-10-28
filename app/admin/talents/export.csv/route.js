@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { talentDisplayName } from "@/lib/talentProfile";
 import { requireRole } from "@/lib/auth";
 
 function csvEscape(value) {
@@ -24,17 +25,18 @@ export async function GET(req) {
   const talents = await prisma.talent.findMany({
     where,
     orderBy: { createdAt: "desc" },
-    include: { skillMaps: { orderBy: { createdAt: "desc" }, take: 1 }, capacity: true },
+    include: { skillMaps: { orderBy: { createdAt: "desc" }, take: 1 }, capacity: true, user: { select: { email: true } } },
   });
 
   let csv = "\uFEFF";
-  csv += toCsvRow(["氏名", "登録状況", "役職", "業種経験", "実務経験年数", "審査状況", "稼働(現在h)", "稼働上限(社)", "最新解析日", "登録日"]);
+  csv += toCsvRow(["氏名", "メールアドレス", "登録状況", "役職", "業種経験", "実務経験年数", "審査状況", "稼働(現在h)", "稼働上限(社)", "最新解析日", "登録日"]);
   for (const t of talents) {
     const sm = t.skillMaps[0];
     csv += toCsvRow([
-      t.name,
-      // スキルマップが無い = 経歴入力まで終えてAI対話が未完了(v6.12で一覧に載るようになった)
-      sm ? "完了" : "入力途中",
+      talentDisplayName(t.name),
+      t.user?.email ?? "",
+      // 一覧の「登録状況」と同じ区分。氏名が空 = アカウント作成だけで離脱した方
+      sm ? "完了" : t.name ? "入力途中" : "アカウントのみ",
       t.title, t.industry, t.years, t.status,
       t.capacity?.currentCommittedHours ?? "",
       t.capacity?.maxConcurrentEngagements ?? "",

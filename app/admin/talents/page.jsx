@@ -1,30 +1,46 @@
 import { prisma } from "@/lib/prisma";
-import { AdminShell, COLORS } from "@/lib/adminTheme";
+import { AdminShell, COLORS, FONT_MONO } from "@/lib/adminTheme";
 import { reviewTalentAction, adminDeleteTalentAction } from "@/lib/actions";
 import DeleteRowButton from "../_components/DeleteRowButton";
+import { talentDisplayName } from "@/lib/talentProfile";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 20;
 
 async function getTalents(q, page) {
-  const where = q ? { name: { contains: q, mode: "insensitive" } } : {};
-  const [talents, total, pendingCount, incompleteCount] = await Promise.all([
+  // 氏名がまだ空の方(アカウント作成だけで離脱)も探せるよう、メールアドレスでも検索する
+  const where = q
+    ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { user: { email: { contains: q, mode: "insensitive" } } }] }
+    : {};
+  const [talents, total, pendingCount, incompleteCount, accountOnlyCount] = await Promise.all([
     prisma.talent.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      include: { skillMaps: { orderBy: { createdAt: "desc" }, take: 1 }, capacity: true },
+      include: {
+        skillMaps: { orderBy: { createdAt: "desc" }, take: 1 },
+        capacity: true,
+        // 氏名が空の行は、メールアドレスが唯一の手がかりになる
+        user: { select: { email: true } },
+      },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
     prisma.talent.count({ where }),
     prisma.talent.count({ where: { ...where, status: "pending" } }),
-    // 経歴入力は終えたがAI対話を完了していない方(スキルマップがまだ無い)。
-    // v6.12で、対話の完了を待たずに経歴入力の時点でレコードを作るようにしたため、
-    // この一覧には「入力途中」の方も並ぶ。運営が見分けられるよう件数を出す。
-    prisma.talent.count({ where: { ...where, skillMaps: { none: {} } } }),
+    // 経歴入力は終えたがAI対話を完了していない方(スキルマップがまだ無い・氏名はある)
+    prisma.talent.count({ where: { ...where, skillMaps: { none: {} }, NOT: { name: "" } } }),
+    // アカウント作成だけで離脱した方(氏名すら入っていない)
+    prisma.talent.count({ where: { ...where, name: "" } }),
   ]);
-  return { talents, total, pendingCount, incompleteCount };
+  return { talents, total, pendingCount, incompleteCount, accountOnlyCount };
+}
+
+// 一覧の「登録状況」。どこまで進んだかを1列で見分けられるようにする。
+function registrationStage(talent) {
+  if (talent.skillMaps.length > 0) return { label: "完了", highlight: false };
+  if (!talent.name) return { label: "アカウントのみ", highlight: true };
+  return { label: "入力途中", highlight: true };
 }
 
 function bestAxis(axisScores) {
@@ -39,7 +55,7 @@ const STATUS_LABEL = { pending: "審査中", approved: "承認済み", rejected:
 export default async function TalentsPage({ searchParams }) {
   const q = searchParams?.q?.trim() || "";
   const page = Math.max(1, Number(searchParams?.page) || 1);
-  const { talents, total, pendingCount, incompleteCount } = await getTalents(q, page);
+  const { talents, total, pendingCount, incompleteCount, accountOnlyCount } = await getTalents(q, page);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const qsFor = (p) => `?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`;
 
@@ -48,13 +64,14 @@ export default async function TalentsPage({ searchParams }) {
       <h1 style={{ fontSize: 20, fontWeight: 600, margin: "0 0 6px" }}>人材一覧</h1>
       <p style={{ color: COLORS.muted, fontSize: 13.5, margin: "0 0 20px" }}>
         {total}名が登録されています。
+        {accountOnlyCount > 0 && <span style={{ color: COLORS.amber }}>うち{accountOnlyCount}名はアカウント作成のみ(経歴が未入力)です。</span>}
         {incompleteCount > 0 && <span style={{ color: COLORS.amber }}>うち{incompleteCount}名はAI対話が未完了(入力途中)です。</span>}
         {pendingCount > 0 && <span style={{ color: COLORS.amber }}>審査中が{pendingCount}件あります。</span>}
       </p>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
         <form method="get" style={{ display: "flex", gap: 8 }}>
-          <input className="admin-input" type="text" name="q" placeholder="氏名で検索" defaultValue={q} style={{ minWidth: 220 }} />
+          <input className="admin-input" type="text" name="q" placeholder="氏名・メールアドレスで検索" defaultValue={q} style={{ minWidth: 220 }} />
           <button type="submit" className="admin-btn-muted">検索</button>
           {q && <a href="/admin/talents" className="admin-btn-muted" style={{ display: "inline-block" }}>クリア</a>}
         </form>
@@ -68,6 +85,7 @@ export default async function TalentsPage({ searchParams }) {
           <thead>
             <tr>
               <th>氏名</th>
+              <th>メールアドレス</th>
               <th>登録状況</th>
               <th>直近の役職</th>
               <th>経験年数</th>
@@ -83,17 +101,16 @@ export default async function TalentsPage({ searchParams }) {
             {talents.map((t) => {
               const sm = t.skillMaps[0];
               const b = sm ? bestAxis(sm.axisScores) : null;
+              const stage = registrationStage(t);
+              const displayName = talentDisplayName(t.name);
               return (
                 <tr key={t.id}>
                   <td>
-                    <a href={`/admin/talents/${t.id}`}>{t.name}</a>
+                    <a href={`/admin/talents/${t.id}`} style={t.name ? undefined : { color: COLORS.muted }}>{displayName}</a>
                   </td>
+                  <td style={{ fontFamily: FONT_MONO, fontSize: 12, color: COLORS.muted }}>{t.user?.email || "—"}</td>
                   <td>
-                    {sm ? (
-                      <span className="admin-badge">完了</span>
-                    ) : (
-                      <span className="admin-badge" style={{ color: COLORS.amber }}>入力途中</span>
-                    )}
+                    <span className="admin-badge" style={stage.highlight ? { color: COLORS.amber } : undefined}>{stage.label}</span>
                   </td>
                   <td style={{ color: COLORS.muted }}>{t.title || "—"}</td>
                   <td style={{ color: COLORS.muted }}>{t.years || "—"}</td>
@@ -133,7 +150,7 @@ export default async function TalentsPage({ searchParams }) {
                         action={adminDeleteTalentAction}
                         idName="talentId"
                         id={t.id}
-                        name={t.name}
+                        name={displayName}
                         kindLabel="人材"
                       />
                     </div>

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { talentProfileFromForm, saveTalentProfile } from "../lib/talentProfile.js";
+import { talentProfileFromForm, saveTalentProfile, emptyTalentProfile, talentDisplayName, NO_NAME_PLACEHOLDER } from "../lib/talentProfile.js";
 
 const fullForm = {
   name: "山田太郎",
@@ -77,4 +77,36 @@ test("初回は作成し、稼働枠も同時に作ってUserに紐づける", a
   // 稼働枠(Capacity)は人材ごとに必ず1つ必要なので、作成と同時に作る
   assert.ok(calls[0][1].capacity?.create, "Capacityが同時に作られていない");
   assert.equal(calls[1][1].data.talentId, "new-talent");
+});
+
+// --- アカウント作成だけで離脱した方(氏名が空)の扱い -------------------------
+
+test("アカウント作成直後は、氏名が空のまま保存できる形になる", () => {
+  const d = emptyTalentProfile();
+  assert.equal(d.name, "");
+  assert.ok(!Object.values(d).includes(undefined), "undefined が混ざっている");
+});
+
+test("氏名が空なら、管理画面では「(氏名未入力)」として扱う", () => {
+  // 空のまま画面に出すと行が読めず、削除の確認文字列も空になって削除できなくなる
+  assert.equal(talentDisplayName(""), NO_NAME_PLACEHOLDER);
+  assert.equal(talentDisplayName("   "), NO_NAME_PLACEHOLDER);
+  assert.equal(talentDisplayName(null), NO_NAME_PLACEHOLDER);
+  assert.equal(talentDisplayName(undefined), NO_NAME_PLACEHOLDER);
+  assert.equal(talentDisplayName("山田太郎"), "山田太郎");
+});
+
+test("アカウント作成時に作ったレコードは、経歴入力で同じものが更新される", async () => {
+  const calls = [];
+  const prisma = fakePrisma(calls);
+  // 1) アカウント作成 → 氏名が空で新規作成
+  const created = await saveTalentProfile(prisma, { id: "u1", talentId: null }, emptyTalentProfile());
+  assert.equal(created, "new-talent");
+  assert.equal(calls[0][1].name, "");
+  // 2) 経歴入力 → 同じレコードを氏名入りで更新(新しく作らない)
+  calls.length = 0;
+  const updated = await saveTalentProfile(prisma, { id: "u1", talentId: created }, fullForm);
+  assert.equal(updated, created);
+  assert.deepEqual(calls.map((c) => c[0]), ["talent.update"]);
+  assert.equal(calls[0][1].data.name, "山田太郎");
 });

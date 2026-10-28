@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AdminShell, COLORS, FONT_MONO } from "@/lib/adminTheme";
 import { AXES } from "@/lib/axes";
+import { talentDisplayName } from "@/lib/talentProfile";
 import { scoreMatch } from "@/lib/matching";
 import { getAxisWeightMultipliers } from "@/lib/axisPerformance";
 import { recordMatchAction, acceptMatchAction, declineMatchAction, adminUpdateTalentAction, adminUpdateCapacityAction, adminDeleteTalentAction } from "@/lib/actions";
@@ -19,7 +20,8 @@ const PHASE_PROFILE = {
 async function getTalent(id) {
   return prisma.talent.findUnique({
     where: { id },
-    include: { skillMaps: { orderBy: { createdAt: "desc" } }, capacity: true },
+    // メールアドレスは、氏名が空の方(アカウント作成だけで離脱)を識別し連絡するための唯一の手がかり
+    include: { skillMaps: { orderBy: { createdAt: "desc" } }, capacity: true, user: { select: { email: true } } },
   });
 }
 
@@ -118,10 +120,23 @@ export default async function TalentDetailPage({ params }) {
   return (
     <AdminShell current="talents">
       <a href="/admin/talents" style={{ fontSize: 12.5, color: COLORS.muted }}>← 人材一覧に戻る</a>
-      <h1 style={{ fontSize: 22, fontWeight: 600, margin: "10px 0 4px" }}>{talent.name}</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 600, margin: "10px 0 4px", color: talent.name ? undefined : COLORS.muted }}>
+        {talentDisplayName(talent.name)}
+      </h1>
       <p style={{ color: COLORS.muted, fontSize: 13.5, margin: "0 0 24px" }}>
+        {talent.user?.email && <span style={{ fontFamily: FONT_MONO, fontSize: 12.5 }}>{talent.user.email}</span>}
+        {talent.user?.email && [talent.title, talent.industry, talent.years].some(Boolean) && " / "}
         {[talent.title, talent.industry, talent.years].filter(Boolean).join(" / ")}
       </p>
+      {!latest && (
+        <div className="admin-card" style={{ marginBottom: 20, borderColor: COLORS.amber }}>
+          <div style={{ fontSize: 13, color: COLORS.amber }}>
+            {talent.name
+              ? "経歴の入力までは終えていますが、AI対話(自己分析)が未完了のためスキルマップがありません。マッチングの候補には表示されません。"
+              : "アカウント作成だけで、経歴の入力に進んでいません。マッチングの候補には表示されません。"}
+          </div>
+        </div>
+      )}
 
       <div className="admin-card">
         <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 12 }}>基本情報の編集(表記ミスの修正等)</div>
@@ -311,7 +326,7 @@ export default async function TalentDetailPage({ params }) {
         </p>
         <form action={adminDeleteTalentAction} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <input type="hidden" name="talentId" value={talent.id} />
-          <input className="admin-input" name="confirmText" placeholder={`確認のため「${talent.name}」と入力`} style={{ minWidth: 220 }} />
+          <input className="admin-input" name="confirmText" placeholder={`確認のため「${talentDisplayName(talent.name)}」と入力`} style={{ minWidth: 220 }} />
           <button type="submit" className="admin-btn-muted" style={{ borderColor: COLORS.amber, color: COLORS.amber }}>この人材を完全に削除する</button>
         </form>
       </div>

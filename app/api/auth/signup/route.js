@@ -5,6 +5,7 @@ import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import { logError } from "@/lib/errorLog";
 import { sendEmail, renderBrandEmail } from "@/lib/mailer";
 import { issueLoginLink } from "@/lib/loginLink";
+import { saveTalentProfile, emptyTalentProfile } from "@/lib/talentProfile";
 
 // POST /api/auth/signup
 // body: { email, password, role: "company" | "talent" }
@@ -36,7 +37,20 @@ export async function POST(req) {
       data: { email, passwordHash: hash, passwordSalt: salt, role },
     });
 
-    const session = await createSessionToken(user.id);
+    // 実務経験者は、この時点で氏名が空のTalentレコードを用意する。
+    // アカウント作成だけで離脱した方も管理画面の人材一覧に出すため(v6.13)。
+    // 経歴入力まで進めば saveTalentProfile() が同じレコードを氏名入りで更新するので、
+    // レコードが二重になることはない。
+    // セッション発行とは独立なので同時に走らせ、登録の待ち時間を増やさない。
+    const [session] = await Promise.all([
+      createSessionToken(user.id),
+      role === "talent"
+        ? saveTalentProfile(prisma, user, emptyTalentProfile()).catch((persistErr) => {
+            // ここで失敗しても登録自体は成立させる(経歴入力の送信時に作り直される)
+            console.error("failed to create empty talent:", persistErr.message);
+          })
+        : Promise.resolve(),
+    ]);
 
     // v6.8: アカウント作成を入力より前に移したので、ここで「続きはこちらから」メールを送る。
     // 登録した本人はこのレスポンスでそのままログイン済みになるため、このメールは
