@@ -102,6 +102,7 @@ export async function AdminNav({ current }) {
     { href: "/admin/engagements", label: "契約", key: "engagements" },
     { href: "/admin/inquiries", label: "問い合わせ", key: "inquiries" },
     { href: "/admin/insights", label: "インサイト", key: "insights" },
+    { href: "/admin/exports", label: "エクスポート", key: "exports" },
     { href: "/admin/users", label: "ユーザー", key: "users" },
     { href: "/admin/settings", label: "設定", key: "settings" },
     { href: "/admin/audit-log", label: "監査ログ", key: "audit-log" },

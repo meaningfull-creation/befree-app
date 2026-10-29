@@ -3,16 +3,16 @@ import { AdminShell, COLORS, FONT_MONO } from "@/lib/adminTheme";
 import { adminDeleteCompanyAction } from "@/lib/actions";
 import DeleteRowButton from "../_components/DeleteRowButton";
 import { companyDisplayName } from "@/lib/companyProfile";
+import { nameOrEmailWhere } from "@/lib/adminExport";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 20;
 
 async function getCompanies(q, page) {
-  // 会社名がまだ空の企業(アカウント作成だけで離脱)も探せるよう、メールアドレスでも検索する
-  const where = q
-    ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { user: { email: { contains: q, mode: "insensitive" } } }] }
-    : {};
+  // 会社名がまだ空の企業(アカウント作成だけで離脱)も探せるよう、メールアドレスでも検索する。
+  // CSVダウンロードと同じ条件を使う(以前は一覧だけメール検索に対応していて結果がずれていた)。
+  const where = nameOrEmailWhere(q);
   const [companies, total, incompleteCount, accountOnlyCount] = await Promise.all([
     prisma.company.findMany({
       where,
