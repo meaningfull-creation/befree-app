@@ -67,7 +67,8 @@ model CompanySkillMap {
 model Talent {
   id                   String   @id @default(uuid())
   name                 String
-  title                String?
+  title                String? // 役職・ポジション。複数選択の場合は「、」でつないだ1文字列(表示・AIプロンプト用)
+  titles               Json? // 役職・ポジションの配列。兼任している方のために複数選択できる(v6.16)
   industry             String? // 主な業種・事業ドメインの経験
   years                String?
   bio                  String?

@@ -30,6 +30,7 @@ import {
 import { AXES, TALENT_SCORE_RUBRIC, TALENT_FOCUS_POINTS, FUNCTION_SUBAREA_OPTIONS, WORK_STYLE_OPTIONS, VALUE_OPTIONS } from "@/lib/axes";
 import { postSSE } from "@/lib/sseClient";
 import { mergeRestoredForm, pickOption, splitOtherValue } from "@/lib/formRestore";
+import { TALENT_TITLE_OPTIONS, parseTitles, formatTitles } from "@/lib/talentTitles";
 import { NO_MATCHING_OPTION_ANSWER } from "@/lib/dialogueAnswers";
 import { INDUSTRY_OPTIONS } from "@/lib/industries";
 import { computeScoreDelta } from "@/lib/scoreDelta";
@@ -1210,73 +1211,14 @@ function StepTalentProposal({ companyScores, companyPhase, companyIndustry, onRe
 // ---------------------------------------------------------------------------
 // Talent flow — Step 1: career input
 // ---------------------------------------------------------------------------
-const TALENT_TITLE_GROUPS = [
-  {
-    label: "責任者・エグゼクティブクラス",
-    options: [
-      "元プロダクト責任者 / VPoP",
-      "元セールス責任者 / VPoS",
-      "元マーケティング責任者 / CMO",
-      "元人事責任者 / CHRO・HRBP",
-      "元CFO / 資金調達責任者",
-      "元経営企画責任者 / 管理会計責任者",
-      "元カスタマーサクセス責任者",
-      "元オペレーション責任者 / COO",
-      "元CTO / VPoE",
-      "元事業責任者 / PL管掌",
-      "元法務責任者 / CLO",
-      "元広報・PR責任者",
-      "元データ責任者 / CDO",
-      "元購買・調達責任者",
-      "元経営者 / CEO",
-    ],
-  },
-  {
-    label: "マネージャー・リードクラス",
-    options: [
-      "元プロダクトマネージャー",
-      "元セールスマネージャー / フィールドセールス",
-      "元マーケティングマネージャー / グロース担当",
-      "元人事マネージャー / 採用担当",
-      "元経理・財務マネージャー",
-      "元カスタマーサクセスマネージャー",
-      "元業務改善マネージャー / PMO",
-      "元テックリード / シニアエンジニア",
-      "元デザインリード / UXデザイナー",
-      "元インサイドセールス / SDRマネージャー",
-      "元法務・コンプライアンス担当",
-      "元広報・PRマネージャー",
-      "元データアナリスト / データサイエンティスト",
-      "元カスタマーサポートマネージャー",
-      "元購買・調達マネージャー",
-    ],
-  },
-  {
-    // 店舗・現場を預かる役職。本部や職能別の役職だけだと、小売・飲食・サービス・
-    // 建設など「現場を回してきた経験」を持つ方が当てはまる選択肢がなかった。
-    // 他の選択肢と違って「元」を付けていないのは、本業と並行して関わる方(=現職)が
-    // 中心になる想定のため。
-    label: "店舗・現場クラス",
-    options: [
-      "店長",
-      "副店長",
-      "チーフ",
-      "サブチーフ",
-      "現場責任者(現場監督)",
-    ],
-  },
-  {
-    label: "その他",
-    options: ["その他(自由入力)"],
-  },
-];
 const TALENT_INDUSTRY_OPTIONS = INDUSTRY_OPTIONS;
 
 
-const TALENT_TITLE_OPTIONS = TALENT_TITLE_GROUPS.flatMap((g) => g.options);
 const DEFAULT_TALENT_FORM = {
   name: "",
-  title: TALENT_TITLE_GROUPS[0].options[0],
+  // 兼任している方が選びきれないため、役職は複数選択にしている(v6.16)。
+  // 既定では何も選ばない — 先頭の役職が入っていると、そのまま送信されてしまう。
+  titles: [],
   titleOther: "",
   industry: TALENT_INDUSTRY_OPTIONS[0],
   industryOther: "",
@@ -1292,21 +1234,25 @@ const DEFAULT_TALENT_FORM = {
 export function StepTalentInput({ onNext, initialForm }) {
   const [form, setForm] = useState(() => {
     const merged = mergeRestoredForm(DEFAULT_TALENT_FORM, initialForm);
-    // 役職と業種は「その他(自由入力)」で打ち込んだ文言がそのまま保存されている。
-    // 選択肢に無い値はプルダウンでは選べないので、「その他」+自由入力欄に戻す。
-    const title = splitOtherValue(merged.title, TALENT_TITLE_OPTIONS);
+    // 役職は、選択肢に一致するものと自由入力に分けて戻す。
+    // 「元プロダクト責任者」のようなv6.16より前のデータも、「元」を外して選択肢に当てる。
+    const title = parseTitles(merged.titles, merged.title);
+    // 業種は「その他(自由入力)」で打ち込んだ文言がそのまま保存されている。
     const industry = splitOtherValue(merged.industry, TALENT_INDUSTRY_OPTIONS);
     return {
       ...merged,
-      title: title.value,
-      titleOther: title.other || merged.titleOther,
+      titles: title.titles,
+      titleOther: title.titleOther || merged.titleOther,
       industry: industry.value,
       industryOther: industry.other || merged.industryOther,
       years: pickOption(merged.years, TALENT_YEARS_OPTIONS, DEFAULT_TALENT_FORM.years),
     };
   });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
-  const valid = form.name.trim().length > 0;
+  // 役職は選択肢・自由記述のどちらでもよいが、空のままだとAIが質問を組み立てられない。
+  // 以前はプルダウンの先頭が常に入っていたため、未入力になることがなかった。
+  const hasTitle = (form.titles || []).length > 0 || (form.titleOther || "").trim().length > 0;
+  const valid = form.name.trim().length > 0 && hasTitle;
 
   return (
     <div className="fade-in">
@@ -1319,32 +1265,27 @@ export function StepTalentInput({ onNext, initialForm }) {
           <label className="field-label">お名前</label>
           <input className="field-input" placeholder="例: 山田 太郎" value={form.name} onChange={set("name")} />
         </div>
-        <div className="two-col" style={{ display: "grid", gap: 18, marginBottom: 20 }}>
-          <div>
-            <label className="field-label">直近の役職</label>
-            <select className="field-select" value={form.title} onChange={set("title")}>
-              {TALENT_TITLE_GROUPS.map((g) => (
-                <optgroup key={g.label} label={g.label}>
-                  {g.options.map((o) => <option key={o}>{o}</option>)}
-                </optgroup>
-              ))}
-            </select>
-            {form.title === "その他(自由入力)" && (
-              <input
-                className="field-input"
-                style={{ marginTop: 8 }}
-                placeholder="役職を入力してください"
-                value={form.titleOther}
-                onChange={set("titleOther")}
-              />
-            )}
-          </div>
-          <div>
-            <label className="field-label">実務経験年数</label>
-            <select className="field-select" value={form.years} onChange={set("years")}>
-              {TALENT_YEARS_OPTIONS.map((o) => <option key={o}>{o}</option>)}
-            </select>
-          </div>
+        <MultiSelectDropdown
+          label="役職・ポジション"
+          hint="複数選択可・兼任している場合はすべて選んでください"
+          options={TALENT_TITLE_OPTIONS}
+          selected={form.titles || []}
+          onChange={(v) => setForm({ ...form, titles: v })}
+        />
+        <div style={{ marginBottom: 20 }}>
+          <label className="field-label">上記にない役職(任意・自由記述)</label>
+          <input
+            className="field-input"
+            placeholder="例: 店舗開発責任者"
+            value={form.titleOther}
+            onChange={set("titleOther")}
+          />
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <label className="field-label">実務経験年数</label>
+          <select className="field-select" value={form.years} onChange={set("years")}>
+            {TALENT_YEARS_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+          </select>
         </div>
         <div style={{ marginBottom: 20 }}>
           <label className="field-label">主な業種・事業ドメインの経験</label>
@@ -1400,14 +1341,19 @@ export function StepTalentInput({ onNext, initialForm }) {
           <textarea className="field-input" rows={2} placeholder="例: スピードよりも、まず現場の話を聞いて型を作ることを大事にしている" style={{ resize: "vertical", fontFamily: FONT_BODY, lineHeight: 1.6 }} value={form.values} onChange={set("values")} />
         </div>
       </div>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 24 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 14, flexWrap: "wrap", marginTop: 24 }}>
+        {!valid && (
+          <span style={{ fontSize: 12, color: COLORS.faint }}>
+            {form.name.trim() ? "役職・ポジションを1つ以上選ぶか、自由記述でご入力ください。" : "お名前をご入力ください。"}
+          </span>
+        )}
         <button
           className="btn-primary"
           disabled={!valid}
           onClick={() =>
             onNext({
               name: form.name,
-              title: form.title === "その他(自由入力)" ? form.titleOther || "その他" : form.title,
+              ...formatTitles(form.titles, form.titleOther),
               industry: form.industry === "その他(自由入力)" ? form.industryOther || "その他" : form.industry,
               years: form.years,
               summary: form.summary,

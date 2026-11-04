@@ -58,6 +58,7 @@ export async function GET() {
       ? {
           name: talent.name,
           title: talent.title,
+          titles: talent.titles || [], // 兼任に対応した複数選択(v6.16)
           industry: talent.industry,
           years: talent.years,
           summary: talent.bio,

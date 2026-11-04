@@ -149,6 +149,20 @@ export default function LPStyle() {
       .lp-cmp-head .lp-cmp-b { color: ${C.orange}; }
 
       /* ---- after matching ---- */
+      /* ---- after matching: 企業と実務経験者の動きを1行ずつ対比させる ---- */
+      .lp-hand { border-top: 1px solid ${C.line}; }
+      .lp-hand-row {
+        display: grid; grid-template-columns: minmax(150px, 0.8fr) minmax(0, 1fr) minmax(0, 1fr);
+        gap: clamp(14px, 2.4vw, 36px); align-items: start;
+        padding: clamp(16px, 2vw, 22px) 0; border-bottom: 1px solid ${C.line};
+        font-size: 13.5px; line-height: 1.85; color: ${C.inkSoft};
+      }
+      .lp-hand-head { font-size: 11px; font-weight: 900; letter-spacing: 0.1em; color: ${C.inkFaint}; padding: 10px 0; }
+      .lp-hand-head .lp-hand-b { color: ${C.orange}; }
+      .lp-hand-k { display: flex; flex-direction: column; gap: 4px; }
+      .lp-hand-n { font-size: 12px; color: ${C.orange}; }
+      .lp-hand-t { font-size: 15px; font-weight: 900; letter-spacing: -0.02em; color: ${C.ink}; line-height: 1.5; }
+
       .lp-after { display: grid; grid-template-columns: repeat(2, 1fr); gap: clamp(28px, 4vw, 56px) clamp(32px, 5vw, 72px); }
       .lp-after-item { display: grid; grid-template-columns: 96px 1fr; gap: clamp(14px, 2vw, 26px); align-items: start; }
       .lp-after-n { display: flex; align-items: baseline; gap: 3px; border-top: 2px solid ${C.orange}; padding-top: 12px; }
@@ -204,7 +218,21 @@ export default function LPStyle() {
       .lp-figure-fallback { position: absolute; inset: 0; display: flex; align-items: flex-end; padding: 24px; }
       .lp-figure-plate { position: absolute; right: -14%; top: -8%; width: 68%; aspect-ratio: 1 / 1.15; background: ${C.orange}; clip-path: ${HOME_PLATE_CLIP}; opacity: 0.9; }
 
-      /* ---- how it works ---- */
+      /* ---- how it works ----
+         v6.16で企業/実務経験者の流れを切り替えるタブを追加した。
+         ボタンらしさより「どちらの立場で読むか」の選択に見せたいので、
+         下線で現在地を示す形にしている。 */
+      .lp-how-tabs { display: flex; gap: 4px; margin-top: 28px; border-bottom: 1px solid ${C.line}; }
+      .lp-how-tab {
+        appearance: none; background: none; border: none; cursor: pointer;
+        font-family: inherit; font-size: 14px; font-weight: 900; letter-spacing: -0.01em;
+        color: ${C.inkFaint}; padding: 12px 18px; min-height: 44px;
+        border-bottom: 2px solid transparent; margin-bottom: -1px;
+        transition: color ${M.base}, border-color ${M.base};
+      }
+      .lp-how-tab:hover { color: ${C.ink}; }
+      .lp-how-tab[data-active="true"] { color: ${C.ink}; border-bottom-color: ${C.orange}; }
+
       .lp-how { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: clamp(32px, 6vw, 96px); align-items: start; }
       .lp-how-rail { position: sticky; top: 132px; }
       .lp-how-step { display: grid; grid-template-columns: 54px 1fr; gap: 18px; padding: 18px 0; border-top: 1px solid ${C.line}; transition: opacity ${M.base}; opacity: 0.34; }
@@ -356,6 +384,11 @@ export default function LPStyle() {
         .lp-cmp-head { display: none; }
         .lp-cmp-a::before { content: "正社員採用: "; color: ${C.inkFaint}; font-weight: 700; }
         .lp-cmp-b::before { content: "BATTER BOX: "; color: ${C.orange}; font-weight: 700; }
+        .lp-hand-row { grid-template-columns: 1fr; gap: 6px; padding: 18px 0; }
+        .lp-hand-head { display: none; }
+        /* 1列になると「どちらの話か」が分からなくなるので、行頭に立場を書く */
+        .lp-hand-a::before { content: "企業の方 — "; font-weight: 900; color: ${C.ink}; }
+        .lp-hand-b::before { content: "経験を活かしたい方 — "; font-weight: 900; color: ${C.orange}; }
         .lp-after { grid-template-columns: 1fr; gap: 26px; }
         .lp-after-item { grid-template-columns: 74px 1fr; gap: 16px; }
         .lp-faq-grid { grid-template-columns: 1fr; gap: 28px; }
