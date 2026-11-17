@@ -27,7 +27,7 @@ import {
   LayoutDashboard,
   LogOut,
 } from "lucide-react";
-import { AXES, TALENT_SCORE_RUBRIC, TALENT_FOCUS_POINTS, FUNCTION_SUBAREA_OPTIONS, WORK_STYLE_OPTIONS, VALUE_OPTIONS } from "@/lib/axes";
+import { AXES, TALENT_SCORE_RUBRIC, TALENT_FOCUS_POINTS, FUNCTION_SUBAREA_OPTIONS, WORK_STYLE_OPTIONS, VALUE_OPTIONS, groupSubAreasByAxis } from "@/lib/axes";
 import { postSSE } from "@/lib/sseClient";
 import { mergeRestoredForm, pickOption, splitOtherValue } from "@/lib/formRestore";
 import { TALENT_TITLE_OPTIONS, parseTitles, formatTitles } from "@/lib/talentTitles";
@@ -1007,6 +1007,48 @@ export function StepSkillMap({ scores, summary, axisNotes, topIssueDetails, comp
 // ---------------------------------------------------------------------------
 // Company flow — Step 4: talent proposal (fetches /api/match/company)
 // ---------------------------------------------------------------------------
+// 候補詳細の「バックグラウンド」で使う小さな部品。
+// 見出し+タグ、見出し+本文、という同じ形が何度も出るためまとめている(v6.18)。
+function ProfileTags({ label, tags }) {
+  if (!tags || tags.length === 0) return null;
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 6 }}>{label}</div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {tags.map((tag) => (
+          <span key={tag} style={{ fontSize: 11.5, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "3px 9px", color: COLORS.muted }}>{tag}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// この方の配点が高い軸を上位から取り、軸ごとの採点根拠と一緒に返す。
+// スキルマップは合計100点の配分なので、点数の高い軸 = 経験が寄っている領域。
+function topTalentAxes(axisScores, axisEvidence, limit = 3) {
+  if (!axisScores) return [];
+  return Object.entries(axisScores)
+    .filter(([, score]) => score > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([key, score]) => ({
+      key,
+      score,
+      label: AXES.find((a) => a.key === key)?.label || key,
+      evidence: axisEvidence?.[key] || null,
+    }));
+}
+
+function ProfileText({ label, children }) {
+  if (!children) return null;
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 6 }}>{label}</div>
+      <p style={{ fontSize: 13.5, lineHeight: 1.85, color: COLORS.text, margin: 0, whiteSpace: "pre-wrap" }}>{children}</p>
+    </div>
+  );
+}
+
 function StepTalentProposal({ companyScores, companyPhase, companyIndustry, onRestart, onOpenThread }) {
   const [candidates, setCandidates] = useState(null);
   const [lowMatch, setLowMatch] = useState(false);
@@ -1058,38 +1100,49 @@ function StepTalentProposal({ companyScores, companyPhase, companyIndustry, onRe
           </span>
         </div>
 
+        {/* v6.18: 点数とタグだけでは「どんな人なのか」が伝わらない、というご指摘への対応。
+            登録時に受け取りながら企業側に渡していなかった項目(具体的な経験業務・価値観・
+            職務経歴・AIの人物サマリー・活かせる業界)をここに集約した。 */}
         <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 22, marginBottom: 16 }}>
-          <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14, marginBottom: 12 }}>経歴</div>
-          <div style={{ display: "flex", gap: 20, flexWrap: "wrap", fontSize: 13, color: COLORS.muted, marginBottom: 12 }}>
-            <span>直近の役職: <span style={{ color: COLORS.text }}>{selected.role || "—"}</span></span>
+          <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14, marginBottom: 12 }}>バックグラウンド</div>
+          <div style={{ display: "flex", gap: 20, flexWrap: "wrap", fontSize: 13, color: COLORS.muted, marginBottom: 14 }}>
+            <span>役職・ポジション: <span style={{ color: COLORS.text }}>{selected.role || "—"}</span></span>
             <span>主な業種経験: <span style={{ color: COLORS.text }}>{selected.industry || "—"}</span></span>
             <span>実務経験年数: <span style={{ color: COLORS.text }}>{selected.years || "—"}</span></span>
           </div>
-          {selected.experiencedFunctions?.length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 6 }}>経験してきた機能領域</div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {selected.experiencedFunctions.map((k) => (
-                  <span key={k} style={{ fontSize: 11.5, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "3px 9px", color: COLORS.muted }}>
-                    {AXES.find((a) => a.key === k)?.label || k}
-                  </span>
+
+          <ProfileText label="AIによる人物像">{selected.profileSummary}</ProfileText>
+          <ProfileText label="職務経歴・プロジェクト実績(本人の記述)">{selected.careerHistory || selected.reason}</ProfileText>
+
+          <ProfileTags
+            label="経験してきた機能領域"
+            tags={(selected.experiencedFunctions || []).map((k) => AXES.find((a) => a.key === k)?.label || k)}
+          />
+
+          {/* 87項目から本人が選んだ具体的な業務。領域ごとに束ねないと、
+              平らなタグの羅列になって何をやってきた人なのか読み取れない */}
+          {groupSubAreasByAxis(selected.experiencedSubAreas).length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 8 }}>具体的に経験した業務</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {groupSubAreasByAxis(selected.experiencedSubAreas).map((g) => (
+                  <div key={g.key}>
+                    <div style={{ fontSize: 11.5, color: COLORS.muted, fontWeight: 600, marginBottom: 5 }}>{g.label}</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {g.tags.map((tag) => (
+                        <span key={tag} style={{ fontSize: 11.5, background: COLORS.surfaceRaised, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "3px 9px", color: COLORS.text }}>{tag}</span>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
           )}
-          {selected.workStyleTags?.length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 6 }}>得意な働き方</div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {selected.workStyleTags.map((tag) => (
-                  <span key={tag} style={{ fontSize: 11.5, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "3px 9px", color: COLORS.muted }}>{tag}</span>
-                ))}
-              </div>
-            </div>
-          )}
-          {selected.reason && (
-            <p style={{ fontSize: 13.5, lineHeight: 1.8, color: COLORS.text, margin: 0 }}>{selected.reason}</p>
-          )}
+
+          <ProfileTags label="得意な働き方" tags={selected.workStyleTags} />
+          <ProfileTags label="経験を活かせる業界" tags={selected.industryFit} />
+          <ProfileTags label="大切にしている価値観" tags={selected.valueTags} />
+          <ProfileText label="その他、大切にしていること">{selected.values}</ProfileText>
         </div>
 
         <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 22, marginBottom: 16 }}>
@@ -1116,6 +1169,42 @@ function StepTalentProposal({ companyScores, companyPhase, companyIndustry, onRe
                   <div style={{ width: 48, textAlign: "right", fontFamily: FONT_MONO, color: COLORS.text }}>{b.score}/{b.max}</div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* 点数の根拠。これが無いと「なぜこの人にこの点数なのか」を確かめようがなく、
+              結果がずれて見えたときに信用できない(v6.18)。
+              上の内訳は配点カテゴリ(課題領域一致・業界経験など)で、軸とは別物なので
+              この方の配点が高い軸を取り直して、その軸の根拠を出す。 */}
+          {topTalentAxes(selected.axisScores, selected.axisEvidence).length > 0 && (
+            <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${COLORS.border}` }}>
+              <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 8 }}>この方の強みと、AIがそう判断した根拠</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {topTalentAxes(selected.axisScores, selected.axisEvidence).map((a) => (
+                  <div key={a.key}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: COLORS.text }}>{a.label}</span>
+                      <span style={{ fontSize: 11.5, fontFamily: FONT_MONO, color: COLORS.muted }}>{a.score}点 / 100点中</span>
+                    </div>
+                    {a.evidence && (
+                      <p style={{ fontSize: 12, lineHeight: 1.75, color: COLORS.muted, margin: "4px 0 0" }}>{a.evidence}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {selected.growthAreas?.length > 0 && (
+            <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${COLORS.border}` }}>
+              <div style={{ fontSize: 11, color: COLORS.faint, marginBottom: 6 }}>この方がこれから伸ばしていきたい領域</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {selected.growthAreas.map((g) => (
+                  <div key={g.axisKey} style={{ fontSize: 12, color: COLORS.muted, lineHeight: 1.7 }}>
+                    <span style={{ color: COLORS.text, fontWeight: 600 }}>{AXES.find((a) => a.key === g.axisKey)?.label || g.axisKey}</span>
+                    {g.note ? ` — ${g.note}` : ""}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -1302,7 +1391,10 @@ export function StepTalentInput({ onNext, initialForm }) {
             />
           )}
         </div>
-        <p style={{ fontSize: 11.5, color: COLORS.faint, margin: "0 0 10px" }}>経験してきた機能領域は、スキルスコアの精度を上げるために使われます。経験していない領域は選ばないでください。</p>
+        <p style={{ fontSize: 11.5, color: COLORS.faint, margin: "0 0 10px", lineHeight: 1.7 }}>
+          経験してきた機能領域は、スキルスコアの精度を上げるために使われます。経験していない領域は選ばないでください。<br />
+          ここから下の入力内容(経験した業務・働き方・職務経歴・価値観)は、マッチングした企業の候補画面に表示されます。
+        </p>
         <MultiSelectDropdown
           label="これまで経験してきた機能領域"
           hint="複数選択可"

@@ -70,10 +70,22 @@ export async function POST(req) {
           years: t.years,
           photoUpdatedAt: t.photoUpdatedAt, // 顔写真の有無(画像本体は /api/talents/[id]/photo から取得)
           experiencedFunctions: t.experiencedFunctions || [],
+          // v6.18: 「人材のバックグラウンドが分からない」というご指摘を受けて、
+          // 登録時に受け取っていながら企業側に渡していなかった項目を出すようにした。
+          // 点数とタグだけでは「どんな会社で何をやってきた人か」が伝わらない。
+          // 開示範囲はプライバシーポリシー第6条(1)に追記済み。
+          experiencedSubAreas: t.experiencedSubAreas || [], // 87項目から選んだ具体的な経験業務
+          valueTags: t.valueTags || [],
+          values: t.values || null, // 大切にしていること(自由記述)
+          careerHistory: t.careerHistory || t.bio || null, // 職務経歴・実績(自由記述)
           workStyleTags: t.workStyleTags || [],
           axis: (sm.bottlenecks && sm.bottlenecks[0]) || "",
           bottleneckTags: sm.bottlenecks || [],
           reason: t.bio,
+          profileSummary: sm.summary || null, // AIがまとめたこの方の人物像
+          axisEvidence: sm.axisEvidence || {}, // 軸ごとの採点根拠(なぜその点数なのか)
+          industryFit: sm.industryFit || [], // 経験を活かせる業界の候補
+          growthAreas: sm.growthAreas || [],
           axisScores: sm.axisScores,
           phaseTags: sm.phases || [],
           talentSkillMapId: sm.id,
