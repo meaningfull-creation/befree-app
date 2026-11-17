@@ -34,7 +34,7 @@ import { TALENT_TITLE_OPTIONS, parseTitles, formatTitles } from "@/lib/talentTit
 import { NO_MATCHING_OPTION_ANSWER } from "@/lib/dialogueAnswers";
 import { INDUSTRY_OPTIONS } from "@/lib/industries";
 import { computeScoreDelta } from "@/lib/scoreDelta";
-import { DEFAULT_SCHEDULE } from "@/lib/paymentSchedule";
+import { DEFAULT_SCHEDULE, scheduleFor, scheduleLabels } from "@/lib/paymentSchedule";
 import { COLORS, FONT_DISPLAY, FONT_BODY, FONT_MONO, GlobalStyle, TASK_STATUS_META, TASK_STATUS_ORDER } from "@/lib/theme";
 import { PROJECT_FLOW_STEPS, projectFlowStepIndex, projectStatusMeta, completionActionFor } from "@/lib/projectFlow";
 
@@ -2602,7 +2602,13 @@ function MessageThread({ matchId, counterpartName: initialName, initialDraft, dr
                       <input className="field-input" type="number" min="1" placeholder="例: 300000" value={proposeForm.companyAmount} onChange={(e) => setProposeForm({ ...proposeForm, companyAmount: e.target.value })} style={{ width: 140, marginLeft: 8, display: "inline-block" }} />
                     </label>
                   </div>
-                  <p style={{ fontSize: 11, color: COLORS.faint, margin: "0 0 10px" }}>人材への支払額は、標準料率(企業支払額の60%)を目安に自動計算されます。契約種別は業務委託(準委任)です。</p>
+                  <p style={{ fontSize: 11, color: COLORS.faint, margin: "0 0 8px" }}>人材への支払額は、標準料率(企業支払額の60%)を目安に自動計算されます。契約種別は業務委託(準委任)です。</p>
+                  {/* 「いつお金のやり取りが発生するのか」が提案前に分からない、というご指摘への対応(v6.17)。
+                      実際の日付は lib/paymentSchedule.js の計算をそのまま使うので、請求画面と必ず一致する。 */}
+                  <p style={{ fontSize: 11, color: COLORS.faint, margin: "0 0 10px", lineHeight: 1.7 }}>
+                    費用が発生するのは、相手が承諾して契約が成立してからです。稼働は{scheduleLabels().closing}に締め、
+                    今月から開始した場合の初回お支払い期日は <b style={{ color: COLORS.muted }}>{scheduleFor(new Date()).companyDueDate.toLocaleDateString("ja-JP")}</b> です。
+                  </p>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button className="btn-primary" onClick={proposeContract} disabled={proposing || !proposeForm.companyAmount} style={{ fontSize: 12.5, padding: "8px 16px" }}>
                       {proposing ? "送信中…" : "この内容で提案する"}

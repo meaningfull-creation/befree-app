@@ -7,7 +7,7 @@ import People from "./_lp/People";
 import HowItWorks from "./_lp/HowItWorks";
 import { Arrow, Label, Reveal, Wordmark, Wrap } from "./_lp/parts";
 import { EXPERIENCE_MARQUEE, LP_COLOR as C } from "./_lp/tokens";
-import { Compare, AfterMatch, Faq } from "./_lp/Content";
+import { Compare, Pricing, AfterMatch, Faq } from "./_lp/Content";
 
 export const metadata = {
   title: "BATTER BOX — その経験に、次の打席を。",
@@ -195,6 +195,7 @@ export default async function LandingPage() {
         <BrandSection />
         <HowItWorks />
         <Compare />
+        <Pricing />
         <AfterMatch />
         <Faq />
         <TwoSides />

@@ -18,13 +18,23 @@ export default function Hero() {
               </span>
             </h1>
 
-            <div className="lp-rise" style={{ animationDelay: "480ms", marginTop: "clamp(26px, 3vw, 40px)", maxWidth: 620 }}>
+            {/* v6.17: 「HPだけだと何をしている会社なのか分かりにくい」というご指摘への対応。
+                ブランドコピーの次に、何をするサービスなのかを一文で言い切る。
+                そのうえで、聞かれる前に答えが要る3点(無料・最小単位・費用の発生時点)を並べる。 */}
+            <div className="lp-rise" style={{ animationDelay: "480ms", marginTop: "clamp(26px, 3vw, 40px)", maxWidth: 640 }}>
               <p className="lp-sub" style={{ color: C.ink, fontWeight: 700 }}>
-                企業に足りないのは、人ではなく「経験」かもしれない。
+                経営課題をAIが5問で診断し、その課題を解いてきた人を紹介するサービスです。
               </p>
               <p className="lp-body" style={{ marginTop: 14 }}>
-                AIが経営課題を分析し、いま必要な経験を持つ人と企業をつなぐ。
+                正社員を一人採るには重いけれど、その経験がなければ前に進まない。
+                そんな課題に、月10時間からの業務委託で経験者が加わります。
               </p>
+
+              <ul className="lp-hero-facts">
+                <li><b>診断は無料</b>カード登録も不要</li>
+                <li><b>月10時間から</b>本業と並行でも</li>
+                <li><b>費用は契約成立後</b>話すだけなら無料</li>
+              </ul>
             </div>
 
             <div className="lp-hero-cta lp-rise" style={{ animationDelay: "580ms" }}>

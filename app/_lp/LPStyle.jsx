@@ -149,6 +149,28 @@ export default function LPStyle() {
       .lp-cmp-head .lp-cmp-b { color: ${C.orange}; }
 
       /* ---- after matching ---- */
+      /* ---- pricing: いつお金が動くか ---- */
+      .lp-pay { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: ${C.line}; border: 1px solid ${C.line}; }
+      .lp-pay-step { background: ${C.white}; padding: clamp(18px, 2.2vw, 26px); }
+      /* 費用が発生する段だけ、面で差をつけて視線を止める */
+      .lp-pay-step[data-highlight="true"] { background: ${C.orangeTint}; }
+      .lp-pay-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+      .lp-pay-n { font-size: 12px; color: ${C.inkFaint}; }
+      .lp-pay-cost { font-size: 11px; font-weight: 900; letter-spacing: 0.04em; color: ${C.orange}; }
+      .lp-pay-t { font-size: 16px; font-weight: 900; letter-spacing: -0.02em; line-height: 1.45; }
+
+      .lp-pay-detail { display: grid; grid-template-columns: repeat(2, 1fr); gap: clamp(28px, 4vw, 64px); margin-top: clamp(36px, 4.4vw, 64px); }
+      .lp-pay-sub { font-size: 15px; font-weight: 900; letter-spacing: -0.02em; padding-bottom: 12px; border-bottom: 2px solid ${C.orange}; display: inline-block; }
+      .lp-pay-chain { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 20px; font-size: 13px; font-weight: 900; }
+      .lp-pay-chain span { border: 1px solid ${C.line}; border-radius: 999px; padding: 7px 16px; }
+      .lp-pay-chain .lp-pay-mid { background: ${C.orange}; border-color: ${C.orange}; color: #fff; }
+      .lp-pay-chain i { width: 18px; height: 1px; background: ${C.inkFaint}; flex-shrink: 0; }
+
+      .lp-pay-dates { margin: 18px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 0; }
+      .lp-pay-dates dt, .lp-pay-dates dd { padding: 11px 0; border-bottom: 1px solid ${C.line}; font-size: 13.5px; }
+      .lp-pay-dates dt { color: ${C.inkSoft}; padding-right: 20px; }
+      .lp-pay-dates dd { margin: 0; font-weight: 900; color: ${C.ink}; text-align: right; }
+
       /* ---- after matching: 企業と実務経験者の動きを1行ずつ対比させる ---- */
       .lp-hand { border-top: 1px solid ${C.line}; }
       .lp-hand-row {
@@ -217,6 +239,22 @@ export default function LPStyle() {
       .lp-figure img { width: 100%; height: 100%; object-fit: cover; display: block; }
       .lp-figure-fallback { position: absolute; inset: 0; display: flex; align-items: flex-end; padding: 24px; }
       .lp-figure-plate { position: absolute; right: -14%; top: -8%; width: 68%; aspect-ratio: 1 / 1.15; background: ${C.orange}; clip-path: ${HOME_PLATE_CLIP}; opacity: 0.9; }
+
+      /* ---- hero: 聞かれる前に答えておきたい3点 ---- */
+      .lp-hero-facts {
+        list-style: none; margin: clamp(20px, 2.4vw, 28px) 0 0; padding: 0;
+        display: flex; flex-wrap: wrap; gap: 10px 26px;
+      }
+      .lp-hero-facts li {
+        font-size: 13px; color: ${C.inkSoft}; line-height: 1.6;
+        display: flex; align-items: baseline; gap: 8px;
+        padding-left: 16px; position: relative;
+      }
+      .lp-hero-facts li::before {
+        content: ""; position: absolute; left: 0; top: 7px;
+        width: 8px; height: 9px; background: ${C.orange}; clip-path: ${HOME_PLATE_CLIP};
+      }
+      .lp-hero-facts b { font-size: 13.5px; font-weight: 900; color: ${C.ink}; letter-spacing: -0.01em; }
 
       /* ---- how it works ----
          v6.16で企業/実務経験者の流れを切り替えるタブを追加した。
@@ -384,6 +422,8 @@ export default function LPStyle() {
         .lp-cmp-head { display: none; }
         .lp-cmp-a::before { content: "正社員採用: "; color: ${C.inkFaint}; font-weight: 700; }
         .lp-cmp-b::before { content: "BATTER BOX: "; color: ${C.orange}; font-weight: 700; }
+        .lp-pay { grid-template-columns: 1fr; }
+        .lp-pay-detail { grid-template-columns: 1fr; }
         .lp-hand-row { grid-template-columns: 1fr; gap: 6px; padding: 18px 0; }
         .lp-hand-head { display: none; }
         /* 1列になると「どちらの話か」が分からなくなるので、行頭に立場を書く */
